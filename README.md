@@ -1,11 +1,11 @@
-# MultiModuleTemplate
+# 노마드 스팟 (NomadSpot)
 
-Tuist로 구성된 멀티 모듈 iOS 프로젝트 템플릿입니다.
+Tuist로 구성된 멀티 모듈 iOS 프로젝트입니다.
 
 ## 🏗️ 프로젝트 구조 (Clean Architecture)
 
 ```
-MultiModuleTemplate/
+NomadSpot/
 ├── Workspace.swift
 ├── Tuist.swift
 ├── Projects/
