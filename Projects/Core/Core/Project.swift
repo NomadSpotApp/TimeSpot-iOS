@@ -1,0 +1,16 @@
+import Foundation
+import ProjectDescription
+import DependencyPlugin
+import ProjectTemplatePlugin
+import DependencyPackagePlugin
+
+let project = Project.makeAppModule(
+  name: "Core",
+  bundleId: .appBundleID(name: ".Core"),
+  product: .framework,
+  settings:  .settings(),
+  dependencies: [
+    .Core(implements: .ThirdParty)
+  ],
+  sources: ["Sources/**"]
+)
