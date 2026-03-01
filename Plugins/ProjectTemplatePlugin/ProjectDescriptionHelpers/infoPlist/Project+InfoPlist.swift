@@ -38,6 +38,11 @@ public extension InfoPlist {
           ]
         ]
       ])
+      .setUIRequiredDeviceCapabilities(["armv7"])
+      .setCFBundleDevelopmentRegion()
+      .setBaseURL("$(BASE_URL)")
+      .setUILaunchScreens()
+
   )
 
   static let moduleInfoPlist: Self = .extendingDefault(

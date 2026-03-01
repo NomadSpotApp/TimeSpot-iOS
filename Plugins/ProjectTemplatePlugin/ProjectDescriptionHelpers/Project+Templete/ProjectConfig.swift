@@ -17,7 +17,7 @@ public struct ProjectConfig {
     public static let projectName: String = "NomadSpot"
 
     // MARK: - 📱 앱 정보 (자동 생성됨)
-    public static let appName = projectName
+    public static let appName = "노마드 스팟"
     public static let appDisplayName = projectName  // 🎯 앱 화면에 표시될 이름
     public static let appStageName = "\(projectName)-Stage"
     public static let appProdName = "\(projectName)-Prod"
