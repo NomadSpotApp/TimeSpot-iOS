@@ -20,6 +20,7 @@ public enum ModulePath {
 public extension ModulePath {
   enum Presentations: String, CaseIterable {
     case Presentation
+    case Splash
 
 
     public static let name: String = "Presentation"
