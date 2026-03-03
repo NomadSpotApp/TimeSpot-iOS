@@ -10,7 +10,9 @@ let project = Project.makeAppModule(
   product: .framework,
   settings:  .settings(),
   dependencies: [
-    .Domain(implements: .Entity)
+    .Data(implements: .Model),
+    .SPM.weaveDI,
   ],
-  sources: ["Sources/**"]
+  sources: ["Sources/**"],
+  hasTests: false
 )

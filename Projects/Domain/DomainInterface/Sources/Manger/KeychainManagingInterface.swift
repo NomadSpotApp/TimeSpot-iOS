@@ -1,0 +1,37 @@
+//
+//  KeychainManagingInterface.swift
+//  UseCase
+//
+//  Created by Wonji Suh  on 3/4/26.
+//
+
+import Foundation
+import WeaveDI
+
+public protocol KeychainManaging: Sendable {
+  func save(accessToken: String, refreshToken: String)
+  func saveAccessToken(_ token: String)
+  func saveRefreshToken(_ token: String)
+  func accessToken() -> String?
+  func refreshToken() -> String?
+  func clear()
+}
+
+public struct KeychainManagerDependency: DependencyKey {
+  public static var liveValue: KeychainManaging {
+    UnifiedDI.resolve(KeychainManaging.self) ?? InMemoryKeychainManager()
+  }
+
+  public static var testValue: KeychainManaging {
+    InMemoryKeychainManager()
+  }
+
+  public static var previewValue: KeychainManaging = testValue
+}
+
+public extension DependencyValues {
+  var keychainManager: KeychainManaging {
+    get { self[KeychainManagerDependency.self] }
+    set { self[KeychainManagerDependency.self] = newValue }
+  }
+}

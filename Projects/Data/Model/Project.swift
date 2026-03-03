@@ -12,5 +12,6 @@ let project = Project.makeAppModule(
   dependencies: [
     .Domain(implements: .Entity)
   ],
-  sources: ["Sources/**"]
+  sources: ["Sources/**"],
+  hasTests: false
 )
