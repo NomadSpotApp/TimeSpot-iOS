@@ -7,7 +7,7 @@
 
 import Foundation
 
-public final class InMemoryKeychainManager: KeychainManaging,  Sendable {
+public final class InMemoryKeychainManager: KeychainManagingInterface,  Sendable {
   private var accessTokenStorage: String?
   private var refreshTokenStorage: String?
 
