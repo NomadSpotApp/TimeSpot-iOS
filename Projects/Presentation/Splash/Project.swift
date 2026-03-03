@@ -14,5 +14,6 @@ let project = Project.makeAppModule(
     .Domain(implements: .UseCase),
     .Shared(implements: .DesignSystem),
   ],
-  sources: ["Sources/**"]
+  sources: ["Sources/**"],
+  hasTests: true
 )

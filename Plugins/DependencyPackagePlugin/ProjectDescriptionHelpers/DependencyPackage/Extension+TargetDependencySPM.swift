@@ -12,4 +12,7 @@ public extension TargetDependency.SPM {
   static let composableArchitecture = TargetDependency.external(name: "ComposableArchitecture", condition: .none)
   static let tcaCoordinator = TargetDependency.external(name: "TCACoordinators", condition: .none)
   static let weaveDI = TargetDependency.external(name: "WeaveDI", condition: .none)
+
+  static let googleSignIn = TargetDependency.external(name: "GoogleSignIn", condition: .none)
+  static let appAuth: TargetDependency = .external(name: "AppAuth")
 }

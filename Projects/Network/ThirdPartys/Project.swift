@@ -2,17 +2,17 @@ import Foundation
 import ProjectDescription
 import DependencyPlugin
 import ProjectTemplatePlugin
+import ProjectTemplatePlugin
 import DependencyPackagePlugin
 
 let project = Project.makeAppModule(
-  name: "DesignSystem",
-  bundleId: .appBundleID(name: ".DesignSystem"),
+  name: "ThirdPartys",
+  bundleId: .appBundleID(name: ".ThirdPartys"),
   product: .staticFramework,
   settings:  .settings(),
   dependencies: [
-    .SPM.composableArchitecture
+    .SPM.asyncMoya,
+    .SPM.weaveDI
   ],
-  sources: ["Sources/**"],
-  resources: ["Resources/**", "FontAsset"],
-  hasTests: false
+  sources: ["Sources/**"]
 )
