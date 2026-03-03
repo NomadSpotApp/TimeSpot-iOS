@@ -7,36 +7,52 @@
 
 import Foundation
 
-public final class InMemoryKeychainManager: KeychainManagingInterface,  Sendable {
+public actor InMemoryKeychainManager: KeychainManagingInterface {
   private var accessTokenStorage: String?
   private var refreshTokenStorage: String?
 
   public init() {}
 
-  public func save(accessToken: String, refreshToken: String) {
-    accessTokenStorage = accessToken
-    refreshTokenStorage = refreshToken
+  // MARK: - Legacy Sync API (Backward Compatibility)
+
+  public nonisolated func save(accessToken: String, refreshToken: String) {
+    Task { [weak self] in
+      guard let self = self else { return }
+      try? await self.save(accessToken: accessToken, refreshToken: refreshToken)
+    }
   }
 
-  public func saveAccessToken(_ token: String) {
-    accessTokenStorage = token
+  public nonisolated func saveAccessToken(_ token: String) {
+    Task { [weak self] in
+      guard let self = self else { return }
+      try? await self.saveAccessToken(token)
+    }
   }
 
-  public func saveRefreshToken(_ token: String) {
-    refreshTokenStorage = token
+  public nonisolated func saveRefreshToken(_ token: String) {
+    Task { [weak self] in
+      guard let self = self else { return }
+      try? await self.saveRefreshToken(token)
+    }
   }
 
-  public func accessToken() -> String? {
-    accessTokenStorage
+  public nonisolated func accessToken() -> String? {
+    // ⚠️ Sync access - use async version for better safety
+    // For testing purposes, return nil in sync context
+    return nil
   }
 
-  public func refreshToken() -> String? {
-    refreshTokenStorage
+  public nonisolated func refreshToken() -> String? {
+    // ⚠️ Sync access - use async version for better safety
+    // For testing purposes, return nil in sync context
+    return nil
   }
 
-  public func clear() {
-    accessTokenStorage = nil
-    refreshTokenStorage = nil
+  public nonisolated func clear() {
+    Task { [weak self] in
+      guard let self = self else { return }
+      try? await self.clear()
+    }
   }
 
   // MARK: - Modern Async API (iOS 17+)
