@@ -14,33 +14,54 @@ import WeaveDI
 
 public actor KeychainManager: KeychainManagingInterface {
   private let service: String
+  private let accessGroup: String?
 
   private enum Key {
     static let accessToken = "ACCESS_TOKEN"
     static let refreshToken = "REFRESH_TOKEN"
   }
 
-  public init(service: String = "io.dddstudy.attendance") {
+  public init(service: String = Bundle.main.bundleIdentifier ?? "com.nomadspot.app",
+             accessGroup: String? = nil) {
     self.service = service
+    self.accessGroup = accessGroup
   }
 
   // MARK: - Legacy Sync API (Backward Compatibility)
 
   public nonisolated func save(accessToken: String, refreshToken: String) {
     Task { [weak self] in
-      try? await self?.save(accessToken: accessToken, refreshToken: refreshToken)
+      guard let self = self else { return }
+      do {
+        try await self.save(accessToken: accessToken, refreshToken: refreshToken)
+      } catch {
+        // TODO: Add proper logging in production
+        print("⚠️ Failed to save tokens: \(error)")
+      }
     }
   }
 
   public nonisolated func saveAccessToken(_ token: String) {
     Task { [weak self] in
-      try? await self?.saveAccessToken(token)
+      guard let self = self else { return }
+      do {
+        try await self.saveAccessToken(token)
+      } catch {
+        // TODO: Add proper logging in production
+        print("⚠️ Failed to save access token: \(error)")
+      }
     }
   }
 
   public nonisolated func saveRefreshToken(_ token: String) {
     Task { [weak self] in
-      try? await self?.saveRefreshToken(token)
+      guard let self = self else { return }
+      do {
+        try await self.saveRefreshToken(token)
+      } catch {
+        // TODO: Add proper logging in production
+        print("⚠️ Failed to save refresh token: \(error)")
+      }
     }
   }
 
@@ -56,7 +77,13 @@ public actor KeychainManager: KeychainManagingInterface {
 
   public nonisolated func clear() {
     Task { [weak self] in
-      try? await self?.clear()
+      guard let self = self else { return }
+      do {
+        try await self.clear()
+      } catch {
+        // TODO: Add proper logging in production
+        print("⚠️ Failed to clear keychain: \(error)")
+      }
     }
   }
 
@@ -92,11 +119,7 @@ public actor KeychainManager: KeychainManagingInterface {
 
   private func save(_ value: String, for key: String) throws {
     let data = Data(value.utf8)
-    let query: [CFString: Any] = [
-      kSecClass: kSecClassGenericPassword,
-      kSecAttrService: service,
-      kSecAttrAccount: key
-    ]
+    var query = baseQuery(for: key)
 
     let attributes: [CFString: Any] = [
       kSecValueData: data
@@ -104,9 +127,11 @@ public actor KeychainManager: KeychainManagingInterface {
 
     let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
     if status == errSecItemNotFound {
-      var addQuery = query
-      addQuery[kSecValueData] = data
-      let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+      // Item doesn't exist, create new one with security attributes
+      query[kSecValueData] = data
+      query[kSecAttrAccessible] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+
+      let addStatus = SecItemAdd(query as CFDictionary, nil)
       guard addStatus == errSecSuccess else {
         throw KeychainError.unableToSave(status: addStatus)
       }
@@ -116,13 +141,9 @@ public actor KeychainManager: KeychainManagingInterface {
   }
 
   private func read(for key: String) -> String? {
-    let query: [CFString: Any] = [
-      kSecClass: kSecClassGenericPassword,
-      kSecAttrService: service,
-      kSecAttrAccount: key,
-      kSecReturnData: true,
-      kSecMatchLimit: kSecMatchLimitOne
-    ]
+    var query = baseQuery(for: key)
+    query[kSecReturnData] = true
+    query[kSecMatchLimit] = kSecMatchLimitOne
 
     var result: AnyObject?
     let status = SecItemCopyMatching(query as CFDictionary, &result)
@@ -133,27 +154,43 @@ public actor KeychainManager: KeychainManagingInterface {
   }
 
   private func delete(for key: String) throws {
-    let query: [CFString: Any] = [
-      kSecClass: kSecClassGenericPassword,
-      kSecAttrService: service,
-      kSecAttrAccount: key
-    ]
+    let query = baseQuery(for: key)
     let status = SecItemDelete(query as CFDictionary)
     guard status == errSecSuccess || status == errSecItemNotFound else {
       throw KeychainError.unableToDelete(status: status)
     }
   }
 
+  // MARK: - Helper Methods
+
+  private func baseQuery(for key: String) -> [CFString: Any] {
+    var query: [CFString: Any] = [
+      kSecClass: kSecClassGenericPassword,
+      kSecAttrService: service,
+      kSecAttrAccount: key
+    ]
+
+    if let accessGroup = accessGroup {
+      query[kSecAttrAccessGroup] = accessGroup
+    }
+
+    return query
+  }
+
   // MARK: - Legacy Support (nonisolated)
 
   private nonisolated func legacyRead(for key: String) -> String? {
-    let query: [CFString: Any] = [
+    var query: [CFString: Any] = [
       kSecClass: kSecClassGenericPassword,
       kSecAttrService: service,
       kSecAttrAccount: key,
       kSecReturnData: true,
       kSecMatchLimit: kSecMatchLimitOne
     ]
+
+    if let accessGroup = accessGroup {
+      query[kSecAttrAccessGroup] = accessGroup
+    }
 
     var result: AnyObject?
     let status = SecItemCopyMatching(query as CFDictionary, &result)

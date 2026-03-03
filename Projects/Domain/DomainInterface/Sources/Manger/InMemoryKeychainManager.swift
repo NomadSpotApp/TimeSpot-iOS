@@ -38,4 +38,32 @@ public final class InMemoryKeychainManager: KeychainManagingInterface,  Sendable
     accessTokenStorage = nil
     refreshTokenStorage = nil
   }
+
+  // MARK: - Modern Async API (iOS 17+)
+
+  public func save(accessToken: String, refreshToken: String) async throws {
+    accessTokenStorage = accessToken
+    refreshTokenStorage = refreshToken
+  }
+
+  public func saveAccessToken(_ token: String) async throws {
+    accessTokenStorage = token
+  }
+
+  public func saveRefreshToken(_ token: String) async throws {
+    refreshTokenStorage = token
+  }
+
+  public func accessToken() async -> String? {
+    accessTokenStorage
+  }
+
+  public func refreshToken() async -> String? {
+    refreshTokenStorage
+  }
+
+  public func clear() async throws {
+    accessTokenStorage = nil
+    refreshTokenStorage = nil
+  }
 }
