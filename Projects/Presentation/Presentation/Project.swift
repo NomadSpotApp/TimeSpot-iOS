@@ -12,5 +12,6 @@ let project = Project.makeAppModule(
   dependencies: [
     .Presentation(implements: .Splash)
   ],
-  sources: ["Sources/**"]
+  sources: ["Sources/**"],
+  hasTests: false
 )

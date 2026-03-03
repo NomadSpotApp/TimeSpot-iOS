@@ -35,6 +35,8 @@ public extension ModulePath {
     case Foundations
 
     public static let name: String = "Network"
+      case Networks
+      case ThirdPartys
   }
 }
 

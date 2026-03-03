@@ -4,7 +4,7 @@ import SwiftUI
 import ComposableArchitecture
 
 @main
-struct AttendanceApp: App {
+struct NomadSpotApp: App {
   @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
   init() {

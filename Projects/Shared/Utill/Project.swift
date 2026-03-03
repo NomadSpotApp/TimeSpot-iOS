@@ -12,5 +12,6 @@ let project = Project.makeAppModule(
   dependencies: [
     .SPM.composableArchitecture
   ],
-  sources: ["Sources/**"]
+  sources: ["Sources/**"],
+  hasTests: false
 )

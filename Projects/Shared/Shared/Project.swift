@@ -13,5 +13,6 @@ let project = Project.makeAppModule(
     .Shared(implements: .DesignSystem),
     .Shared(implements: .Utill),
   ],
-  sources: ["Sources/**"]
+  sources: ["Sources/**"],
+  hasTests: false
 )

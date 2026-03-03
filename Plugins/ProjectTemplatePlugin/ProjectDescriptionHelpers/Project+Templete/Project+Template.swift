@@ -6,6 +6,37 @@
 //
 
 import ProjectDescription
+import Foundation
+
+// MARK: - Helper Functions
+private func ensureTestsSourcesDirectoryExists(for projectName: String) {
+    let fileManager = FileManager.default
+
+    // Try to find the current module directory
+    let currentDirectory = fileManager.currentDirectoryPath
+    let possiblePaths = [
+        "\(currentDirectory)/Tests/Sources",
+        "./Tests/Sources"
+    ]
+
+    for testsSourcesPath in possiblePaths {
+        let parentDir = URL(fileURLWithPath: testsSourcesPath).deletingLastPathComponent().path
+
+        if fileManager.fileExists(atPath: parentDir) || parentDir == "." {
+            if !fileManager.fileExists(atPath: testsSourcesPath) {
+                do {
+                    try fileManager.createDirectory(atPath: testsSourcesPath, withIntermediateDirectories: true, attributes: nil)
+                    print("📁 Created Tests/Sources directory for \(projectName) at \(testsSourcesPath)")
+                    return
+                } catch {
+                    print("⚠️  Failed to create Tests/Sources directory for \(projectName) at \(testsSourcesPath): \(error)")
+                }
+            } else {
+                return // Directory already exists
+            }
+        }
+    }
+}
 
 public extension Project {
   static func makeAppModule(
@@ -23,7 +54,8 @@ public extension Project {
     resources: ProjectDescription.ResourceFileElements? = nil,
     infoPlist: ProjectDescription.InfoPlist = .default,
     entitlements: ProjectDescription.Entitlements? = nil,
-    schemes: [ProjectDescription.Scheme] = []
+    schemes: [ProjectDescription.Scheme] = [],
+    hasTests: Bool = false
   ) -> Project {
 
     let appTarget: Target = .target(
@@ -84,18 +116,24 @@ public extension Project {
       dependencies: dependencies
     )
 
-    let appTestTarget : Target = .target(
-      name: "\(name)Tests",
-      destinations: destinations,
-      product: .unitTests,
-      bundleId: "\(bundleId).\(name)Tests",
-      deploymentTargets: deploymentTarget,
-      infoPlist: .default,
-      sources: ["\(name)Tests/Sources/**"],
-      dependencies: [.target(name: name)]
-    )
+    var targets: [Target] = [appTarget, appDevTarget, appStageTarget, appProdTarget]
 
-    let targets = [appTarget, appDevTarget, appStageTarget, appProdTarget ,appTestTarget]
+    if hasTests {
+        // Ensure Tests/Sources directory exists
+        ensureTestsSourcesDirectoryExists(for: name)
+
+        let appTestTarget : Target = .target(
+          name: "\(name)Tests",
+          destinations: destinations,
+          product: .unitTests,
+          bundleId: "\(bundleId).\(name)Tests",
+          deploymentTargets: deploymentTarget,
+        infoPlist: .default,
+        sources: ["Tests/Sources/**"],
+        dependencies: [.target(name: name)]
+      )
+      targets.append(appTestTarget)
+    }
 
     return Project(
       name: name,
@@ -125,9 +163,10 @@ public extension Project {
     resources: ProjectDescription.ResourceFileElements? = nil,
     infoPlist: ProjectDescription.InfoPlist = .default,
     entitlements: ProjectDescription.Entitlements? = nil,
-    schemes: [ProjectDescription.Scheme] = []
+    schemes: [ProjectDescription.Scheme] = [],
+    hasTests: Bool = false
   ) -> Project {
-    
+
     let appTarget: Target = .target(
       name: name,
       destinations: destinations,
@@ -141,34 +180,26 @@ public extension Project {
       scripts: scripts,
       dependencies: dependencies
     )
-    
-    let appDevTarget: Target = .target(
-      name: "\(name)-QA",
-      destinations: destinations,
-      product: product,
-      bundleId: "\(bundleId)",
-      deploymentTargets: deploymentTarget,
-      infoPlist: infoPlist,
-      sources: sources,
-      resources: resources,
-      entitlements: entitlements,
-      scripts: scripts,
-      dependencies: dependencies
-    )
-    
-    let appTestTarget : Target = .target(
-      name: "\(name)Tests",
-      destinations: destinations,
-      product: .unitTests,
-      bundleId: "\(bundleId).\(name)Tests",
-      deploymentTargets: deploymentTarget,
-      infoPlist: .default,
-      sources: ["\(name)Tests/Sources/**"],
-      dependencies: [.target(name: name)]
-    )
-    
-    let targets = [appTarget, appDevTarget, appTestTarget]
-    
+
+    var targets: [Target] = [appTarget]
+
+    if hasTests {
+      // Ensure Tests/Sources directory exists
+      ensureTestsSourcesDirectoryExists(for: name)
+
+      let appTestTarget : Target = .target(
+        name: "\(name)Tests",
+        destinations: destinations,
+        product: .unitTests,
+        bundleId: "\(bundleId).\(name)Tests",
+        deploymentTargets: deploymentTarget,
+        infoPlist: .default,
+        sources: ["Tests/Sources/**"],
+        dependencies: [.target(name: name)]
+      )
+      targets.append(appTestTarget)
+    }
+
     return Project(
       name: name,
       packages: packages,

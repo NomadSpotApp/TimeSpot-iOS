@@ -10,8 +10,11 @@ let project = Project.makeAppModule(
   product: .staticFramework,
   settings:  .settings(),
   dependencies: [
-    .Network(implements: .Networking),
-    .Domain(implements: .DomainInterface)
+    .Data(implements: .Service),
+    .Domain(implements: .DomainInterface),
+
+      .SPM.googleSignIn
   ],
-  sources: ["Sources/**"]
+  sources: ["Sources/**"],
+  hasTests: true
 )

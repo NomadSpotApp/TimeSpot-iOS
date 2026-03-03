@@ -26,11 +26,11 @@ public class AppDIManager: @unchecked Sendable {
   public func registerDefaultDependencies() async {
     // 🏗️ 1. WeaveDI.builder 패턴으로 실제 구현체들 등록
     WeaveDI.builder
-//      .register { KeychainManager() as KeychainManaging }
-//      .register {
-//        let keychainManager = UnifiedDI.resolve(KeychainManaging.self) ?? KeychainManager()
-//        return KeychainTokenProvider(keychainManager: keychainManager) as TokenProviding
-//      }
+      .register { KeychainManager() as KeychainManagingInterface }
+      .register {
+        let keychainManager = UnifiedDI.resolve(KeychainManagingInterface.self) ?? KeychainManager()
+        return KeychainTokenProvider(keychainManager: keychainManager) as TokenProviding
+      }
 //      .register(ProfileInterface.self) { ProfileRepositoryImpl() }
 //    // MARK: - 로그인
 //      .register { AuthRepositoryImpl() as AuthInterface }
