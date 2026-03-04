@@ -102,6 +102,12 @@ Data/Repository → Domain (Entity + Repository Protocol)
 Data/Model → Domain (Entity 변환)
 ```
 
+**핵심 원칙:**
+- Presentation은 Domain의 UseCase Protocol만 의존
+- Domain은 외부 계층에 의존하지 않는 순수 비즈니스 로직
+- Data는 Domain의 Entity와 Repository Protocol을 구현
+- 모든 데이터 흐름은 Domain을 중심으로 진행
+
 ### 🚀 Swift Concurrency
 - Actor 기반 Thread-Safe KeychainManager 구현
 
