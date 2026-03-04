@@ -9,28 +9,30 @@ NomadSpot/
 ├── Projects/
 │   ├── App/                    # 메인 애플리케이션
 │   ├── Presentation/           # UI 계층
-│   ├── Domain/                 # 도메인 계층
-│   │   ├── Entity/             # 도메인 엔티티
-│   │   ├── UseCase/            # 비즈니스 로직
-│   │   └── DomainInterface/    # 도메인 인터페이스
-│   ├── Data/                   # 데이터 계층
-│   │   ├── Model/              # 데이터 모델
-│   │   ├── Repository/         # Repository 구현체
-│   │   ├── API/                # API 클라이언트
-│   │   └── Service/            # 데이터 서비스
+│   ├── Domain/                 # 🔥 도메인 계층 (비즈니스 로직 + Protocol)
+│   │   ├── Entity/             # 도메인 엔티티 + Entity Protocol
+│   │   ├── UseCase/            # 비즈니스 로직 + UseCase Protocol
+│   │   └── DomainInterface/    # Domain 계층 인터페이스 모듈
+│   ├── Data/                   # 데이터 계층 (데이터 접근 + Model)
+│   │   ├── Model/              # 데이터 전송 객체 (DTO, API Response)
+│   │   ├── Repository/         # Repository 구현체 (Domain Protocol 구현)
+│   │   ├── API/                # REST API 클라이언트
+│   │   └── Service/            # 데이터 처리 서비스
 │   ├── Network/                # 네트워크 계층
-│   │   ├── Networks/           # 네트워크 설정
-│   │   ├── Foundations/        # 네트워크 유틸리티
-│   │   └── ThirdPartys/        # 네트워크 서드파티
+│   │   ├── Networks/           # 네트워크 기본 설정 및 클라이언트
+│   │   ├── Foundations/        # 네트워크 기반 유틸리티
+│   │   └── ThirdPartys/        # 네트워크 써드파티 라이브러리 (AsyncMoya, WeaveDI)
 │   └── Shared/                 # 공통 모듈
-│       ├── DesignSystem/       # 디자인 시스템
-│       ├── Shared/             # 공통 모듈
-│       └── Utill/              # 유틸리티
+│       ├── DesignSystem/       # 공통 UI 컴포넌트, 폰트 등
+│       ├── Shared/             # 공통 공유 모듈
+│       └── Utill/              # 공통 유틸리티
 ├── Tuist/
 │   ├── Package.swift
 │   └── ProjectDescriptionHelpers/
 └── Plugins/
 ```
+
+
 
 ![Tuist Graph](./graph.png)
 
