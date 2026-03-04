@@ -91,6 +91,17 @@ Presentation → Domain → Data
    UI 로직   비즈니스   데이터
 ```
 
+### 🔄 의존성 방향
+```
+Presentation → Domain (UseCase Protocol)
+       ↓
+Domain/UseCase → Domain (Repository Protocol)
+       ↓
+Data/Repository → Domain (Entity + Repository Protocol)
+       ↓
+Data/Model → Domain (Entity 변환)
+```
+
 ### 🚀 Swift Concurrency
 - Actor 기반 Thread-Safe KeychainManager 구현
 
