@@ -14,7 +14,7 @@ public struct ProjectConfig {
 
     // MARK: - 🎯 프로젝트 이름 설정 (여기만 바꾸면 됩니다!)
     /// 프로젝트 이름을 여기서 설정하세요
-    public static let projectName: String = "NomadSpot"
+    public static let projectName: String = "TimeSpot"
 
     // MARK: - 📱 앱 정보 (자동 생성됨)
     public static let appName = "노마드 스팟"
@@ -24,7 +24,7 @@ public struct ProjectConfig {
     public static let appDevName = "\(projectName)-Dev"
 
     // MARK: - 🔧 기타 설정
-    public static let bundleIdPrefix = "io.NodmadSpot.co"
+    public static let bundleIdPrefix = "io.TimeSpot.co"
     public static let teamId = "N94CS4N6VR"
     public static let deploymentTarget: ProjectDescription.DeploymentTargets = .iOS("17.0")
     public static let deploymentDestination: ProjectDescription.Destinations = [.iPhone]
