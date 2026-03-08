@@ -1,11 +1,11 @@
-# 노마드 스팟 (NomadSpot)
+# 타임 스팟 (TimeSpot)
 
 Tuist로 구성된 멀티 모듈 iOS 프로젝트입니다.
 
 ## 🏗️ 프로젝트 구조
 
 ```
-NomadSpot/
+TimeSpot/
 ├── Projects/
 │   ├── App/                    # 메인 애플리케이션
 │   ├── Presentation/           # UI 계층

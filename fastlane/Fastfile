@@ -5,10 +5,10 @@ default_platform(:ios)
 ENV["FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT"] = "600"
 
 # 앱 관련 변수
-APP_NAME = "DDDAttendance"
-SCHEME = "DDDAttendance"
-STAGE_SCHEME = "DDDAttendance-Stage"
-BUNDLE_ID = "io.DDD.Attendance"
+APP_NAME = "TimeSpot"
+SCHEME = "TimeSpot"
+STAGE_SCHEME = "TimeSpot-Stage"
+BUNDLE_ID = "io.TimeSpot.co"
 OUTPUT_DIR = "./fastlane/output"
 IPA_FILENAME = "#{APP_NAME}.ipa"
 TEAM_ID = ENV["TEAM_ID"] || "N94CS4N6VR"
@@ -41,7 +41,7 @@ platform :ios do
       readonly: true,
       git_url: "git@github.com:Roy-wonji/Fastalne.git",
       storage_mode: "git",
-      app_identifier: ["io.DDD.Attendance"]
+      app_identifier: ["io.TimeSpot.co"]
     )
 
     # Change to project root directory
@@ -96,7 +96,7 @@ platform :ios do
 
       ipa_path = build_app(
         workspace: workspace_path,
-        scheme: "DDDAttendance-Stage",
+        scheme: "TimeSpot-Stage",
         configuration: "Release",
         export_method: "app-store",
         output_directory: File.expand_path("../#{OUTPUT_DIR}"),
@@ -123,8 +123,8 @@ platform :ios do
     upload_to_testflight(
       ipa: ipa_path,
       changelog: "변경사항",
-      groups: ["DDD", "ddd"],
-      beta_app_description: "DDD 출석 앱입니다.",
+      groups: ["TimeSpot"],
+      beta_app_description: "TimeSpot 앱입니다.",
       notify_external_testers: true,
       skip_waiting_for_build_processing: true,
       demo_account_required: false,
@@ -175,12 +175,12 @@ platform :ios do
         readonly: true,
         git_url: "git@github.com:Roy-wonji/Fastalne.git",
         storage_mode: "git",
-        app_identifier: ["io.DDD.Attendance"]
+        app_identifier: ["io.TimeSpot.co"]
       )
 
       ipa_path = build_app(
         workspace: "#{APP_RELEASE_NAME}.xcworkspace",
-        scheme: "DDDAttendance-Prod",
+        scheme: "TimeSpot-Prod",
         configuration: "Release",
         output_directory: OUTPUT_DIR,
         output_name: IPA_FILENAME,
@@ -224,7 +224,7 @@ platform :ios do
       UI.important("")
       UI.important("📱 심사 진행 상황 확인:")
       UI.important("   1. https://appstoreconnect.apple.com 접속")
-      UI.important("   2. DDD Attendance 앱 선택")
+      UI.important("   2. TimeSpot 앱 선택")
       UI.important("   3. 버전 #{options[:version]} 심사 상태 확인")
       UI.important("")
       UI.success("✅ 빌드, 업로드, 심사 요청이 모두 성공적으로 완료되었습니다!")
@@ -292,17 +292,17 @@ lane :tdd_ci do |options|
 
   # 2. 테스트 실행
   run_tests(
-    workspace: "DDD-Attendance.xcworkspace",
+    workspace: "TimeSpot.xcworkspace",
     devices: ["iPhone 15"],
-    scheme: "DDD-Attendance"
+    scheme: "TimeSpot"
   )
 
   # 3. 커버리지 체크
   slather(
     cobertura_xml: true,
     jenkins: true,
-    scheme: "DDD-Attendance",
-    workspace: "DDD-Attendance.xcworkspace"
+    scheme: "TimeSpot",
+    workspace: "TimeSpot.xcworkspace"
   )
 
   # 4. 성공 시 알림
