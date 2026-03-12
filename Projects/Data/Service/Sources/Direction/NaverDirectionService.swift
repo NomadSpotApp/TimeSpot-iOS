@@ -11,15 +11,6 @@ import Foundation
 import API
 import AsyncMoya
 
-// MARK: - Direction API Endpoints
-public enum DirectionAPI : String {
-  case driving = "/map-direction-15/v1/driving"
-
-  public var description: String {
-    return self.rawValue
-  }
-}
-
 // MARK: - Direction Service
 public enum NaverDirectionService {
   case driving(start: String, goal: String, option: String)
@@ -27,14 +18,19 @@ public enum NaverDirectionService {
 }
 
 extension NaverDirectionService: BaseTargetType {
-  public typealias Domain = BaseAPI
+  public typealias Domain = NaverDirectionDomain
 
-  public var domain: BaseAPI {
-    return .naver
+  public var domain: NaverDirectionDomain {
+    switch self {
+    case .driving:
+      return .direction
+    case .walking:
+      return .walking
+    }
   }
 
   public var baseURL: URL {
-    return URL(string: domain.apiDescription)!
+    return URL(string: domain.baseURLString)!
   }
 
   public var path: String {
@@ -42,10 +38,7 @@ extension NaverDirectionService: BaseTargetType {
   }
 
   public var urlPath: String {
-    switch self {
-    case .driving, .walking:
-      return DirectionAPI.driving.description
-    }
+    return "\(domain.url)/driving"
   }
 
   public var error: [Int: AsyncMoya.NetworkError]? {
@@ -55,17 +48,17 @@ extension NaverDirectionService: BaseTargetType {
   public var parameters: [String: Any]? {
     switch self {
     case .driving(let start, let goal, let option):
-      return [
-        "start": start,
-        "goal": goal,
-        "option": option
-      ]
+      var params: [String: Any] = [:]
+      params.merge(start.toDictionary(key: "start")) { _, new in new }
+      params.merge(goal.toDictionary(key: "goal")) { _, new in new }
+      params.merge(option.toDictionary(key: "option")) { _, new in new }
+      return params
 
     case .walking(let start, let goal):
-      return [
-        "start": start,
-        "goal": goal
-      ]
+      var params: [String: Any] = [:]
+      params.merge(start.toDictionary(key: "start")) { _, new in new }
+      params.merge(goal.toDictionary(key: "goal")) { _, new in new }
+      return params
     }
   }
 
