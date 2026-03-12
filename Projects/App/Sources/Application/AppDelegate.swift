@@ -21,7 +21,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     // 네이버맵 초기화 (Home 모듈의 NaverMapInitializer 사용)
-    NaverMapInitializer.shared.initialize()
+    NaverMapInitializer.initialize()
 
     return true
   }

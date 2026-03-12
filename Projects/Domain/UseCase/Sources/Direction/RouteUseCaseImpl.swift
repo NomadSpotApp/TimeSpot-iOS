@@ -15,9 +15,7 @@ import ComposableArchitecture
 import LogMacro
 
 /// 경로 검색 비즈니스 로직을 처리하는 UseCase
-public struct GetRouteUseCaseImpl: DirectionInterface {
-
-  
+public struct RouteUseCaseImpl: DirectionInterface {
 
     @Dependency(\.directionRepository) var repository
 
@@ -61,16 +59,16 @@ public struct GetRouteUseCaseImpl: DirectionInterface {
 }
 
 
-extension GetRouteUseCaseImpl: DependencyKey {
-  public static var liveValue  = GetRouteUseCaseImpl()
-  public static var testValue = GetRouteUseCaseImpl()
+extension RouteUseCaseImpl: DependencyKey {
+  public static var liveValue  = RouteUseCaseImpl()
+  public static var testValue = RouteUseCaseImpl()
   public static var previewValue = liveValue
 }
 
 public extension DependencyValues {
-  var getRouteUseCase: GetRouteUseCaseImpl {
-    get { self[GetRouteUseCaseImpl.self] }
-    set { self[GetRouteUseCaseImpl.self] = newValue }
+  var getRouteUseCase: RouteUseCaseImpl {
+    get { self[RouteUseCaseImpl.self] }
+    set { self[RouteUseCaseImpl.self] = newValue }
   }
 }
 

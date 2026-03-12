@@ -1,5 +1,5 @@
 //
-//  DirectionRepositoryInterface.swift
+//  DirectionInterface.swift
 //  DomainInterface
 //
 //  Created by wonji suh on 2026-03-12
