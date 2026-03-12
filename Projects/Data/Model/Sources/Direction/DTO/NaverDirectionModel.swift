@@ -14,7 +14,10 @@ public struct NaverWalkingResponse: Codable {
 }
 
 public struct WalkingRouteResponse: Codable {
-    public let traoptimal: [WalkingRouteDetail]?
+    public let trafast: [WalkingRouteDetail]?      // 실시간 빠른 길
+    public let tracomfort: [WalkingRouteDetail]?   // 실시간 편한 길
+    public let traoptimal: [WalkingRouteDetail]?   // 실시간 최적
+    public let traavoidtoll: [WalkingRouteDetail]? // 통행료 회피
 }
 
 public struct WalkingRouteDetail: Codable {
@@ -63,7 +66,10 @@ public struct NaverDirectionResponse: Codable {
 }
 
 public struct RouteResponse: Codable {
-    public let traoptimal: [RouteDetail]?
+    public let trafast: [RouteDetail]?      // 실시간 빠른 길
+    public let tracomfort: [RouteDetail]?   // 실시간 편한 길
+    public let traoptimal: [RouteDetail]?   // 실시간 최적
+    public let traavoidtoll: [RouteDetail]? // 통행료 회피
 }
 
 public struct RouteDetail: Codable {

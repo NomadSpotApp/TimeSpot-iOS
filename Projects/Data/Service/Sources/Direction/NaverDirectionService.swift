@@ -38,12 +38,7 @@ extension NaverDirectionService: BaseTargetType {
   }
 
   public var urlPath: String {
-    switch self {
-    case .driving:
-      return "\(domain.url)/driving"
-    case .walking:
-      return "\(domain.url)/walking"
-    }
+    return "\(domain.url)/driving"
   }
 
   public var error: [Int: AsyncMoya.NetworkError]? {
