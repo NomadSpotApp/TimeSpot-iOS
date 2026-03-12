@@ -17,6 +17,7 @@ public struct AppReducer: Sendable {
   @ObservableState
   public enum State {
     case splash(SplashReducer.State)
+    case home(HomeReducer.State)
 
 
     public init() {
@@ -27,6 +28,7 @@ public struct AppReducer: Sendable {
     var animationID: String {
       switch self {
       case .splash: return "splash"
+      case .home: return "home"
       }
     }
   }
@@ -45,8 +47,6 @@ public struct AppReducer: Sendable {
     case presentView
     case presentRoot
     case presentAuth
-    case presentStaff
-    case presentMember
   }
 
   //MARK: - 앱내에서 사용하는 액션
@@ -69,6 +69,7 @@ public struct AppReducer: Sendable {
   @CasePathable
   public enum ScopeAction {
     case splash(SplashReducer.Action)
+    case home(HomeReducer.Action)
   }
 
   @Dependency(\.continuousClock) var clock
@@ -103,8 +104,13 @@ public struct AppReducer: Sendable {
     .ifCaseLet(\.splash, action: \.scope.splash) {
       SplashReducer()
     }
+    .ifCaseLet(\.home, action: \.scope.home) {
+      HomeReducer()
+    }
   }
+}
 
+extension AppReducer {
   private func handleViewAction(
     state: inout State,
     action: View
@@ -116,7 +122,7 @@ public struct AppReducer: Sendable {
       }
 
     case .presentRoot:
-//
+        state = .home(.init())
       return .none
 
     case .presentAuth:
@@ -126,19 +132,6 @@ public struct AppReducer: Sendable {
         .cancel(id: CancelID.memberEffects)
       )
 
-    case .presentStaff:
-//      state = .staff(.init())
-      return .concatenate(
-        .cancel(id: CancelID.authEffects),
-        .cancel(id: CancelID.memberEffects)
-      )
-
-    case .presentMember:
-//      state = .member(.init())
-      return .concatenate(
-        .cancel(id: CancelID.authEffects),
-        .cancel(id: CancelID.staffEffects)
-      )
     }
   }
 
@@ -183,6 +176,11 @@ public struct AppReducer: Sendable {
     action: ScopeAction
   ) -> Effect<Action> {
     switch action {
+      case .splash(.navigation(.presentHome)):
+        return .run { send in
+          try await clock.sleep(for: .seconds(0.3))
+          await send(.view(.presentRoot))
+        }
 
 
     default:

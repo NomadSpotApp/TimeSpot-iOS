@@ -185,4 +185,32 @@ extension InfoPlistDictionary {
   func setBaseURL(_ value: String) -> InfoPlistDictionary {
     return self.merging(["BASE_URL": .string(value)]) { (_, new) in new }
   }
+
+
+
+  func setLocationPermissions() -> InfoPlistDictionary {
+    let locationDict: InfoPlistDictionary = [
+      // iOS 11+ 위치 권한
+      "NSLocationWhenInUseUsageDescription": .string("TimeSpot이 근처 장소를 찾고 지도에 현재 위치를 표시하기 위해 위치 정보를 사용합니다."),
+      "NSLocationAlwaysAndWhenInUseUsageDescription": .string("TimeSpot이 백그라운드에서도 위치 기반 서비스를 제공하기 위해 위치 정보를 사용합니다."),
+      // iOS 11 이전 호환성
+      "NSLocationAlwaysUsageDescription": .string("TimeSpot이 백그라운드에서도 위치 기반 서비스를 제공하기 위해 위치 정보를 사용합니다."),
+      // iOS 8 이전 호환성
+      "NSLocationUsageDescription": .string("TimeSpot이 위치 기반 서비스를 제공하기 위해 위치 정보를 사용합니다."),
+      // 위치 정확도 감소 권한 (iOS 14+)
+      "NSLocationTemporaryUsageDescriptionDictionary": .dictionary([
+        "TimeSpotLocationAccuracy": .string("더 정확한 위치 정보를 위해 정확한 위치 접근이 필요합니다.")
+      ])
+    ]
+    return self.merging(locationDict) { (_, new) in new }
+  }
+
+  // 네이버 지도 API 키 설정
+  func setNMFGovClientId(_ value: String) -> InfoPlistDictionary {
+    return self.merging(["NMFGovClientId": .string(value)]) { (_, new) in new }
+  }
+
+  func setNMFGovClientSecret(_ value: String) -> InfoPlistDictionary {
+    return self.merging(["NMFGovClientSecret": .string(value)]) { (_, new) in new }
+  }
 }

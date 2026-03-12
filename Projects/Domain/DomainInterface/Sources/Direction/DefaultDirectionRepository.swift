@@ -7,25 +7,39 @@
 //
 
 import Foundation
+import CoreLocation
 
-import WeaveDI
+import Entity
 
-/// DomainInterface에서 제공하는 DefaultDirectionRepository
-public final class DefaultDirectionRepository: DirectionRepositoryInterface {
+/// 기본/테스트용 Mock DirectionRepository
+public final class DefaultDirectionRepository: DirectionInterface {
 
-    private let implementation: any DirectionRepositoryInterface
-
-    public init() {
-        // Repository 모듈의 실제 구현체를 사용
-        self.implementation = UnifiedDI.resolve(DirectionRepositoryInterface.self)
-                            ?? Data.Repository.DefaultDirectionRepository()
-    }
+    public init() {}
 
     public func getRoute(
-        from start: CoreLocation.CLLocationCoordinate2D,
-        to destination: CoreLocation.CLLocationCoordinate2D,
+        from start: CLLocationCoordinate2D,
+        to destination: CLLocationCoordinate2D,
         option: RouteOption
     ) async throws -> RouteInfo {
-        return try await implementation.getRoute(from: start, to: destination, option: option)
+        // Mock 데이터 반환
+        let mockPaths = [
+            start,
+            CLLocationCoordinate2D(
+                latitude: (start.latitude + destination.latitude) / 2,
+                longitude: (start.longitude + destination.longitude) / 2
+            ),
+            destination
+        ]
+
+        return RouteInfo(
+            paths: mockPaths,
+            distance: 1000, // 1km
+            duration: 15,   // 15분
+            tollFare: option == .walking ? 0 : 3000,
+            taxiFare: option == .walking ? 0 : 10000
+        )
     }
 }
+
+/// MockDirectionRepository의 별칭
+public typealias MockDirectionRepository = DefaultDirectionRepository

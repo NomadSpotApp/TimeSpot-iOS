@@ -13,6 +13,6 @@ let project = Project.makeAppModule(
     .SPM.composableArchitecture
   ],
   sources: ["Sources/**"],
-  resources: ["Resources/**", "FontAsset"],
+  resources: ["Resources/**", "FontAsset/**"],
   hasTests: false
 )

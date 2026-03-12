@@ -47,7 +47,7 @@ public struct SplashReducer {
 
   //MARK: - NavigationAction
   public enum NavigationAction: Equatable {
-
+    case presentHome
 
   }
 
@@ -99,6 +99,8 @@ extension SplashReducer {
     action: NavigationAction
   ) -> Effect<Action> {
     switch action {
+      case .presentHome:
+        return .none
 
     }
   }

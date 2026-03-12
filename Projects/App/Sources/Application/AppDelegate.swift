@@ -7,6 +7,7 @@
 
 import UIKit
 import WeaveDI
+import Home
 
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -18,6 +19,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     WeaveDI.Container.bootstrapInTask { @DIContainerActor _ in
       await AppDIManager.shared.registerDefaultDependencies()
     }
+
+    // 네이버맵 초기화 (Home 모듈의 NaverMapInitializer 사용)
+    NaverMapInitializer.shared.initialize()
 
     return true
   }

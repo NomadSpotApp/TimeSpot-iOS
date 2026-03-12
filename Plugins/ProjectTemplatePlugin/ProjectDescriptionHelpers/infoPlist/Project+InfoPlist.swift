@@ -41,7 +41,10 @@ public extension InfoPlist {
       .setUIRequiredDeviceCapabilities(["armv7"])
       .setCFBundleDevelopmentRegion()
       .setBaseURL("$(BASE_URL)")
+      .setNMFGovClientId("$(NMFGovClientId)")
+      .setNMFGovClientSecret("$(NMFGovClientSecret)")
       .setUILaunchScreens()
+      .setLocationPermissions()
 
   )
 

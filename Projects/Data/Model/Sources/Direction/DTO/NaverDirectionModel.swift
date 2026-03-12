@@ -8,13 +8,6 @@
 
 import Foundation
 
-// MARK: - Error
-public enum DirectionError: Error {
-    case invalidResponse
-    case noRoute
-    case networkError
-}
-
 // MARK: - Walking Response Models
 public struct NaverWalkingResponse: Codable {
     public let route: WalkingRouteResponse
@@ -65,3 +58,4 @@ public struct RoutePoint: Codable {
     public let lat: Double
     public let lng: Double
 }
+

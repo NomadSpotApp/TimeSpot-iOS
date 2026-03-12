@@ -10,7 +10,8 @@ let project = Project.makeAppModule(
   product: .staticFramework,
   settings:  .settings(),
   dependencies: [
-    .Presentation(implements: .Splash)
+    .Presentation(implements: .Splash),
+    .Presentation(implements: .Home)
   ],
   sources: ["Sources/**"],
   hasTests: false

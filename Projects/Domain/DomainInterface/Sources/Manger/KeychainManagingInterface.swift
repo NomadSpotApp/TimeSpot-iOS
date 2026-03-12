@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import WeaveDI
 
 public protocol KeychainManagingInterface: Sendable {
   func save(accessToken: String, refreshToken: String)
@@ -25,21 +24,20 @@ public protocol KeychainManagingInterface: Sendable {
   func clear() async throws
 }
 
-public struct KeychainManagerDependency: DependencyKey {
-  public static var liveValue: KeychainManagingInterface {
-    UnifiedDI.resolve(KeychainManagingInterface.self) ?? InMemoryKeychainManager()
+// Simplified dependency injection without external frameworks
+public class KeychainManagerRegistry {
+  public static let shared = KeychainManagerRegistry()
+
+  private var _implementation: KeychainManagingInterface?
+
+  public var implementation: KeychainManagingInterface {
+    get {
+      return _implementation ?? InMemoryKeychainManager()
+    }
+    set {
+      _implementation = newValue
+    }
   }
 
-  public static var testValue: KeychainManagingInterface {
-    InMemoryKeychainManager()
-  }
-
-  public static var previewValue: KeychainManagingInterface = testValue
-}
-
-public extension DependencyValues {
-  var keychainManager: KeychainManagingInterface {
-    get { self[KeychainManagerDependency.self] }
-    set { self[KeychainManagerDependency.self] = newValue }
-  }
+  private init() {}
 }
