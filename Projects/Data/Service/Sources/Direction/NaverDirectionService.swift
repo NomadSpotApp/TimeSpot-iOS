@@ -11,26 +11,6 @@ import Foundation
 import API
 import AsyncMoya
 
-// MARK: - Base Target Type Protocol
-public protocol BaseTargetType: TargetType {
-  associatedtype Domain
-
-  var domain: Domain { get }
-  var urlPath: String { get }
-  var error: [Int: AsyncMoya.NetworkError]? { get }
-  var parameters: [String: Any]? { get }
-}
-
-extension BaseTargetType {
-  public var task: Moya.Task {
-    if let parameters = parameters {
-      return .requestParameters(parameters: parameters, encoding: URLEncoding.queryString)
-    } else {
-      return .requestPlain
-    }
-  }
-}
-
 // MARK: - Direction API Endpoints
 public enum DirectionAPI : String {
   case driving = "/map-direction-15/v1/driving"
