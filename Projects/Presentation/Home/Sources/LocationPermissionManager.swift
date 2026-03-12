@@ -1,0 +1,193 @@
+//
+//  LocationPermissionManager.swift
+//  Home
+//
+//  Created by Roy on 2026-03-11
+//  Copyright © 2026 TimeSpot, Ltd., All rights reserved.
+//
+
+import Foundation
+import CoreLocation
+
+#if canImport(UIKit)
+import UIKit
+#endif
+
+// Swift Concurrency를 사용한 위치 권한 전용 관리자
+@MainActor
+public class LocationPermissionManager: NSObject {
+    public var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    public var currentLocation: CLLocation?
+    public var locationError: String?
+
+    private let locationManager = CLLocationManager()
+    private var authorizationContinuation: CheckedContinuation<CLAuthorizationStatus, Never>?
+    private var locationContinuation: CheckedContinuation<CLLocation?, Error>?
+
+    public override init() {
+        super.init()
+        setupLocationManager()
+    }
+
+    private func setupLocationManager() {
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.distanceFilter = 10 // 10미터 이상 이동시 업데이트
+        authorizationStatus = locationManager.authorizationStatus
+    }
+
+    // async/await을 사용한 위치 권한 요청
+    public func requestLocationPermission() async -> CLAuthorizationStatus {
+        guard CLLocationManager.locationServicesEnabled() else {
+            locationError = "위치 서비스가 비활성화되어 있습니다. 설정에서 활성화해 주세요."
+            return .denied
+        }
+
+        let currentStatus = locationManager.authorizationStatus
+        self.authorizationStatus = currentStatus
+
+        switch currentStatus {
+        case .notDetermined:
+            return await withCheckedContinuation { continuation in
+                self.authorizationContinuation = continuation
+                locationManager.requestWhenInUseAuthorization()
+            }
+        case .denied, .restricted:
+            locationError = "위치 권한이 거부되었습니다. 설정에서 허용해 주세요."
+            return currentStatus
+        case .authorizedWhenInUse, .authorizedAlways:
+            return currentStatus
+        @unknown default:
+            locationError = "알 수 없는 위치 권한 상태입니다."
+            return currentStatus
+        }
+    }
+
+    // iOS 14+ 정확한 위치 권한 요청
+    public func requestFullAccuracy() {
+        if #available(iOS 14.0, *) {
+            locationManager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "TimeSpotLocationAccuracy")
+        }
+    }
+
+    // 위치 업데이트 시작
+    public func startLocationUpdates() {
+        guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
+            locationError = "위치 권한이 없습니다."
+            return
+        }
+
+        locationManager.startUpdatingLocation()
+    }
+
+    // 위치 업데이트 중지
+    public func stopLocationUpdates() {
+        locationManager.stopUpdatingLocation()
+    }
+
+    // async/await을 사용한 현재 위치 가져오기
+    public func requestCurrentLocation() async throws -> CLLocation? {
+        guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
+            locationError = "위치 권한이 없습니다."
+            throw LocationError.permissionDenied
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            self.locationContinuation = continuation
+
+            if #available(iOS 14.0, *) {
+                locationManager.requestLocation()
+            } else {
+                // iOS 14 이전에서는 잠시 업데이트하고 중지
+                locationManager.startUpdatingLocation()
+                Task {
+                    try await Task.sleep(for: .seconds(3))
+                    self.stopLocationUpdates()
+                }
+            }
+        }
+    }
+
+    public enum LocationError: Error {
+        case permissionDenied
+        case locationUnavailable
+        case timeout
+    }
+
+    // 설정 앱으로 이동
+    public func openLocationSettings() {
+        #if canImport(UIKit)
+        if let settingsUrl = URL(string: UIApplication.openSettingsURLString),
+           UIApplication.shared.canOpenURL(settingsUrl) {
+            UIApplication.shared.open(settingsUrl)
+        }
+        #endif
+    }
+
+    // 위치 서비스 사용 가능 여부
+    public var isLocationServicesEnabled: Bool {
+        CLLocationManager.locationServicesEnabled()
+    }
+
+    // 권한 상태 문자열
+    public var authorizationStatusString: String {
+        switch authorizationStatus {
+        case .notDetermined:
+            return "권한 미결정"
+        case .restricted:
+            return "권한 제한됨"
+        case .denied:
+            return "권한 거부됨"
+        case .authorizedAlways:
+            return "항상 허용"
+        case .authorizedWhenInUse:
+            return "사용 중 허용"
+        @unknown default:
+            return "알 수 없음"
+        }
+    }
+}
+
+// MARK: - CLLocationManagerDelegate
+extension LocationPermissionManager: CLLocationManagerDelegate {
+
+    nonisolated public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else { return }
+
+        Task { @MainActor in
+            self.currentLocation = location
+            self.locationError = nil
+
+            // continuation이 있으면 결과 반환
+            if let continuation = self.locationContinuation {
+                self.locationContinuation = nil
+                continuation.resume(returning: location)
+            }
+        }
+    }
+
+    nonisolated public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        Task { @MainActor in
+            self.locationError = "위치 업데이트 실패: \(error.localizedDescription)"
+
+            // continuation이 있으면 에러 반환
+            if let continuation = self.locationContinuation {
+                self.locationContinuation = nil
+                continuation.resume(throwing: error)
+            }
+        }
+    }
+
+    nonisolated public func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        Task { @MainActor in
+            self.authorizationStatus = status
+            self.locationError = nil
+
+            // continuation이 있으면 권한 상태 반환
+            if let continuation = self.authorizationContinuation {
+                self.authorizationContinuation = nil
+                continuation.resume(returning: status)
+            }
+        }
+    }
+}
