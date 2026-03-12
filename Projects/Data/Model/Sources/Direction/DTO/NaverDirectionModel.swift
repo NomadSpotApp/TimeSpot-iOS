@@ -30,6 +30,31 @@ public struct WalkingRouteSummary: Codable {
 
 public struct WalkingGuide: Codable {
     public let pointIndex: [Int]
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // pointIndex가 단일 숫자인지 배열인지 확인
+        if let singleIndex = try? container.decode(Int.self, forKey: .pointIndex) {
+            self.pointIndex = [singleIndex]  // 단일 숫자를 배열로 변환
+        } else if let indexArray = try? container.decode([Int].self, forKey: .pointIndex) {
+            self.pointIndex = indexArray     // 이미 배열인 경우
+        } else {
+            throw DecodingError.dataCorrupted(DecodingError.Context(
+                codingPath: decoder.codingPath,
+                debugDescription: "pointIndex는 Int 또는 [Int] 형태여야 합니다."
+            ))
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(pointIndex, forKey: .pointIndex)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case pointIndex
+    }
 }
 
 // MARK: - Driving Response Models
