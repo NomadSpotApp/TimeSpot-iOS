@@ -10,16 +10,33 @@ import Foundation
 
 import AsyncMoya
 
+// MARK: - Base Target Type
+public protocol NaverAPITargetType: TargetType {}
+
+extension NaverAPITargetType {
+  public var baseURL: URL {
+    return URL(string: "https://maps.apigw.ntruss.com")!
+  }
+
+  public var headers: [String: String]? {
+    let clientId = "dt5ybexksb"
+    let clientSecret = "8oQfeamg7HNsWOqHjO1MsCzjzx4gZy3RQeaoq76N"
+
+    return [
+      "X-NCP-APIGW-API-KEY-ID": clientId,
+      "X-NCP-APIGW-API-KEY": clientSecret,
+      "Content-Type": "application/json"
+    ]
+  }
+}
+
+// MARK: - Direction Service
 public enum NaverDirectionService {
   case driving(start: String, goal: String, option: String)
   case walking(start: String, goal: String)
 }
 
-extension NaverDirectionService: TargetType {
-
-  public var baseURL: URL {
-    return URL(string: "https://maps.apigw.ntruss.com")!
-  }
+extension NaverDirectionService: NaverAPITargetType {
 
   public var path: String {
     return "/map-direction-15/v1/driving"
@@ -50,16 +67,5 @@ extension NaverDirectionService: TargetType {
         encoding: URLEncoding.queryString
       )
     }
-  }
-
-  public var headers: [String: String]? {
-    let clientId = "dt5ybexksb"
-    let clientSecret = "8oQfeamg7HNsWOqHjO1MsCzjzx4gZy3RQeaoq76N"
-
-    return [
-      "X-NCP-APIGW-API-KEY-ID": clientId,
-      "X-NCP-APIGW-API-KEY": clientSecret,
-      "Content-Type": "application/json"
-    ]
   }
 }
