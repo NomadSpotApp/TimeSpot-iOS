@@ -18,22 +18,13 @@ public extension NaverWalkingResponse {
       return RouteInfo(paths: [], distance: 0, duration: 0)
     }
 
-    var allCoordinates: [CLLocationCoordinate2D] = []
-
-    for guide in route.guide {
-      for point in guide.pointIndex {
-        if point >= 0 && point < route.path.count {
-          let pathPoint = route.path[point]
-          allCoordinates.append(CLLocationCoordinate2D(
-            latitude: pathPoint.lat,
-            longitude: pathPoint.lng
-          ))
-        }
-      }
+    // 전체 경로 좌표 사용 (끊어짐 없는 연속 경로)
+    let coordinates = route.path.map { pathPoint in
+      CLLocationCoordinate2D(latitude: pathPoint.lat, longitude: pathPoint.lng)
     }
 
     return RouteInfo(
-      paths: allCoordinates,
+      paths: coordinates,
       distance: route.summary.distance,
       duration: route.summary.duration / 60000, // 밀리초를 분으로 변환
       tollFare: 0,
