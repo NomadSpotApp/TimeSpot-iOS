@@ -38,7 +38,12 @@ extension NaverDirectionService: BaseTargetType {
   }
 
   public var urlPath: String {
-    return "\(domain.url)/driving"
+    switch self {
+    case .driving:
+      return "\(domain.url)/driving"
+    case .walking:
+      return "\(domain.url)/walking"
+    }
   }
 
   public var error: [Int: AsyncMoya.NetworkError]? {
@@ -53,7 +58,7 @@ extension NaverDirectionService: BaseTargetType {
       params.merge(goal.toDictionary(key: "goal")) { _, new in new }
       params.merge(option.toDictionary(key: "option")) { _, new in new }
       return params
-D
+
     case .walking(let start, let goal):
       var params: [String: Any] = [:]
       params.merge(start.toDictionary(key: "start")) { _, new in new }
