@@ -27,5 +27,8 @@ public struct SplashView: View {
         Text("hello")
       }
     }
+    .onAppear {
+      store.send(.navigation(.presentHome))
+    }
   }
 }

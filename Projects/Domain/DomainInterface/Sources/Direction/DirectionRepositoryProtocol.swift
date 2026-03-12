@@ -13,7 +13,7 @@ import Entity
 import WeaveDI
 
 /// 길찾기 데이터 접근을 위한 Repository 인터페이스
-public protocol DirectionRepositoryInterface: Sendable {
+public protocol DirectionInterface: Sendable {
     /// 경로 정보를 가져옵니다
     /// - Parameters:
     ///   - start: 출발지 좌표
@@ -28,19 +28,19 @@ public protocol DirectionRepositoryInterface: Sendable {
 }
 
 public enum DirectionRepositoryDependency: DependencyKey {
-  public static var liveValue: any DirectionRepositoryInterface {
-    UnifiedDI.resolve(DirectionRepositoryInterface.self) ?? DefaultDirectionRepository()
+  public static var liveValue: any DirectionInterface {
+    UnifiedDI.resolve(DirectionInterface.self) ?? DefaultDirectionRepository()
   }
 
-  public static var testValue: any DirectionRepositoryInterface {
-    UnifiedDI.resolve(DirectionRepositoryInterface.self) ?? MockDirectionRepository()
+  public static var testValue: any DirectionInterface {
+    UnifiedDI.resolve(DirectionInterface.self) ?? MockDirectionRepository()
   }
 
-  public static let previewValue: any DirectionRepositoryInterface = liveValue
+  public static let previewValue: any DirectionInterface = liveValue
 }
 
 public extension DependencyValues {
-  var directionRepository: any DirectionRepositoryInterface {
+  var directionRepository: any DirectionInterface {
     get { self[DirectionRepositoryDependency.self] }
     set { self[DirectionRepositoryDependency.self] = newValue }
   }

@@ -31,6 +31,7 @@ public class AppDIManager: @unchecked Sendable {
         let keychainManager = UnifiedDI.resolve(KeychainManagingInterface.self) ?? KeychainManager()
         return KeychainTokenProvider(keychainManager: keychainManager) as TokenProviding
       }
+      .register(DirectionInterface.self) { DirectionRepositoryImpl() }
 //      .register(ProfileInterface.self) { ProfileRepositoryImpl() }
 //    // MARK: - 로그인
 //      .register { AuthRepositoryImpl() as AuthInterface }

@@ -4,15 +4,15 @@ import DependencyPlugin
 import ProjectTemplatePlugin
 import DependencyPackagePlugin
 
-let project = Project.makeAppModule(
+let project = Project.makeModule(
   name: "DomainInterface",
   bundleId: .appBundleID(name: ".DomainInterface"),
-  product: .framework,
-  settings:  .settings(),
+  product: .staticFramework,
+  settings: .settings(),
   dependencies: [
     .Data(implements: .Model),
     .SPM.composableArchitecture,
-    .SPM.weaveDI,
+    .SPM.weaveDI
   ],
   sources: ["Sources/**"],
   hasTests: false

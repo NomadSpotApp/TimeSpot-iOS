@@ -10,7 +10,9 @@ let project = Project.makeAppModule(
   product: .staticFramework,
   settings:  .settings(),
   dependencies: [
-    .Domain(implements: .DomainInterface)
+    .Domain(implements: .DomainInterface),
+    .SPM.composableArchitecture,
+    .SPM.weaveDI
   ],
   sources: ["Sources/**"],
   hasTests: true

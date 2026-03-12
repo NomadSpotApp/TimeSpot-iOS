@@ -6,15 +6,17 @@ import ProjectTemplatePlugin
 import DependencyPackagePlugin
 
 let project = Project.makeAppModule(
-  name: "ome",
-  bundleId: .appBundleID(name: ".ome"),
+  name: "Home",
+  bundleId: .appBundleID(name: ".Home"),
   product: .staticFramework,
   settings:  .settings(),
   dependencies: [
-
-  .Domain(implements: .UseCase),
-  .Shared(implements: .DesignSystem),
-  .SPM.composableArchitecture,
+    .Domain(implements: .UseCase),
+    .Shared(implements: .DesignSystem),
+    .SPM.composableArchitecture,
+    .xcframework(path: "./Resources/framework/NMapsMap.xcframework"),
+    .xcframework(path: "./Resources/framework/NMapsGeometry.xcframework")
   ],
-  sources: ["Sources/**"]
+  sources: ["Sources/**"],
+  hasTests: true
 )
