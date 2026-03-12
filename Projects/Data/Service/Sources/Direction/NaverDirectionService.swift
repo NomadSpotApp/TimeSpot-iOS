@@ -10,6 +10,7 @@ import Foundation
 
 import API
 import AsyncMoya
+import Foundations
 
 // MARK: - Direction Service
 public enum NaverDirectionService {
@@ -19,12 +20,17 @@ public enum NaverDirectionService {
 extension NaverDirectionService: BaseTargetType {
   public typealias Domain = NaverDirectionDomain
 
+  // MARK: - API Credentials (Foundations 모듈에서 관리)
+
   public var domain: NaverDirectionDomain {
     return .walking     // map-direction-15/v1 (실시간 경로)
   }
 
   public var baseURL: URL {
-    return URL(string: domain.baseURLString)!
+    guard let url = URL(string: domain.baseURLString) else {
+      fatalError("🚨 [NaverAPI] Invalid base URL: \(domain.baseURLString)")
+    }
+    return url
   }
 
   public var path: String {
@@ -55,13 +61,6 @@ extension NaverDirectionService: BaseTargetType {
   }
 
   public var headers: [String: String]? {
-    let clientId = Bundle.main.object(forInfoDictionaryKey: "NMFGovClientId") as? String ?? ""
-    let clientSecret = Bundle.main.object(forInfoDictionaryKey: "NMFGovClientSecret") as? String ?? ""
-
-    return [
-      "X-NCP-APIGW-API-KEY-ID": clientId,
-      "X-NCP-APIGW-API-KEY": clientSecret,
-      "Content-Type": "application/json"
-    ]
+    return NaverAPICredentials.shared.headers
   }
 }
