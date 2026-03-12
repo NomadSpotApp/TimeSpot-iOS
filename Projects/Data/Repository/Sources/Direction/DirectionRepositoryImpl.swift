@@ -21,6 +21,12 @@ import AsyncMoya
 
 public final class DirectionRepositoryImpl: DirectionInterface, @unchecked Sendable {
 
+  // MARK: - Constants
+  private enum Constants {
+    static let secondsPerMinute: Double = 60.0
+    static let multiOptions = "trafast:tracomfort:traoptimal"
+  }
+
   private let provider: MoyaProvider<NaverDirectionService>
 
   public init(
@@ -39,22 +45,25 @@ public final class DirectionRepositoryImpl: DirectionInterface, @unchecked Senda
     let goalCoord = "\(destination.longitude),\(destination.latitude)"
 
     do {
-      #logDebug("🚶‍♂️ [DirectionRepositoryImpl] 하이브리드 경로 검색 (경로: 네이버 Directions 15 + 시간: Apple MapKit)")
-      let multiOptions = "trafast:tracomfort:traoptimal"
+      #logDebug(" [DirectionRepositoryImpl] 하이브리드 경로 검색 (경로: 네이버 Directions 15 + 시간: Apple MapKit)")
 
-      // 1. Directions 15에서 실시간 경로 좌표 가져오기
-      #logDebug("📍 [DirectionRepositoryImpl] 네이버 Directions 15로 실시간 경로 조회")
-      let pathResponse: NaverWalkingResponse = try await provider.request(.walking(start: startCoord, goal: goalCoord, option: multiOptions))
+      // 1-2. 병렬로 네이버 API와 Apple MapKit 호출 (성능 개선)
+      #logDebug(" [DirectionRepositoryImpl] 병렬 API 호출 시작")
+      async let pathResponse: NaverWalkingResponse = provider.request(.walking(start: startCoord, goal: goalCoord, option: Constants.multiOptions))
+      async let appleResult = calculateWalkingTime(from: start, to: destination)
 
-      // 2. Apple MapKit으로 도보 시간과 거리 계산하기
-      #logDebug("⏱️ [DirectionRepositoryImpl] Apple MapKit으로 도보 시간/거리 계산")
-      let appleResult = try await calculateWalkingTime(from: start, to: destination)
+      #logDebug(" [DirectionRepositoryImpl] 네이버 Directions 15로 실시간 경로 조회")
+      #logDebug(" [DirectionRepositoryImpl] Apple MapKit으로 도보 시간/거리 계산")
+      let (naverResponse, appleData) = try await (pathResponse, appleResult)
 
       // 3. 하이브리드 결과 생성: 네이버 경로 + Apple 도보 시간/거리
-      return createHybridRouteWithAppleTime(pathResponse: pathResponse, appleResult: appleResult)
+      return createHybridRouteWithAppleTime(pathResponse: naverResponse, appleResult: appleData)
 
+    } catch let moyaError as MoyaError {
+      #logDebug(" [MoyaError] 네이버 API 호출 실패: \(moyaError.localizedDescription)")
+      throw DirectionError.from(moyaError)
     } catch {
-      #logDebug("❌ [DirectionRepositoryImpl] 하이브리드 경로 검색 실패: \(error)")
+      #logDebug(" [UnknownError] 하이브리드 경로 검색 실패: \(error)")
       throw DirectionError.from(error)
     }
   }
@@ -75,14 +84,17 @@ public final class DirectionRepositoryImpl: DirectionInterface, @unchecked Senda
     do {
       let response = try await directions.calculate()
       let route = response.routes.first
-      let durationInMinutes = (route?.expectedTravelTime ?? 0) / 60  // 초를 분으로 변환
+      let durationInMinutes = (route?.expectedTravelTime ?? 0) / Constants.secondsPerMinute
       let distanceInMeters = route?.distance ?? 0  // 미터 단위
 
-      #logDebug("🍎 [Apple MapKit] 도보 시간: \(durationInMinutes)분, 거리: \(distanceInMeters)m")
+      #logDebug(" [Apple MapKit] 도보 시간: \(durationInMinutes)분, 거리: \(distanceInMeters)m")
       return (duration: durationInMinutes, distance: distanceInMeters)
 
+    } catch let mkError as MKError {
+      #logDebug(" [MKError] Apple MapKit 경로 계산 실패: \(mkError.localizedDescription)")
+      throw DirectionError.invalidResponse
     } catch {
-      #logDebug("❌ [Apple MapKit] 도보 시간/거리 계산 실패: \(error)")
+      #logDebug(" [UnknownError] Apple MapKit 계산 실패: \(error)")
       throw DirectionError.invalidResponse
     }
   }
@@ -92,29 +104,54 @@ public final class DirectionRepositoryImpl: DirectionInterface, @unchecked Senda
     pathResponse: NaverWalkingResponse,
     appleResult: (duration: Double, distance: Double)
   ) -> RouteInfo {
-    // 네이버 Directions 15에서 경로 좌표 추출
+    let (naverInfo, appleInfo) = extractRouteData(from: pathResponse, and: appleResult)
+    logRouteComparison(naver: naverInfo, apple: appleInfo)
+    return buildFinalRoute(naverInfo: naverInfo, appleInfo: appleInfo)
+  }
+
+  /// 네이버와 Apple 경로 데이터 추출
+  private func extractRouteData(
+    from pathResponse: NaverWalkingResponse,
+    and appleResult: (duration: Double, distance: Double)
+  ) -> (naver: (distance: Int, duration: Int, paths: [CLLocationCoordinate2D]), apple: (distance: Int, duration: Int)) {
     let pathRouteInfo = pathResponse.toDomain()
-    let naverDistance = pathRouteInfo?.distance ?? 0
-    let naverDuration = pathRouteInfo?.duration ?? 0
-    let appleDistance = Int(appleResult.distance)
-    let appleDuration = Int(appleResult.duration)
+    let naverInfo = (
+      distance: pathRouteInfo?.distance ?? 0,
+      duration: pathRouteInfo?.duration ?? 0,
+      paths: pathRouteInfo?.paths ?? []
+    )
+    let appleInfo = (
+      distance: Int(appleResult.distance),
+      duration: Int(appleResult.duration)
+    )
+    return (naverInfo, appleInfo)
+  }
 
-    // 📊 상세 비교 로그
+  /// 네이버와 Apple 경로 비교 로그
+  private func logRouteComparison(
+    naver: (distance: Int, duration: Int, paths: [CLLocationCoordinate2D]),
+    apple: (distance: Int, duration: Int)
+  ) {
     #logDebug("==================================================")
-    #logDebug("📍 [네이버 Directions 15] 거리: \(naverDistance)m, 시간: \(naverDuration)분")
-    #logDebug("🍎 [Apple MapKit] 거리: \(appleDistance)m, 시간: \(appleDuration)분")
+    #logDebug("[네이버 Directions 15] 거리: \(naver.distance)m, 시간: \(naver.duration)분")
+    #logDebug(" [Apple MapKit] 거리: \(apple.distance)m, 시간: \(apple.duration)분")
     #logDebug("==")
+  }
 
-    // 하이브리드 결과: 네이버 경로 + Apple 도보 시간/거리
+  /// 최종 하이브리드 RouteInfo 생성
+  private func buildFinalRoute(
+    naverInfo: (distance: Int, duration: Int, paths: [CLLocationCoordinate2D]),
+    appleInfo: (distance: Int, duration: Int)
+  ) -> RouteInfo {
     let finalResult = RouteInfo(
-      paths: pathRouteInfo?.paths ?? [],           // 네이버 실시간 경로
-      distance: naverDistance,                     // Apple 거리
-      duration: appleDuration,                     // Apple 도보 시간 
+      paths: naverInfo.paths,                      // 네이버 실시간 경로
+      distance: naverInfo.distance,                // 네이버 거리
+      duration: appleInfo.duration,                // Apple 도보 시간
       tollFare: 0,
       taxiFare: 0
     )
 
-    #logDebug("✨ [최종 결과] 경로+거리: 네이버 (\(naverDistance)m), 시간: Apple (\(appleDuration)분)")
+    #logDebug("✨ [최종 결과] 경로+거리: 네이버 (\(naverInfo.distance)m), 시간: Apple (\(appleInfo.duration)분)")
     return finalResult
   }
 
