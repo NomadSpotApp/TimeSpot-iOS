@@ -22,7 +22,12 @@ extension NaverDirectionService: TargetType {
   }
 
   public var path: String {
-    return "/map-direction-15/v1/driving"
+    switch self {
+    case .driving:
+      return "/map-direction-15/v1/driving"
+    case .walking:
+      return "/map-direction-15/v1/walking"
+    }
   }
 
   public var method: Moya.Method {
@@ -45,8 +50,7 @@ extension NaverDirectionService: TargetType {
       return .requestParameters(
         parameters: [
           "start": start,
-          "goal": goal,
-          "option": "trafast"
+          "goal": goal
         ],
         encoding: URLEncoding.queryString
       )
