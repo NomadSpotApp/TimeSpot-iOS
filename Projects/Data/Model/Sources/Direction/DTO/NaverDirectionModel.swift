@@ -14,7 +14,7 @@ public struct NaverWalkingResponse: Codable {
 }
 
 public struct WalkingRouteResponse: Codable {
-    public let trafast: [WalkingRouteDetail]?
+    public let traoptimal: [WalkingRouteDetail]?
 }
 
 public struct WalkingRouteDetail: Codable {
@@ -63,7 +63,7 @@ public struct NaverDirectionResponse: Codable {
 }
 
 public struct RouteResponse: Codable {
-    public let trafast: [RouteDetail]?
+    public let traoptimal: [RouteDetail]?
 }
 
 public struct RouteDetail: Codable {
