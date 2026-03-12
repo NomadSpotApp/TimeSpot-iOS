@@ -14,7 +14,7 @@ import Entity
 // MARK: - toDomain Extensions
 public extension NaverWalkingResponse {
   func toDomain() -> RouteInfo? {
-    guard let route = self.route.trafast?.first else {
+    guard let route = self.route.traoptimal?.first else {
       return RouteInfo(paths: [], distance: 0, duration: 0)
     }
 
@@ -44,7 +44,7 @@ public extension NaverWalkingResponse {
 
 public extension NaverDirectionResponse {
   func toDomain() -> RouteInfo? {
-    guard let route = self.route.trafast?.first else {
+    guard let route = self.route.traoptimal?.first else {
       return nil
     }
 
