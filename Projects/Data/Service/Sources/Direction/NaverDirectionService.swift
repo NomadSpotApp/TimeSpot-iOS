@@ -53,7 +53,7 @@ extension NaverDirectionService: BaseTargetType {
       params.merge(goal.toDictionary(key: "goal")) { _, new in new }
       params.merge(option.toDictionary(key: "option")) { _, new in new }
       return params
-
+D
     case .walking(let start, let goal):
       var params: [String: Any] = [:]
       params.merge(start.toDictionary(key: "start")) { _, new in new }
@@ -67,8 +67,8 @@ extension NaverDirectionService: BaseTargetType {
   }
 
   public var headers: [String: String]? {
-    let clientId = "dt5ybexksb"
-    let clientSecret = "8oQfeamg7HNsWOqHjO1MsCzjzx4gZy3RQeaoq76N"
+    let clientId = Bundle.main.object(forInfoDictionaryKey: "NMFGovClientId") as? String ?? ""
+    let clientSecret = Bundle.main.object(forInfoDictionaryKey: "NMFGovClientSecret") as? String ?? ""
 
     return [
       "X-NCP-APIGW-API-KEY-ID": clientId,
