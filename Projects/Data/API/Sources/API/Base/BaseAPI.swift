@@ -16,7 +16,7 @@ public enum BaseAPI : String {
     case .base:
       return "https://\(Bundle.main.object(forInfoDictionaryKey: "BASE_URL") as? String ?? "")"
     case .naver:
-      return "https://naveropenapi.apigw.ntruss.com"
+      return "https://maps.apigw.ntruss.com"
     }
   }
 }
