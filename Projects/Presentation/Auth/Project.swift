@@ -2,18 +2,20 @@ import Foundation
 import ProjectDescription
 import DependencyPlugin
 import ProjectTemplatePlugin
+import ProjectTemplatePlugin
 import DependencyPackagePlugin
 
 let project = Project.makeAppModule(
-  name: "Presentation",
-  bundleId: .appBundleID(name: ".Presentation"),
+  name: "Auth",
+  bundleId: .appBundleID(name: ".Auth"),
   product: .staticFramework,
   settings:  .settings(),
   dependencies: [
-    .Presentation(implements: .Splash),
-    .Presentation(implements: .Home),
-    .Presentation(implements: .Auth)
+
+  .Domain(implements: .UseCase),
+  .Shared(implements: .Shared),
+  .SPM.composableArchitecture,
+  .SPM.tcaCoordinator,
   ],
-  sources: ["Sources/**"],
-  hasTests: false
+  sources: ["Sources/**"]
 )
