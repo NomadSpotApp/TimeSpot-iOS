@@ -13,21 +13,21 @@ public enum ModalHeight {
   case auto
 }
 
-public struct CustomModalModifier<Item: Identifiable, ModalContent: View>: ViewModifier {
+public struct CustomModalModifier<Item: Identifiable & Equatable, ModalContent: View>: ViewModifier {
   @Binding var item: Item?
   let height: ModalHeight
   let showDragIndicator: Bool
   let modalContent: (Item) -> ModalContent
 
-  @State private var dragOffset: CGSize = .zero
-  @State private var isDragging: Bool = false
-  @State private var modalOffset: CGFloat = 0
+  @State private var dragOffset: CGFloat = 0         // 드래그 오프셋
+  @State private var dismissOffset: CGFloat = 0      // 닫기 오프셋
+  @State private var isDragging: Bool = false        // 드래그 중 상태
 
   // MARK: - Animation Constants
-  private let slideDistance: CGFloat = 300
+  private let slideDistance: CGFloat = 400 // 부드러운 슬라이드 거리
   private let dismissThreshold: CGFloat = 100
-  private let slideAnimation = Animation.spring(response: 0.4, dampingFraction: 0.8)
-  private let dragAnimation = Animation.spring(response: 0.5, dampingFraction: 0.8)
+  private let slideAnimation = Animation.easeInOut(duration: 0.3) // 단순한 슬라이드
+  private let dragAnimation = Animation.linear(duration: 0.2) // 드래그도 단순하게
 
   public init(
     item: Binding<Item?>,
@@ -61,7 +61,6 @@ public struct CustomModalModifier<Item: Identifiable, ModalContent: View>: ViewM
       backgroundView
       modalContentView(geometry: geometry)
     }
-    .ignoresSafeArea(.container, edges: .bottom)
   }
 
   private var backgroundView: some View {
@@ -74,26 +73,33 @@ public struct CustomModalModifier<Item: Identifiable, ModalContent: View>: ViewM
   @ViewBuilder
   private func modalContentView(geometry: GeometryProxy) -> some View {
     VStack(spacing: 0) {
-      Spacer()
+      Spacer() // 상단 여백 유지
 
       if let currentItem = item {
         VStack(spacing: 0) {
           dragIndicatorView
           modalContent(currentItem)
             .frame(height: modalHeightValue(for: geometry))
-          safeAreaSpacer(geometry: geometry)
+          bottomSpacer(geometry: geometry)
         }
         .background(.white)
         .clipShape(
           UnevenRoundedRectangle(
-            topLeadingRadius: 20,
-            topTrailingRadius: 20
+            topLeadingRadius: 40,
+            bottomLeadingRadius: 40,
+            bottomTrailingRadius: 40,
+            topTrailingRadius: 40
           )
         )
-        .offset(y: modalOffset + max(0, dragOffset.height))
-        .animation(isDragging ? nil : dragAnimation, value: dragOffset)
-        .animation(slideAnimation, value: modalOffset)
-        .onAppear { presentModal() }
+        .offset(y: dragOffset + dismissOffset)
+        .animation(isDragging ? nil : .easeOut(duration: 0.2), value: dragOffset)
+        .onAppear {
+          // 밑에서 올라오는 애니메이션
+          dismissOffset = slideDistance
+          withAnimation(.easeOut(duration: 0.3)) {
+            dismissOffset = 0
+          }
+        }
         .gesture(dragGesture)
       }
     }
@@ -104,15 +110,15 @@ public struct CustomModalModifier<Item: Identifiable, ModalContent: View>: ViewM
     if showDragIndicator {
       RoundedRectangle(cornerRadius: 2)
         .fill(Color.gray.opacity(0.3))
-        .frame(width: 36, height: 4)
+        .frame(width: 36, height: 5)
         .padding(.top, 8)
         .padding(.bottom, 12)
     }
   }
 
-  private func safeAreaSpacer(geometry: GeometryProxy) -> some View {
+  private func bottomSpacer(geometry: GeometryProxy) -> some View {
     Spacer()
-      .frame(height: geometry.safeAreaInsets.bottom)
+      .frame(height: geometry.safeAreaInsets.bottom + 20)
   }
 
   // MARK: - Gesture
@@ -120,39 +126,32 @@ public struct CustomModalModifier<Item: Identifiable, ModalContent: View>: ViewM
     DragGesture()
       .onChanged { value in
         isDragging = true
+        // 아래로만 드래그 허용
         if value.translation.height > 0 {
-          dragOffset = value.translation
+          dragOffset = value.translation.height
         }
       }
       .onEnded { value in
         isDragging = false
-
         if value.translation.height > dismissThreshold {
-          dismissModal()
+          dismissModal() // 부드러운 닫기
         } else {
-          withAnimation(dragAnimation) {
-            dragOffset = .zero
+          // 원래 위치로 돌아가기
+          withAnimation(.easeOut(duration: 0.2)) {
+            dragOffset = 0
           }
         }
       }
   }
 
   // MARK: - Actions
-  private func presentModal() {
-    modalOffset = slideDistance
-    withAnimation(slideAnimation) {
-      modalOffset = 0
-    }
-  }
-
   private func dismissModal() {
-    withAnimation(slideAnimation) {
-      modalOffset = slideDistance
+    withAnimation(.easeOut(duration: 0.3)) {
+      dismissOffset = slideDistance
     }
+    dragOffset = 0
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
       item = nil
-      modalOffset = 0
-      dragOffset = .zero
     }
   }
 
@@ -173,7 +172,7 @@ public struct CustomModalModifier<Item: Identifiable, ModalContent: View>: ViewM
 }
 
 public extension View {
-  func presentDSModal<Item: Identifiable, ModalContent: View>(
+  func presentDSModal<Item: Identifiable & Equatable, ModalContent: View>(
     item: Binding<Item?>,
     height: ModalHeight = .auto,
     showDragIndicator: Bool = true,
