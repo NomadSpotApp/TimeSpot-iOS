@@ -13,8 +13,6 @@ import Entity
 
 import ComposableArchitecture
 
-
-
 public struct SocialLoginButton: View {
   @State var store: StoreOf<LoginFeature>
   let type: SocialType
@@ -24,9 +22,14 @@ public struct SocialLoginButton: View {
   public var body: some View {
     switch type {
       case .apple:
-        <#code#>
+        appleLoginButton(type: type) { request in
+
+        } onCompletion: { result  in
+
+        }
+
       case .google:
-        <#code#>
+        googleLoginButton(type: type, onTap: onTap)
     }
   }
 }
@@ -37,16 +40,17 @@ extension SocialLoginButton {
   @ViewBuilder
   private func appleLoginButton(
     type: SocialType,
-    request: ASAuthorizationAppleIDRequest,
-    onCompletion: Result<ASAuthorization, Error>
+    request: @escaping (ASAuthorizationAppleIDRequest) -> Void,
+        onCompletion: @escaping (Result<ASAuthorization, Error>) -> Void
   ) -> some View {
     ZStack {
-      SignInWithAppleButton(.signIn) { request in
-        request(request)
+      SignInWithAppleButton(.signIn) { req in
+        request(req)
       } onCompletion: { result in
         onCompletion(result)
       }
       .frame(height: 60)
+      .clipShape(Capsule())
       .allowsHitTesting(true)
 
       RoundedRectangle(cornerRadius: 20)
@@ -56,19 +60,22 @@ extension SocialLoginButton {
           HStack(spacing: .zero) {
             Spacer()
 
-            Image(assetName: type.image)
+            Image(systemName: type.image)
               .resizable()
               .scaledToFit()
               .frame(width: 20, height: 20)
+              .foregroundStyle(.gray100)
 
             Spacer()
               .frame(width: 8)
 
             Text("\(type.description)로 시작하기")
               .pretendardCustomFont(textStyle: .titleBold)
-              .foregroundStyle(.black)
+              .foregroundStyle(.gray100)
+            Spacer()
           }
         }
+        .allowsTightening(false)
         .clipShape(Capsule())
     }
     .scaleEffect(isPressed ? 0.95 : 1.0)
@@ -78,32 +85,35 @@ extension SocialLoginButton {
 
   @ViewBuilder
   fileprivate func googleLoginButton(
-    type: SocialType,
-    onTap: @escaping () -> Void
+      type: SocialType,
+      onTap: @escaping () -> Void
   ) -> some View {
-    VStack {
-      RoundedRectangle(cornerRadius: 20)
-        .stroke(.black.opacity(0.2), style: .init(lineWidth: 1))
-        .frame(height: 60)
-        .overlay {
-          HStack(spacing: .zero) {
-            Spacer()
+      VStack {
+          RoundedRectangle(cornerRadius: 30)
+              .stroke(.black.opacity(0.5), lineWidth: 1)
+              .frame(height: 60)
+              .overlay {
+                  HStack(spacing: .zero) {
+                      Spacer()
 
-            Image(assetName: type.image)
-              .resizable()
-              .scaledToFit()
-              .frame(width: 20, height: 20)
+                      Image(assetName: type.image)
+                          .resizable()
+                          .scaledToFit()
+                          .frame(width: 20, height: 20)
 
-            Spacer()
-              .frame(width: 8)
+                      Spacer()
+                          .frame(width: 8)
 
-            Text("\(type.description)로 시작하기")
-              .pretendardCustomFont(textStyle: .titleBold)
-              .foregroundStyle(.black)
-          }
-        }
-        .onTapGesture { onTap() }
-        .clipShape(Capsule())
-    }
+                      Text("\(type.description)로 시작하기")
+                          .pretendardCustomFont(textStyle: .titleBold)
+                          .foregroundStyle(.black)
+
+                      Spacer()
+                  }
+              }
+              .clipShape(Capsule()) 
+              .contentShape(Capsule())
+              .onTapGesture { onTap() }
+      }
   }
 }

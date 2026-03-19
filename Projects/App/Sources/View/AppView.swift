@@ -28,11 +28,19 @@ struct AppView: View {
               SplashView(store: store)
                 .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
+
+          case .auth:
+            if let store = store.scope(state: \.auth, action: \.scope.auth) {
+              AuthCoordinatorView(store: store)
+                .transition(.opacity.combined(with: .scale(scale: 0.98)))
+            }
+
           case .home:
             if let store = store.scope(state: \.home, action: \.scope.home) {
               HomeView(store: store)
                 .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
+
         }
       }
 

@@ -18,6 +18,7 @@ public struct AppReducer: Sendable {
   public enum State {
     case splash(SplashReducer.State)
     case home(HomeReducer.State)
+    case auth(AuthCoordinator.State)
 
 
     public init() {
@@ -28,6 +29,7 @@ public struct AppReducer: Sendable {
     var animationID: String {
       switch self {
       case .splash: return "splash"
+      case .auth: return "auth"
       case .home: return "home"
       }
     }
@@ -70,6 +72,7 @@ public struct AppReducer: Sendable {
   public enum ScopeAction {
     case splash(SplashReducer.Action)
     case home(HomeReducer.Action)
+    case auth(AuthCoordinator.Action)
   }
 
   @Dependency(\.continuousClock) var clock
@@ -126,7 +129,7 @@ extension AppReducer {
       return .none
 
     case .presentAuth:
-//      state = .auth(.init())
+      state = .auth(.init())
       return .concatenate(
         .cancel(id: CancelID.staffEffects),
         .cancel(id: CancelID.memberEffects)
@@ -179,7 +182,7 @@ extension AppReducer {
       case .splash(.navigation(.presentHome)):
         return .run { send in
           try await clock.sleep(for: .seconds(2))
-          await send(.view(.presentRoot))
+          await send(.view(.presentAuth))
         }
 
 

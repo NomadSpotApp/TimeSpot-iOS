@@ -8,6 +8,7 @@
 import SwiftUI
 
 import DesignSystem
+import Entity
 
 import ComposableArchitecture
 
@@ -26,6 +27,10 @@ public struct LoginView: View {
 
       VStack {
         loginLogo()
+
+        socialLoginButtons()
+
+        guestLookAroundText()
       }
     }
   }
@@ -47,5 +52,34 @@ extension LoginView {
     }
   }
 
-  
+  @ViewBuilder
+  private func socialLoginButtons() -> some View {
+    VStack(alignment: .center, spacing: 8) {
+      ForEach(SocialType.allCases) { type in
+        SocialLoginButton(store: store, type: type) {
+
+        }
+
+      }
+    }
+    .padding(.horizontal, 22)
+  }
+
+  @ViewBuilder
+  private func guestLookAroundText() -> some View {
+    VStack(alignment: .center) {
+      Spacer()
+        .frame(height: 16)
+
+      Text("비회원으로 시작하기")
+        .pretendardCustomFont(textStyle: .caption)
+        .foregroundStyle(.gray800)
+        .underline(true, color: .gray800.opacity(0.5))
+
+
+      Spacer()
+        .frame(height: 70)
+    }
+  }
+
 }
