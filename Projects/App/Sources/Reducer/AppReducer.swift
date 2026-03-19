@@ -178,7 +178,7 @@ extension AppReducer {
     switch action {
       case .splash(.navigation(.presentHome)):
         return .run { send in
-          try await clock.sleep(for: .seconds(0.3))
+          try await clock.sleep(for: .seconds(2))
           await send(.view(.presentRoot))
         }
 
