@@ -20,7 +20,12 @@ let packageSettings = PackageSettings(
     "XCTestDynamicOverlay": .staticFramework,
     "Clocks": .staticFramework,
     "ConcurrencyExtras": .staticFramework,
-    "WeaveDI": .staticFramework
+    "WeaveDI": .staticFramework,
+    // Testing & Dependencies
+    "Testing": .staticFramework,
+    "Dependencies": .staticFramework,
+    "DependenciesTestSupport": .staticFramework,
+    "CustomDump": .staticFramework
   ]
 )
 #endif
@@ -34,5 +39,9 @@ let package = Package(
     .package(url: "https://github.com/google/GoogleSignIn-iOS", from: "9.0.0"),
     .package(url: "https://github.com/Roy-wonji/AsyncMoya",  from: "1.1.8"),
     .package(url: "https://github.com/openid/AppAuth-iOS.git", from: "2.0.0"),
+    // Swift Testing & Dependencies
+    .package(url: "https://github.com/apple/swift-testing", exact: "0.12.0"),
+    .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.0.0"),
+    .package(url: "https://github.com/pointfreeco/swift-custom-dump", from: "1.0.0"),
   ]
 )

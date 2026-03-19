@@ -22,7 +22,7 @@ public extension ModulePath {
     case Presentation
     case Splash
     case Home
-
+    case Auth
 
     public static let name: String = "Presentation"
   }
