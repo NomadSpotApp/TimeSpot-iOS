@@ -7,9 +7,9 @@
 
 import SwiftUI
 
-public class CustomButtonConfig: DDDCustomButtonConfig {
-  static public func create() -> DDDCustomButtonConfig {
-    let config = DDDCustomButtonConfig(
+public class CustomButtonConfig: TimeSpotCustomButtonConfig {
+  static public func create() -> TimeSpotCustomButtonConfig {
+    let config = TimeSpotCustomButtonConfig(
       cornerRadius: 30,
       enableFontColor: .gray100,
       enableBackgroundColor: .navy900,
@@ -20,17 +20,4 @@ public class CustomButtonConfig: DDDCustomButtonConfig {
     
     return config
   }
-  
-  static public func createDateButton() -> DDDCustomButtonConfig {
-    let config = DDDCustomButtonConfig(
-      cornerRadius: 30,
-      enableFontColor: .gray100,
-      enableBackgroundColor: .navy900,
-      frameHeight: 60,
-      disableFontColor: .gray900,
-      disableBackgroundColor: .enableColor
-    )
-    return config
-  }
-  
 }

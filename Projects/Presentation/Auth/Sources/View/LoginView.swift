@@ -32,6 +32,13 @@ public struct LoginView: View {
 
         guestLookAroundText()
       }
+      .presentDSModal(
+          item: $store.scope(state: \.destination?.termsService, action: \.destination.termsService),
+          height: .fraction(0.38),
+          showDragIndicator: true
+      ) { termServiceStore in
+          TermsAgreementView(store: termServiceStore)
+      }
     }
   }
 }
@@ -45,7 +52,7 @@ extension LoginView {
       Spacer()
 
       Text("Time Spot")
-        .font(.pretendardFontFamily(family: .SemiBold, size: 48))
+        .pretendardFont(family: .SemiBold, size: 48)
         .foregroundStyle(.black)
 
       Spacer()
@@ -57,7 +64,7 @@ extension LoginView {
     VStack(alignment: .center, spacing: 8) {
       ForEach(SocialType.allCases) { type in
         SocialLoginButton(store: store, type: type) {
-
+          store.send(.delegate(.presentTermsAgreement))
         }
 
       }
@@ -75,6 +82,9 @@ extension LoginView {
         .pretendardCustomFont(textStyle: .caption)
         .foregroundStyle(.gray800)
         .underline(true, color: .gray800.opacity(0.5))
+        .onTapGesture {
+          store.send(.delegate(.presentPrivacyWeb))
+        }
 
 
       Spacer()

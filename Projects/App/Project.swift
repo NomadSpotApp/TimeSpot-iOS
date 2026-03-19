@@ -14,7 +14,7 @@ let project = Project.makeAppModule(
     .Data(implements: .Repository)
   ],
   sources: ["Sources/**"],
-  resources: ["Resources/**"],
+  resources: ["Resources/**", "FontAsset/**"],
   infoPlist: .appInfoPlist,
   schemes: [
     // 테스트 플랜 스킴: 커스텀 구성명 사용 (.dev / .stage / .prod 중 택1)

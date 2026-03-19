@@ -10,12 +10,13 @@ import Foundation
 public enum ImageAsset: String {
 
   // MARK: - 소셜로그인 버튼
-  case appleLogin
-  case googleLogin
   case google
 
+
+  //Mark: - 버튼들
+  case noCheck
+  case check
+  case arrowRight
+
   case none
-
-
-
 }

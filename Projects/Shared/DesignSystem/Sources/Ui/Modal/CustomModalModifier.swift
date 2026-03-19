@@ -7,6 +7,18 @@
 
 import SwiftUI
 
+// Environment key for modal dismiss
+public struct ModalDismissKey: EnvironmentKey {
+  public static let defaultValue: (() -> Void) = { }
+}
+
+public extension EnvironmentValues {
+  var modalDismiss: () -> Void {
+    get { self[ModalDismissKey.self] }
+    set { self[ModalDismissKey.self] = newValue }
+  }
+}
+
 public enum ModalHeight {
   case fraction(CGFloat)
   case fixed(CGFloat)
@@ -80,6 +92,7 @@ public struct CustomModalModifier<Item: Identifiable & Equatable, ModalContent: 
           dragIndicatorView
           modalContent(currentItem)
             .frame(height: modalHeightValue(for: geometry))
+            .environment(\.modalDismiss, dismissModal)
           bottomSpacer(geometry: geometry)
         }
         .background(.white)
@@ -96,11 +109,25 @@ public struct CustomModalModifier<Item: Identifiable & Equatable, ModalContent: 
         .onAppear {
           // 밑에서 올라오는 애니메이션
           dismissOffset = slideDistance
-          withAnimation(.easeOut(duration: 0.3)) {
+          withAnimation(.easeOut(duration: 0.4)) {
             dismissOffset = 0
           }
         }
+        .onChange(of: item) { oldValue, newValue in
+          // TCA에서 close 액션으로 destination이 nil이 되었을 때
+          if oldValue != nil && newValue == nil {
+            // 이미 애니메이션이 시작되지 않았다면 시작
+            if dismissOffset == 0 {
+              withAnimation(.easeOut(duration: 0.4)) {
+                dismissOffset = slideDistance
+              }
+              dragOffset = 0
+            }
+          }
+        }
         .gesture(dragGesture)
+        .transition(.move(edge: .bottom))
+        .animation(.easeOut(duration: 0.3), value: item != nil)
       }
     }
   }
@@ -111,14 +138,14 @@ public struct CustomModalModifier<Item: Identifiable & Equatable, ModalContent: 
       RoundedRectangle(cornerRadius: 2)
         .fill(Color.gray.opacity(0.3))
         .frame(width: 36, height: 5)
-        .padding(.top, 8)
-        .padding(.bottom, 12)
+        .padding(.top, 4)
+//        .padding(.bottom, 12)
     }
   }
 
   private func bottomSpacer(geometry: GeometryProxy) -> some View {
     Spacer()
-      .frame(height: geometry.safeAreaInsets.bottom + 20)
+      .frame(height: geometry.safeAreaInsets.bottom - 20)
   }
 
   // MARK: - Gesture

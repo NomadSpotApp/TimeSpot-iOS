@@ -16,16 +16,18 @@ public struct LoginFeature {
 
   @ObservableState
   public struct State: Equatable {
+    @Presents var destination: Destination.State?
 
     public init() {}
   }
 
   public enum Action: ViewAction, BindableAction {
     case binding(BindingAction<State>)
+    case destination(PresentationAction<Destination.Action>)
     case view(View)
     case async(AsyncAction)
     case inner(InnerAction)
-    case navigation(NavigationAction)
+    case delegate(DelegateAction)
 
   }
 
@@ -35,6 +37,11 @@ public struct LoginFeature {
 
   }
 
+  @Reducer
+  public enum Destination {
+    case termsService(TermsAgreementFeature)
+  }
+
   //MARK: - AsyncAction 비동기 처리 액션
   public enum AsyncAction: Equatable {
 
@@ -42,11 +49,13 @@ public struct LoginFeature {
 
   //MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
+    case clearDestination
   }
 
-  //MARK: - NavigationAction
-  public enum NavigationAction: Equatable {
-
+  //MARK: - DelegateAction
+  public enum DelegateAction: Equatable {
+    case presentTermsAgreement
+    case presentPrivacyWeb
 
   }
 
@@ -58,6 +67,9 @@ public struct LoginFeature {
         case .binding(_):
           return .none
 
+        case .destination(let action):
+          return handleDestinationAction(state: &state, action: action)
+
         case .view(let viewAction):
           return handleViewAction(state: &state, action: viewAction)
 
@@ -67,10 +79,11 @@ public struct LoginFeature {
         case .inner(let innerAction):
           return handleInnerAction(state: &state, action: innerAction)
 
-        case .navigation(let navigationAction):
-          return handleNavigationAction(state: &state, action: navigationAction)
+        case .delegate(let delegateAction):
+          return handleDelegateAction(state: &state, action: delegateAction)
       }
     }
+    .ifLet(\.$destination, action: \.destination)
   }
 }
 
@@ -84,6 +97,30 @@ extension LoginFeature {
     }
   }
 
+
+
+  private func handleDestinationAction(
+    state: inout State,
+    action: PresentationAction<Destination.Action>
+  ) -> Effect<Action> {
+    switch action {
+      case .presented(.termsService(.scope(.close))):
+        // 3초 후에 destination 해제
+        return .run { send in
+          try await Task.sleep(for: .seconds(3))
+          await send(.inner(.clearDestination))
+        }
+
+
+      case .presented(.termsService(.delegate(.presentPrivacyWeb))):
+        return .send(.delegate(.presentPrivacyWeb))
+
+
+      default:
+        return .none
+    }
+  }
+
   private func handleAsyncAction(
     state: inout State,
     action: AsyncAction
@@ -93,22 +130,35 @@ extension LoginFeature {
     }
   }
 
-  private func handleNavigationAction(
+  private func handleDelegateAction(
     state: inout State,
-    action: NavigationAction
+    action: DelegateAction
   ) -> Effect<Action> {
     switch action {
+      case .presentTermsAgreement:
+        state.destination = .termsService(.init())
+        return .none
+
+      case .presentPrivacyWeb:
+        state.destination = nil
+        return .none
 
     }
   }
-
+  
   private func handleInnerAction(
     state: inout State,
     action: InnerAction
   ) -> Effect<Action> {
     switch action {
-
+    case .clearDestination:
+      state.destination = nil
+      return .none
     }
   }
 }
 
+
+
+// MARK: - Destination State Equatable
+extension LoginFeature.Destination.State: Equatable {}

@@ -1,5 +1,5 @@
 //
-//  DDDCustomButtonConfig.swift
+//  TimeSpotCustomButtonConfig.swift
 //  DesignSystem
 //
 //  Created by Wonji Suh  on 11/2/24.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-public class DDDCustomButtonConfig {
+public class TimeSpotCustomButtonConfig {
   public let cornerRadius: CGFloat
   public let enableFontColor: Color
   public let enableBackgroundColor:Color

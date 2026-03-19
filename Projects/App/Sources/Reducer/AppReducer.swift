@@ -110,6 +110,9 @@ public struct AppReducer: Sendable {
     .ifCaseLet(\.home, action: \.scope.home) {
       HomeReducer()
     }
+    .ifCaseLet(\.auth, action: \.scope.auth) {
+      AuthCoordinator()
+    }
   }
 }
 
