@@ -20,6 +20,8 @@ public extension ShapeStyle where Self == Color {
   static var gray800: Color {  .init(hex: "545454") }
   static var gray900: Color {  .init(hex: "181818") }
 
+  static var enableColor: Color { .init(hex: "E2E2E2")}
+
 
   // ORANGE
   static var orange100: Color {  .init(hex: "FFF6F5") }

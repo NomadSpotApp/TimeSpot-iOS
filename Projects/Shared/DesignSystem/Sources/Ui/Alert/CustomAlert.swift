@@ -81,7 +81,7 @@ struct CustomAlert: View {
   
   var body: some View {
     ZStack {
-      Color.backGroundPrimary
+      Color.gray100
         .opacity(0.68)
         .edgesIgnoringSafeArea(.all)
       
@@ -89,11 +89,11 @@ struct CustomAlert: View {
         VStack(alignment: .center, spacing: 4) {
           Text(title)
             .pretendardFont(family: .Bold, size: 20)
-            .foregroundStyle(.textPrimary)
-          
+            .foregroundStyle(.gray900)
+
           Text(message)
             .pretendardFont(family: .Regular, size: 14)
-            .foregroundStyle(.textSecondary)
+            .foregroundStyle(.gray800)
         }
         
         Button {
@@ -101,18 +101,18 @@ struct CustomAlert: View {
         } label: {
           Text("확인")
             .pretendardFont(family: .Medium, size: 14)
-            .foregroundStyle(.staticWhite)
+            .foregroundStyle(.gray100)
             .frame(maxWidth: .infinity)
             .frame(height: 38)
         }
-        .background(.blue40)
+        .background(.gray900)
         .clipShape(.rect(cornerRadius: 99))
         .contentShape(.rect(cornerRadius: 99))
       }
       .padding(.vertical, 36)
       .padding(.horizontal, 24)
       .frame(width: 288)
-      .background(.backGroundPrimary)
+      .background(.gray100)
       .clipShape(.rect(cornerRadius: 28))
     }
   }

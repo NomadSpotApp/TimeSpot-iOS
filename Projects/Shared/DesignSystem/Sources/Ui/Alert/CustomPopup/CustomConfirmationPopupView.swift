@@ -67,14 +67,14 @@ struct CustomConfirmationPopup: View {
     VStack(alignment: .center, spacing: 24) {
       VStack(alignment: .center, spacing: 8) {
         Text(title)
-          .pretendardCustomFont(textStyle: .title3NormalBold)
-          .foregroundStyle(.staticWhite)
+          .pretendardCustomFont(textStyle: .bodyBold)
+          .foregroundStyle(.white)
           .multilineTextAlignment(.center)
 
         if !message.isEmpty {
           Text(message)
-            .pretendardCustomFont(textStyle: .body3NormalRegular)
-            .foregroundStyle(.textSecondary)
+            .pretendardCustomFont(textStyle: .bodyBold)
+            .foregroundStyle(.gray100)
             .multilineTextAlignment(.center)
         }
       }
@@ -85,11 +85,11 @@ struct CustomConfirmationPopup: View {
         } label: {
           Text(confirmTitle)
             .pretendardFont(family: .Medium, size: 16)
-            .foregroundStyle(.staticWhite)
+            .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .frame(height: 48)
         }
-        .background(.gray80)
+        .background(.gray800)
         .clipShape(.rect(cornerRadius: 20))
         .contentShape(.rect(cornerRadius: 20))
 
@@ -98,11 +98,11 @@ struct CustomConfirmationPopup: View {
         } label: {
           Text(cancelTitle)
             .pretendardFont(family: .Medium, size: 16)
-            .foregroundStyle(.staticWhite)
+            .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .frame(height: 48)
         }
-        .background(.blue40)
+        .background(.gray800)
         .clipShape(.rect(cornerRadius: 20))
         .contentShape(.rect(cornerRadius: 20))
       }
@@ -110,7 +110,7 @@ struct CustomConfirmationPopup: View {
     .padding(.vertical, 32)
     .padding(.horizontal, 24)
     .frame(width: 320)
-    .background(.gray90)
+    .background(.gray800)
     .clipShape(.rect(cornerRadius: 20))
     .onTapGesture {}
   }
@@ -118,14 +118,14 @@ struct CustomConfirmationPopup: View {
   private var consentContent: some View {
     VStack(alignment: .center, spacing: 16) {
       Text(title)
-        .pretendardCustomFont(textStyle: .title3NormalBold)
-        .foregroundStyle(.staticWhite)
+        .pretendardCustomFont(textStyle: .titleBold)
+        .foregroundStyle(.white)
         .multilineTextAlignment(.center)
 
       if !message.isEmpty {
         Text(message)
-          .pretendardCustomFont(textStyle: .body3NormalRegular)
-          .foregroundStyle(.textSecondary)
+          .pretendardCustomFont(textStyle: .body2Bold)
+          .foregroundStyle(.gray800)
           .multilineTextAlignment(.center)
       }
 
@@ -137,13 +137,13 @@ struct CustomConfirmationPopup: View {
           }
         } label: {
           RoundedRectangle(cornerRadius: 4)
-            .stroke(.gray60, lineWidth: 1)
+            .stroke(.gray800, lineWidth: 1)
             .frame(width: 15, height: 15)
             .overlay {
               if isChecked {
                 Image(systemName: "checkmark")
                   .font(.system(size: 12, weight: .bold))
-                  .foregroundStyle(.staticWhite)
+                  .foregroundStyle(.white)
               }
             }
             .padding(6)
@@ -152,9 +152,9 @@ struct CustomConfirmationPopup: View {
         .buttonStyle(.plain)
 
         Text(checkboxTitle)
-          .pretendardCustomFont(textStyle: .body3NormalRegular)
-          .foregroundStyle(.staticWhite)
-          .underline(true, color: .mediumGray)
+          .pretendardCustomFont(textStyle: .bodyMedium)
+          .foregroundStyle(.white)
+          .underline(true, color: .gray800)
           .onTapGesture {
             onPolicyTap()
           }
@@ -164,7 +164,7 @@ struct CustomConfirmationPopup: View {
     .padding(.vertical, 24)
     .padding(.horizontal, 20)
     .frame(width: 300)
-    .background(.gray90)
+    .background(.gray800)
     .clipShape(.rect(cornerRadius: 20))
     .onTapGesture {}
   }
