@@ -45,7 +45,7 @@ public struct SelectExternalMap: View {
     .background {
       RoundedRectangle(cornerRadius: 28)
         .fill(.clear)
-        .stroke(isSelected ? .gray400 : .orange500, style: .init(lineWidth: 1))
+        .stroke(isSelected ? .orange500 : .gray400, style: .init(lineWidth: 1))
         .background(isSelected ? .orange200 : .white)
         .cornerRadius(28)
     }
