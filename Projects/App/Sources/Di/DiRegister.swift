@@ -17,7 +17,8 @@ import WeaveDI
 
 
 /// 🚀 **앱 전역 DI 관리자**
-public class AppDIManager: @unchecked Sendable {
+@MainActor
+public final class AppDIManager {
   public static let shared = AppDIManager()
 
   private init() {}
@@ -32,25 +33,6 @@ public class AppDIManager: @unchecked Sendable {
         return KeychainTokenProvider(keychainManager: keychainManager) as TokenProviding
       }
       .register(DirectionInterface.self) { DirectionRepositoryImpl() }
-//      .register(ProfileInterface.self) { ProfileRepositoryImpl() }
-//    // MARK: - 로그인
-//      .register { AuthRepositoryImpl() as AuthInterface }
-//      .register { GoogleOAuthRepositoryImpl() as GoogleOAuthInterface }
-//      .register { AppleLoginRepositoryImpl() as AppleAuthRequestInterface }
-//      .register { AppleOAuthRepositoryImpl() as AppleOAuthInterface }
-//      .register { AppleOAuthProvider() as AppleOAuthProviderInterface }
-//      .register { GoogleOAuthProvider() as GoogleOAuthProviderInterface }
-//    // MARK: - 온보딩
-//      .register { OnBoardingRepositoryImpl()  as OnBoardingInterface }
-//      .register { SignUpRepositoryImpl() as SignUpInterface }
-//    // MARK: - 출석
-//      .register { AttendanceRepositoryImpl() as AttendanceInterface }
-//    // MARK: - 마이페이지
-//      .register { MyPageRepositoryImpl() as MyPageRepositoryInterface }
-//    // MARK: - 스케줄
-//      .register { ScheduleRepositoryImpl() as ScheduleInterface }
-//    // MARK: - QRCode
-//      .register { QRCodeRepositoryImpl() as QRCodeInterface }
       .configure()
   }
 }
