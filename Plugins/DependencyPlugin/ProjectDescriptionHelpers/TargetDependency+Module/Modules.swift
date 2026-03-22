@@ -23,6 +23,7 @@ public extension ModulePath {
     case Splash
     case Home
     case Auth
+    case OnBoarding
 
     public static let name: String = "Presentation"
   }
@@ -36,8 +37,8 @@ public extension ModulePath {
     case Foundations
 
     public static let name: String = "Network"
-      case Networks
-      case ThirdPartys
+    case Networks
+    case ThirdPartys
   }
 }
 
@@ -64,7 +65,6 @@ public extension ModulePath {
     case DataInterface
     case DomainInterface
 
-
     public static let name: String = "Domain"
   }
 }
@@ -75,7 +75,7 @@ public extension ModulePath {
     case Shared
     case DesignSystem
     case Utill
-    
+
     public static let name: String = "Shared"
   }
 }

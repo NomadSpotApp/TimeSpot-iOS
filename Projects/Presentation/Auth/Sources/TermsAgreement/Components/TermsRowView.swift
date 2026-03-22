@@ -51,7 +51,7 @@ public struct TermsRowView: View {
         Image(asset: .arrowRight)
           .resizable()
           .scaledToFit()
-          .frame(width: 8, height: 10)
+          .frame(width: 18, height: 18)
       }
     }
   }

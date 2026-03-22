@@ -9,6 +9,7 @@ import SwiftUI
 
 import ComposableArchitecture
 import TCACoordinators
+import OnBoarding
 
 public struct AuthCoordinatorView: View {
   @Bindable private var store: StoreOf<AuthCoordinator>
@@ -23,6 +24,11 @@ public struct AuthCoordinatorView: View {
         case .login(let loginStore):
           LoginView(store: loginStore)
             .navigationBarBackButtonHidden()
+
+        case .onBoarding(let onBoardingStore):
+          OnBoardingCoordinatorView(store: onBoardingStore)
+            .navigationBarBackButtonHidden()
+            .transition(.opacity.combined(with: .scale(scale: 0.98)))
       }
     }
   }

@@ -98,10 +98,10 @@ public struct CustomModalModifier<Item: Identifiable & Equatable, ModalContent: 
         .background(.white)
         .clipShape(
           UnevenRoundedRectangle(
-            topLeadingRadius: 40,
-            bottomLeadingRadius: 40,
-            bottomTrailingRadius: 40,
-            topTrailingRadius: 40
+            topLeadingRadius: 30,
+            bottomLeadingRadius: 30,
+            bottomTrailingRadius: 30,
+            topTrailingRadius: 30
           )
         )
         .offset(y: dragOffset + dismissOffset)

@@ -1,22 +1,23 @@
 //
-//  SplashReducer.swift
-//  Splash
+//  OnBoardingFeature.swift
+//  OnBoarding
 //
-//  Created by Wonji Suh  on 3/1/26.
+//  Created by Wonji Suh  on 3/21/26.
 //
-
 
 import Foundation
 import ComposableArchitecture
 
-
 @Reducer
-public struct SplashReducer {
+public struct OnBoardingFeature {
   public init() {}
 
-  public struct State: Equatable {
+  @ObservableState
+  public struct State: Equatable, Hashable {
 
     public init() {}
+    var stepRange: ClosedRange<Int> = 1...4
+    var activeStep: Int = 1
   }
 
   public enum Action: ViewAction, BindableAction {
@@ -31,8 +32,9 @@ public struct SplashReducer {
   //MARK: - ViewAction
   @CasePathable
   public enum View {
-
+    case nextStepButtonTapped
   }
+
 
 
   //MARK: - AsyncAction 비동기 처리 액션
@@ -46,8 +48,7 @@ public struct SplashReducer {
 
   //MARK: - NavigationAction
   public enum NavigationAction: Equatable {
-    case presentHome
-
+    case onBoardingCompleted
   }
 
 
@@ -74,13 +75,18 @@ public struct SplashReducer {
   }
 }
 
-extension SplashReducer {
+extension OnBoardingFeature {
   private func handleViewAction(
     state: inout State,
     action: View
   ) -> Effect<Action> {
     switch action {
-
+    case .nextStepButtonTapped:
+      if state.activeStep >= state.stepRange.upperBound {
+        return .send(.navigation(.onBoardingCompleted))
+      }
+      state.activeStep += 1
+      return .none
     }
   }
 
@@ -98,9 +104,9 @@ extension SplashReducer {
     action: NavigationAction
   ) -> Effect<Action> {
     switch action {
-      case .presentHome:
-        return .none
-
+    case .onBoardingCompleted:
+      // Coordinator에서 처리
+      return .none
     }
   }
 

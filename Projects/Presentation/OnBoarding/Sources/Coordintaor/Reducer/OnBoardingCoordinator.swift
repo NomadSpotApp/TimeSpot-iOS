@@ -1,30 +1,29 @@
 //
-//  AuthCoordinator.swift
-//  Auth
+//  OnBoardingCoordinator.swift
+//  OnBoarding
 //
-//  Created by Wonji Suh  on 3/17/26.
+//  Created by Wonji Suh  on 3/21/26.
 //
 
 import ComposableArchitecture
 import TCACoordinators
-import OnBoarding
 
 @Reducer
-public struct AuthCoordinator {
+public struct OnBoardingCoordinator {
 
   public init(){}
 
   @ObservableState
-  public struct State: Equatable {
-    var routes: [Route<AuthScreen.State>]
+  public struct State: Equatable, Hashable {
+    var routes: [Route<OnBoardingScreen.State>]
 
     public init() {
-      self.routes = [.root(.login(.init()), withNavigation: true)]
+      self.routes = [.root(.onBoarding(.init()), withNavigation: true)]
     }
   }
 
   public enum Action {
-    case router(IndexedRouterActionOf<AuthScreen>)
+    case router(IndexedRouterActionOf<OnBoardingScreen>)
     case view(View)
     case async(AsyncAction)
     case inner(InnerAction)
@@ -51,7 +50,7 @@ public struct AuthCoordinator {
 
   // MARK: - NavigationAction
   public enum NavigationAction: Equatable {
-    
+
   }
 
   public var body: some Reducer<State, Action> {
@@ -78,16 +77,12 @@ public struct AuthCoordinator {
 
 }
 
-extension AuthCoordinator {
+extension OnBoardingCoordinator {
   private func routerAction(
     state: inout State,
-    action: IndexedRouterActionOf<AuthScreen>
+    action: IndexedRouterActionOf<OnBoardingScreen>
   ) -> Effect<Action> {
     switch action {
-
-      case .routeAction(id: _, action: .login(.delegate(.presentOnBoarding))):
-        state.routes.push(.onBoarding(.init()))
-        return .none
 
 
       default:
@@ -133,14 +128,13 @@ extension AuthCoordinator {
   }
 }
 
-extension AuthCoordinator {
+extension OnBoardingCoordinator {
   @Reducer
-  public enum AuthScreen {
-    case login(LoginFeature)
-    case onBoarding(OnBoardingCoordinator)
+  public enum OnBoardingScreen {
+    case onBoarding(OnBoardingFeature)
   }
 }
 
-// MARK: - AuthScreen State Equatable & Hashable
-extension AuthCoordinator.AuthScreen.State: Equatable {}
-extension AuthCoordinator.AuthScreen.State: Hashable {}
+// MARK: - OnBoardingScreen State Equatable & Hashable
+extension OnBoardingCoordinator.OnBoardingScreen.State: Equatable {}
+extension OnBoardingCoordinator.OnBoardingScreen.State: Hashable {}

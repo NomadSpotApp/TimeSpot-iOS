@@ -8,7 +8,6 @@
 import SwiftUI
 import ComposableArchitecture
 
-@ObservableState
 public struct CustomAlertState<Action>: Equatable {
   public let title: String
   public let message: String

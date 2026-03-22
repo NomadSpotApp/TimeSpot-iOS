@@ -15,7 +15,7 @@ public struct LoginFeature {
   public init() {}
 
   @ObservableState
-  public struct State: Equatable {
+  public struct State: Equatable, Hashable {
     @Presents var destination: Destination.State?
 
     public init() {}
@@ -56,6 +56,7 @@ public struct LoginFeature {
   public enum DelegateAction: Equatable {
     case presentTermsAgreement
     case presentPrivacyWeb
+    case presentOnBoarding
 
   }
 
@@ -107,8 +108,9 @@ extension LoginFeature {
       case .presented(.termsService(.scope(.close))):
         // 3초 후에 destination 해제
         return .run { send in
-          try await Task.sleep(for: .seconds(3))
+          try await Task.sleep(for: .seconds(1.2))
           await send(.inner(.clearDestination))
+          await send(.delegate(.presentOnBoarding))
         }
 
 
@@ -143,6 +145,9 @@ extension LoginFeature {
         state.destination = nil
         return .none
 
+      case .presentOnBoarding:
+        return .none
+
     }
   }
   
@@ -162,3 +167,4 @@ extension LoginFeature {
 
 // MARK: - Destination State Equatable
 extension LoginFeature.Destination.State: Equatable {}
+extension LoginFeature.Destination.State: Hashable {}

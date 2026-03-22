@@ -34,7 +34,7 @@ public struct LoginView: View {
       }
       .presentDSModal(
           item: $store.scope(state: \.destination?.termsService, action: \.destination.termsService),
-          height: .fraction(0.38),
+          height: .fraction(0.4),
           showDragIndicator: true
       ) { termServiceStore in
           TermsAgreementView(store: termServiceStore)

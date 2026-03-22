@@ -20,28 +20,20 @@ let packageSettings = PackageSettings(
     "XCTestDynamicOverlay": .staticFramework,
     "Clocks": .staticFramework,
     "ConcurrencyExtras": .staticFramework,
-    "WeaveDI": .staticFramework,
-    // Testing & Dependencies
-    "Testing": .staticFramework,
-    "Dependencies": .staticFramework,
-    "DependenciesTestSupport": .staticFramework,
-    "CustomDump": .staticFramework
+    "WeaveDI": .staticFramework
   ]
 )
 #endif
 
 let package = Package(
-  name: "MultiModuleTemplate",
+  name: "TimeSpot",
   dependencies: [
-    .package(url: "https://github.com/pointfreeco/swift-composable-architecture", exact: "1.18.0"),
-    .package(url: "https://github.com/johnpatrickmorgan/TCACoordinators.git", exact: "0.11.1"),
+    .package(url: "https://github.com/pointfreeco/swift-composable-architecture", exact: "1.23.0"),
+    .package(url: "https://github.com/johnpatrickmorgan/TCACoordinators.git", exact: "0.14.0"),
     .package(url: "https://github.com/Roy-wonji/WeaveDI.git", from: "3.4.0"),
     .package(url: "https://github.com/google/GoogleSignIn-iOS", from: "9.0.0"),
     .package(url: "https://github.com/Roy-wonji/AsyncMoya",  from: "1.1.8"),
     .package(url: "https://github.com/openid/AppAuth-iOS.git", from: "2.0.0"),
-    // Swift Testing & Dependencies
-    .package(url: "https://github.com/apple/swift-testing", exact: "0.12.0"),
-    .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.0.0"),
-    .package(url: "https://github.com/pointfreeco/swift-custom-dump", from: "1.0.0"),
+    .package(url: "https://github.com/ReactiveCocoa/ReactiveSwift.git", from: "6.7.0"),
   ]
 )
