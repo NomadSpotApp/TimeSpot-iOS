@@ -23,5 +23,9 @@ public enum ImageAsset: String {
   case googleMap
   case appleMap
 
+  case onBoardingLogo1
+  case onBoardingLogo2
+  case onBoardingLogo3
+
   case none
 }

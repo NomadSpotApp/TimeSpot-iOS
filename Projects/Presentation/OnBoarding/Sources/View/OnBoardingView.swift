@@ -34,7 +34,6 @@ public struct OnBoardingView: View {
 
         Spacer()
       }
-      .padding(.horizontal, 24)
     }
   }
 }
@@ -47,7 +46,8 @@ extension OnBoardingView {
   private func stepContentView(
     @ViewBuilder title: () -> some View,
     subtitle1: String,
-    subtitle2: String
+    subtitle2: String,
+    imageAsset: ImageAsset
   ) -> some View {
     VStack(alignment: .center) {
       StepNavigationBar(activeStep: store.activeStep)
@@ -68,6 +68,11 @@ extension OnBoardingView {
         .pretendardCustomFont(textStyle: .bodyRegular)
         .foregroundStyle(.mediumGray)
 
+      Image(asset: imageAsset)
+        .resizable()
+        .scaledToFit()
+        .frame(height: 393)
+
       nextStepOnBoardingButton()
     }
   }
@@ -87,6 +92,7 @@ extension OnBoardingView {
       Spacer()
         .frame(height: 32)
     }
+    .padding(.horizontal, 24)
   }
 }
 
@@ -128,7 +134,8 @@ extension OnBoardingView {
           .foregroundStyle(.gray900)
       },
       subtitle1: "기차를 기다리는 동안 역 주변의",
-      subtitle2: "다양한 공간을 발견해 보세요."
+      subtitle2: "다양한 공간을 발견해 보세요.",
+      imageAsset: .onBoardingLogo1
     )
   }
 
@@ -150,7 +157,8 @@ extension OnBoardingView {
         }
       },
       subtitle1: "열차 출발까지 남은 시간을 기준으로",
-      subtitle2: "지금 방문하기 좋은 장소를 추천합니다."
+      subtitle2: "지금 방문하기 좋은 장소를 추천합니다.",
+      imageAsset: .onBoardingLogo2
     )
   }
 
@@ -173,7 +181,8 @@ extension OnBoardingView {
           .foregroundStyle(.gray900)
       },
       subtitle1: "열차 출발 시간을 기준으로 역으로",
-      subtitle2: "돌아와야 하는 시간을 함께 알려드립니다."
+      subtitle2: "돌아와야 하는 시간을 함께 알려드립니다.",
+      imageAsset: .onBoardingLogo3
     )
   }
 
@@ -224,5 +233,6 @@ extension OnBoardingView {
         }
       }
     }
+    .padding(.horizontal, 24)
   }
 }
