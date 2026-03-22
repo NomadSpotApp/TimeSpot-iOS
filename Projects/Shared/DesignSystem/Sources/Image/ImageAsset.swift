@@ -18,5 +18,10 @@ public enum ImageAsset: String {
   case check
   case arrowRight
 
+  // MARK: - 지도
+  case naverMap
+  case googleMap
+  case appleMap
+
   case none
 }

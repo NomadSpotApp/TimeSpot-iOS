@@ -8,6 +8,9 @@
 import Foundation
 import ComposableArchitecture
 
+import UseCase
+import Entity
+
 @Reducer
 public struct OnBoardingFeature {
   public init() {}
@@ -18,6 +21,7 @@ public struct OnBoardingFeature {
     public init() {}
     var stepRange: ClosedRange<Int> = 1...4
     var activeStep: Int = 1
+    var selectedMap: ExternalMapType? = nil
   }
 
   public enum Action: ViewAction, BindableAction {
@@ -33,6 +37,7 @@ public struct OnBoardingFeature {
   @CasePathable
   public enum View {
     case nextStepButtonTapped
+    case mapSelected(ExternalMapType)
   }
 
 
@@ -86,6 +91,10 @@ extension OnBoardingFeature {
         return .send(.navigation(.onBoardingCompleted))
       }
       state.activeStep += 1
+      return .none
+
+    case .mapSelected(let mapType):
+      state.selectedMap = state.selectedMap == mapType ? nil : mapType
       return .none
     }
   }

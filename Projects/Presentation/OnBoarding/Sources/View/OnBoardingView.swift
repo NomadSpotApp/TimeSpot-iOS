@@ -9,6 +9,7 @@ import SwiftUI
 import ComposableArchitecture
 
 import DesignSystem
+import Entity
 
 public struct OnBoardingView: View {
   @Bindable var store: StoreOf<OnBoardingFeature>
@@ -178,14 +179,50 @@ extension OnBoardingView {
 
   @ViewBuilder
   private func lastStepOnBoardingView() -> some View {
-    stepContentView(
-      title: {
-        Text("사용할 지도 앱을 선택해주세요")
-          .pretendardCustomFont(textStyle: .heading1)
-          .foregroundStyle(.gray900)
-      },
-      subtitle1: "선택한 지도 앱으로 목적지까지",
-      subtitle2: "길 안내를 받을 수 있어요."
-    )
+    VStack(alignment: .center) {
+      StepNavigationBar(activeStep: store.activeStep)
+
+      Spacer()
+        .frame(height: 50)
+
+      Text("사용할 지도 앱을 선택해주세요")
+        .pretendardCustomFont(textStyle: .heading1)
+        .foregroundStyle(.gray900)
+
+      Spacer()
+        .frame(height: 12)
+
+      Text("선택한 지도 앱으로 목적지까지")
+        .pretendardCustomFont(textStyle: .bodyRegular)
+        .foregroundStyle(.mediumGray)
+
+      Text("길 안내를 받을 수 있어요.")
+        .pretendardCustomFont(textStyle: .bodyRegular)
+        .foregroundStyle(.mediumGray)
+
+      Spacer()
+        .frame(height: 98)
+
+      mapSelectionList()
+
+      nextStepOnBoardingButton()
+    }
+  }
+
+  @ViewBuilder
+  private func mapSelectionList() -> some View {
+    VStack(spacing: 12) {
+      ForEach(ExternalMapType.allCases, id: \.self) { mapType in
+        let isSelected = store.selectedMap == mapType
+        SelectExternalMap(
+          title: mapType.description,
+          imageName: mapType.image,
+          isSelected: isSelected
+        )
+        .onTapGesture {
+          store.send(.view(.mapSelected(mapType)))
+        }
+      }
+    }
   }
 }
