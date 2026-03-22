@@ -24,6 +24,8 @@ public extension ModulePath {
     case Home
     case Auth
     case OnBoarding
+    case Profile
+
 
     public static let name: String = "Presentation"
   }
