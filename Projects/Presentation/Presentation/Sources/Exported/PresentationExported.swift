@@ -10,3 +10,5 @@
 
 @_exported import Splash
 @_exported import Home
+@_exported import Auth
+@_exported import Profile

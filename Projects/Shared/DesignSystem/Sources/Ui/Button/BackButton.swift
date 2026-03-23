@@ -18,7 +18,7 @@ public struct NavigationBackButton: View {
   
   public var body: some View {
     HStack {
-      Image(asset: .backButton)
+      Image(asset: .none)
         .resizable()
         .scaledToFit()
         .frame(width: 12, height: 20)

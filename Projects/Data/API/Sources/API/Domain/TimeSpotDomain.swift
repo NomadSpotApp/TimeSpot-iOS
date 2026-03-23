@@ -1,0 +1,30 @@
+//
+//  TimeSpotDomain.swift
+//  API
+//
+//  Created by Wonji Suh  on 3/23/26.
+//
+
+import Foundation
+
+import AsyncMoya
+
+public enum TimeSpotDomain {
+  case auth
+  case profile
+}
+
+extension TimeSpotDomain: DomainType {
+  public var baseURLString: String {
+    return BaseAPI.base.apiDescription
+  }
+
+  public var url: String {
+    switch self {
+    case .auth:
+      return "api/v1/auth"
+    case .profile:
+      return "api/v1/users"
+    }
+  }
+}

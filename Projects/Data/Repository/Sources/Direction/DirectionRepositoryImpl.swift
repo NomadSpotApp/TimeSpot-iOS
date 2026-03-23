@@ -77,7 +77,7 @@ public final class DirectionRepositoryImpl: DirectionInterface, @unchecked Senda
     let request = MKDirections.Request()
     request.source = MKMapItem(placemark: MKPlacemark(coordinate: start))
     request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination))
-    request.transportType = .walking  // 🚶‍♂️ 도보 모드
+    request.transportType = .walking  // ‍♂️ 도보 모드
 
     let directions = MKDirections(request: request)
 

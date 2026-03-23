@@ -160,6 +160,7 @@ public extension Project {
     scripts: [ProjectDescription.TargetScript] = [],
     dependencies: [ProjectDescription.TargetDependency] = [],
     sources: ProjectDescription.SourceFilesList = ["Sources/**"],
+    testSources: ProjectDescription.SourceFilesList = ["Tests/Sources/**"],
     resources: ProjectDescription.ResourceFileElements? = nil,
     infoPlist: ProjectDescription.InfoPlist = .default,
     entitlements: ProjectDescription.Entitlements? = nil,
@@ -194,7 +195,7 @@ public extension Project {
         bundleId: "\(bundleId).\(name)Tests",
         deploymentTargets: deploymentTarget,
         infoPlist: .default,
-        sources: ["Tests/Sources/**"],
+        sources: testSources,
         dependencies: [.target(name: name)]
       )
       targets.append(appTestTarget)

@@ -21,7 +21,7 @@ public struct StepNavigationBar: View {
   
   public var body: some View {
     HStack {
-      Image(asset: .backButton)
+      Image(asset: .none)
         .resizable()
         .scaledToFit()
         .frame(width: 12, height: 20)
@@ -37,7 +37,7 @@ public struct StepNavigationBar: View {
           Rectangle()
             .foregroundColor(.clear)
             .frame(maxWidth: 78, minHeight: 3, maxHeight: 3)
-            .background(step <= activeStep ? Color.grayWhite : Color.gray80)
+            .background(step <= activeStep ? .white : .blue)
             .clipShape(Capsule())
         }
       }

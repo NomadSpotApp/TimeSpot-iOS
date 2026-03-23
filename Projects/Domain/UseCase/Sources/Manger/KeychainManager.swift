@@ -27,68 +27,6 @@ public actor KeychainManager: KeychainManagingInterface {
     self.accessGroup = accessGroup
   }
 
-  // MARK: - Legacy Sync API (Backward Compatibility)
-
-  public nonisolated func save(accessToken: String, refreshToken: String) {
-    Task { [weak self] in
-      guard let self = self else { return }
-      do {
-        try await self.save(accessToken: accessToken, refreshToken: refreshToken)
-      } catch {
-        // TODO: Add proper logging in production
-        print("⚠️ Failed to save tokens: \(error)")
-      }
-    }
-  }
-
-  public nonisolated func saveAccessToken(_ token: String) {
-    Task { [weak self] in
-      guard let self = self else { return }
-      do {
-        try await self.saveAccessToken(token)
-      } catch {
-        // TODO: Add proper logging in production
-        print("⚠️ Failed to save access token: \(error)")
-      }
-    }
-  }
-
-  public nonisolated func saveRefreshToken(_ token: String) {
-    Task { [weak self] in
-      guard let self = self else { return }
-      do {
-        try await self.saveRefreshToken(token)
-      } catch {
-        // TODO: Add proper logging in production
-        print("⚠️ Failed to save refresh token: \(error)")
-      }
-    }
-  }
-
-  public nonisolated func accessToken() -> String? {
-    // ⚠️ Sync access - use async version for better safety
-    return legacyRead(for: Key.accessToken)
-  }
-
-  public nonisolated func refreshToken() -> String? {
-    // ⚠️ Sync access - use async version for better safety
-    return legacyRead(for: Key.refreshToken)
-  }
-
-  public nonisolated func clear() {
-    Task { [weak self] in
-      guard let self = self else { return }
-      do {
-        try await self.clear()
-      } catch {
-        // TODO: Add proper logging in production
-        print("⚠️ Failed to clear keychain: \(error)")
-      }
-    }
-  }
-
-  // MARK: - Modern Async API (iOS 17+)
-
   public func save(accessToken: String, refreshToken: String) async throws {
     try save(accessToken, for: Key.accessToken)
     try save(refreshToken, for: Key.refreshToken)
@@ -177,28 +115,6 @@ public actor KeychainManager: KeychainManagingInterface {
     return query
   }
 
-  // MARK: - Legacy Support (nonisolated)
-
-  private nonisolated func legacyRead(for key: String) -> String? {
-    var query: [CFString: Any] = [
-      kSecClass: kSecClassGenericPassword,
-      kSecAttrService: service,
-      kSecAttrAccount: key,
-      kSecReturnData: true,
-      kSecMatchLimit: kSecMatchLimitOne
-    ]
-
-    if let accessGroup = accessGroup {
-      query[kSecAttrAccessGroup] = accessGroup
-    }
-
-    var result: AnyObject?
-    let status = SecItemCopyMatching(query as CFDictionary, &result)
-    guard status == errSecSuccess, let data = result as? Data else {
-      return nil
-    }
-    return String(data: data, encoding: .utf8)
-  }
 }
 
 // MARK: - Error Types

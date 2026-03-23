@@ -104,10 +104,34 @@ extension InfoPlistDictionary {
   func setCFBundleURLTypes() -> InfoPlistDictionary {
     let dict: [String: Plist.Value] = [
       "CFBundleURLTypes": .array([
+        // TimeSpot 앱 스킴
         .dictionary([
+          "CFBundleURLName": .string("timespot"),
+          "CFBundleURLSchemes": .array([
+            .string("timespot")
+          ])
+        ]),
+        // 구글 OAuth
+        .dictionary([
+          "CFBundleURLName": .string("google-oauth"),
           "CFBundleURLSchemes": .array([
             .string("${REVERSED_CLIENT_ID}")
-//            .string("com.googleusercontent.apps.882277748169-glpolfiecue4lqqps6hmgj9t8lm1g5qp")
+          ])
+        ]),
+        // 구글 지도
+        .dictionary([
+          "CFBundleURLName": .string("google-maps"),
+          "CFBundleURLSchemes": .array([
+            .string("googlemaps"),
+            .string("comgooglemaps")
+          ])
+        ]),
+        // 네이버 지도
+        .dictionary([
+          "CFBundleURLName": .string("naver-maps"),
+          "CFBundleURLSchemes": .array([
+            .string("nmap"),
+            .string("nmapmobile")
           ])
         ])
       ])
@@ -181,7 +205,10 @@ extension InfoPlistDictionary {
   func setGoogleClientID(_ value: String) -> InfoPlistDictionary {
     return self.merging(["GOOGLE_CLIENT_ID": .string(value)]) { (_, new) in new }
   }
-  
+  func setGoogleClientiOSID(_ value: String) -> InfoPlistDictionary {
+    return self.merging(["GOOGLE_IOS_CLIENT_ID": .string(value)]) { (_, new) in new }
+  }
+
   func setBaseURL(_ value: String) -> InfoPlistDictionary {
     return self.merging(["BASE_URL": .string(value)]) { (_, new) in new }
   }
