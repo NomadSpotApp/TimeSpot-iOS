@@ -40,6 +40,7 @@ public extension InfoPlist {
       ])
       .setUIRequiredDeviceCapabilities(["armv7"])
       .setCFBundleDevelopmentRegion()
+      .setUISupportedInterfaceOrientations(["UIInterfaceOrientationPortrait"])
       .setBaseURL("$(BASE_URL)")
       .setNMFGovClientId("$(NMFGovClientId)")
       .setNMFGovClientSecret("$(NMFGovClientSecret)")
@@ -47,7 +48,6 @@ public extension InfoPlist {
       .setGoogleClientID("${GOOGLE_CLIENT_ID}")
       .setGoogleClientiOSID("${GOOGLE_IOS_CLIENT_ID}")
       .setGIDClientID("${GOOGLE_CLIENT_ID}")
-
       .setUILaunchScreens()
       .setLocationPermissions()
 
