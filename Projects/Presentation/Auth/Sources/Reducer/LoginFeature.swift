@@ -136,7 +136,7 @@ extension LoginFeature {
         // destination 해제 후 온보딩으로 이동
         return .run { send in
           // clearDestination 생략하고 바로 온보딩으로 이동
-          try await Task.sleep(for: .seconds(0.5))
+          try await Task.sleep(for: .seconds(0.3))
           await send(.delegate(.presentOnBoarding))
         }
 
@@ -187,7 +187,6 @@ extension LoginFeature {
         state.currentSocialType = socialType
         state.$userSession.withLock { $0.provider = socialType }
         return .run { [
-          useEntity = state.userSession,
           appleCredential = state.appleLoginFullName,
           nonce = state.nonce
         ] send in

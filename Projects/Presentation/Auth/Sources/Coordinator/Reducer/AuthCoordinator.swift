@@ -92,6 +92,9 @@ extension AuthCoordinator {
       case .routeAction(id: _, action: .login(.delegate(.presentMain))):
         return .send(.navigation(.presentMain))
 
+      case .routeAction(id: _, action: .onBoarding(.navigation(.presentMain))):
+        return .send(.navigation(.presentMain))
+
 
       default:
         return .none

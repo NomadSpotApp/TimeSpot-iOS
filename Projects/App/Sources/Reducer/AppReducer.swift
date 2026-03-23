@@ -181,7 +181,7 @@ extension AppReducer {
         // 토큰이 있어서 메인 화면으로 이동
         return .run { send in
           try await clock.sleep(for: .seconds(2))
-          await send(.view(.presentRoot))
+          await send(.view(.presentAuth))
         }
 
       case .splash(.navigation(.presentAuth)):

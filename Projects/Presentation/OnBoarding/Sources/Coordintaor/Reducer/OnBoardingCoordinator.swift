@@ -50,7 +50,7 @@ public struct OnBoardingCoordinator {
 
   // MARK: - NavigationAction
   public enum NavigationAction: Equatable {
-
+    case presentMain
   }
 
   public var body: some Reducer<State, Action> {
@@ -84,6 +84,8 @@ extension OnBoardingCoordinator {
   ) -> Effect<Action> {
     switch action {
 
+      case .routeAction(id: _, action: .onBoarding(.navigation(.onBoardingCompleted))):
+        return .send(.navigation(.presentMain))
 
       default:
         return .none
@@ -109,7 +111,10 @@ extension OnBoardingCoordinator {
     state: inout State,
     action: NavigationAction
   ) -> Effect<Action> {
-
+    switch action {
+      case .presentMain:
+        return .none
+    }
   }
 
   private func handleAsyncAction(

@@ -151,7 +151,7 @@ extension OnBoardingFeature {
         switch result {
           case .success(let data):
             state.loginEntity = data
-            return .none
+            return .send(.navigation(.onBoardingCompleted))
 
           case .failure(let error):
             #logDebug("회원가입 실패", error.localizedDescription)
