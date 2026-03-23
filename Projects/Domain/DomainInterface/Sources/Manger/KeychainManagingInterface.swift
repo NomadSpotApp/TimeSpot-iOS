@@ -8,14 +8,6 @@
 import Foundation
 
 public protocol KeychainManagingInterface: Sendable {
-  func save(accessToken: String, refreshToken: String)
-  func saveAccessToken(_ token: String)
-  func saveRefreshToken(_ token: String)
-  func accessToken() -> String?
-  func refreshToken() -> String?
-  func clear()
-
-  // MARK: - Modern Async API (iOS 17+)
   func save(accessToken: String, refreshToken: String) async throws
   func saveAccessToken(_ token: String) async throws
   func saveRefreshToken(_ token: String) async throws

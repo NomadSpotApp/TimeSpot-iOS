@@ -20,10 +20,21 @@ public enum ExternalMapType: String, CaseIterable, Identifiable, Hashable, Equat
         return "애플지도"
 
       case .googleMap:
-        return "구글 지도"
+        return "Google Maps"
 
       case .naverMap:
         return "네이버지도"
+    }
+  }
+
+  public var type: String {
+    switch self {
+      case .googleMap:
+        return "google"
+      case .naverMap:
+        return "naver"
+      case .appleMap:
+        return "apple"
     }
   }
 
