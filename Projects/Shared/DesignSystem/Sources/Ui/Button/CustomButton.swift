@@ -10,13 +10,13 @@ import SwiftUI
 public struct CustomButton: View {
   private let action: () -> Void
   private let title: String
-  private let config: DDDCustomButtonConfig
+  private let config: TimeSpotCustomButtonConfig
   private var isEnable: Bool = false
   
   public init(
     action: @escaping () -> Void,
     title: String,
-    config: DDDCustomButtonConfig,
+    config: TimeSpotCustomButtonConfig,
     isEnable: Bool = false
   ) {
     self.title = title

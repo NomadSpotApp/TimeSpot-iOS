@@ -15,7 +15,10 @@ import UIKit
 
 // Swift Concurrency를 사용한 위치 권한 전용 관리자
 @MainActor
-public class LocationPermissionManager: NSObject {
+public class LocationPermissionManager: NSObject, Sendable {
+
+    // 싱글톤 인스턴스
+    public static let shared = LocationPermissionManager()
     public var authorizationStatus: CLAuthorizationStatus = .notDetermined
     public var currentLocation: CLLocation?
     public var locationError: String?
@@ -23,6 +26,10 @@ public class LocationPermissionManager: NSObject {
     private let locationManager = CLLocationManager()
     private var authorizationContinuation: CheckedContinuation<CLAuthorizationStatus, Never>?
     private var locationContinuation: CheckedContinuation<CLLocation?, Error>?
+
+    // 지속적인 위치 업데이트 콜백
+    public var onLocationUpdate: ((CLLocation) -> Void)?
+    public var onLocationError: ((Error) -> Void)?
 
     public override init() {
         super.init()
@@ -43,10 +50,8 @@ public class LocationPermissionManager: NSObject {
             return .denied
         }
 
-        let currentStatus = locationManager.authorizationStatus
-        self.authorizationStatus = currentStatus
-
-        switch currentStatus {
+        // authorizationStatus는 델리게이트에서 업데이트된 값 사용
+        switch authorizationStatus {
         case .notDetermined:
             return await withCheckedContinuation { continuation in
                 self.authorizationContinuation = continuation
@@ -54,12 +59,12 @@ public class LocationPermissionManager: NSObject {
             }
         case .denied, .restricted:
             locationError = "위치 권한이 거부되었습니다. 설정에서 허용해 주세요."
-            return currentStatus
+            return authorizationStatus
         case .authorizedWhenInUse, .authorizedAlways:
-            return currentStatus
+            return authorizationStatus
         @unknown default:
             locationError = "알 수 없는 위치 권한 상태입니다."
-            return currentStatus
+            return authorizationStatus
         }
     }
 
@@ -158,7 +163,10 @@ extension LocationPermissionManager: CLLocationManagerDelegate {
             self.currentLocation = location
             self.locationError = nil
 
-            // continuation이 있으면 결과 반환
+            // 지속적인 위치 업데이트 콜백 호출
+            self.onLocationUpdate?(location)
+
+            // continuation이 있으면 결과 반환 (일회성 요청용)
             if let continuation = self.locationContinuation {
                 self.locationContinuation = nil
                 continuation.resume(returning: location)
@@ -170,7 +178,10 @@ extension LocationPermissionManager: CLLocationManagerDelegate {
         Task { @MainActor in
             self.locationError = "위치 업데이트 실패: \(error.localizedDescription)"
 
-            // continuation이 있으면 에러 반환
+            // 지속적인 위치 업데이트 에러 콜백 호출
+            self.onLocationError?(error)
+
+            // continuation이 있으면 에러 반환 (일회성 요청용)
             if let continuation = self.locationContinuation {
                 self.locationContinuation = nil
                 continuation.resume(throwing: error)

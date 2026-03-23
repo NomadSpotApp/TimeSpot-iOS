@@ -26,13 +26,14 @@ let packageSettings = PackageSettings(
 #endif
 
 let package = Package(
-  name: "MultiModuleTemplate",
+  name: "TimeSpot",
   dependencies: [
-    .package(url: "https://github.com/pointfreeco/swift-composable-architecture", exact: "1.18.0"),
-    .package(url: "https://github.com/johnpatrickmorgan/TCACoordinators.git", exact: "0.11.1"),
+    .package(url: "https://github.com/pointfreeco/swift-composable-architecture", exact: "1.23.0"),
+    .package(url: "https://github.com/johnpatrickmorgan/TCACoordinators.git", exact: "0.14.0"),
     .package(url: "https://github.com/Roy-wonji/WeaveDI.git", from: "3.4.0"),
     .package(url: "https://github.com/google/GoogleSignIn-iOS", from: "9.0.0"),
     .package(url: "https://github.com/Roy-wonji/AsyncMoya",  from: "1.1.8"),
     .package(url: "https://github.com/openid/AppAuth-iOS.git", from: "2.0.0"),
+    .package(url: "https://github.com/ReactiveCocoa/ReactiveSwift.git", from: "6.7.0"),
   ]
 )

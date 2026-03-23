@@ -135,46 +135,11 @@ extension HomeReducer {
   ) -> Effect<Action> {
     switch action {
       case .onAppear:
-        // 앱이 나타날 때 위치 권한 상태 확인
-        let currentStatus = CLLocationManager().authorizationStatus
-        state.locationPermissionStatus = currentStatus
-
-        switch currentStatus {
-          case .notDetermined:
-            // 권한 미결정 시 바로 팝업 표시
-            state.alert = AlertState {
-              TextState("위치 권한이 필요합니다")
-            } actions: {
-              ButtonState(action: Alert.confirmLocationPermission) {
-                TextState("허용")
-              }
-              ButtonState(role: .cancel, action: Alert.cancelLocationPermission) {
-                TextState("취소")
-              }
-            } message: {
-              TextState("TimeSpot이 근처 장소를 찾고 지도에 현재 위치를 표시하기 위해 위치 정보가 필요합니다.")
-            }
-            return .none
-          case .authorizedWhenInUse, .authorizedAlways:
-            return .send(.async(.startLocationUpdates))
-          case .denied, .restricted:
-            state.isLocationPermissionDenied = true
-            // 권한 거부 시 안내 팝업 표시
-            state.alert = AlertState {
-              TextState("위치 권한이 거부되었습니다")
-            } actions: {
-              ButtonState(action: Alert.openSettings) {
-                TextState("설정으로 이동")
-              }
-              ButtonState(role: .cancel, action: Alert.dismissAlert) {
-                TextState("나중에")
-              }
-            } message: {
-              TextState("위치 기반 서비스를 사용하려면 설정에서 위치 권한을 허용해주세요.")
-            }
-            return .none
-          @unknown default:
-            return .none
+        // 앱이 나타날 때 위치 권한 상태 확인 - UI 블로킹 방지
+        return .run { send in
+          let locationManager = await LocationPermissionManager.shared
+          let currentStatus = await locationManager.authorizationStatus
+          await send(.inner(.locationPermissionStatusChanged(currentStatus)))
         }
 
       case .onDisappear:
@@ -318,13 +283,15 @@ extension HomeReducer {
     switch action {
       case .requestLocationPermission:
         return .run { send in
-          let locationManager = await LocationPermissionManager()
+          let locationManager = await LocationPermissionManager.shared
           let status = await locationManager.requestLocationPermission()
 
           await send(.inner(.locationPermissionStatusChanged(status)))
 
-          // 권한이 허용되면 현재 위치 가져오기
+          // 권한이 허용되면 현재 위치 가져오기 시작
           if status == .authorizedWhenInUse || status == .authorizedAlways {
+            await locationManager.startLocationUpdates()
+
             do {
               if let location = try await locationManager.requestCurrentLocation() {
                 await send(.inner(.locationUpdated(location)))
@@ -342,20 +309,38 @@ extension HomeReducer {
       case .requestFullAccuracy:
         return .run { send in
           await MainActor.run {
-            let locationManager = LocationPermissionManager()
+            let locationManager = LocationPermissionManager.shared
             locationManager.requestFullAccuracy()
 
             Task {
               try await Task.sleep(for: .seconds(1))
-               send(.async(.startLocationUpdates))
+              await send(.async(.startLocationUpdates))
             }
           }
         }
 
       case .startLocationUpdates:
         return .run { send in
-          let locationManager = await LocationPermissionManager()
+          let locationManager = await LocationPermissionManager.shared
 
+          // 지속적인 위치 업데이트 콜백 설정 (MainActor에서 실행)
+          await MainActor.run {
+            locationManager.onLocationUpdate = { location in
+              Task { @MainActor in
+                await send(.inner(.locationUpdated(location)))
+              }
+            }
+
+            locationManager.onLocationError = { error in
+              Task { @MainActor in
+                await send(.inner(.locationUpdateFailed(error.localizedDescription)))
+              }
+            }
+          }
+
+          await locationManager.startLocationUpdates()
+
+          // 초기 위치도 가져오기
           do {
             if let location = try await locationManager.requestCurrentLocation() {
               await send(.inner(.locationUpdated(location)))
@@ -363,16 +348,12 @@ extension HomeReducer {
           } catch {
             await send(.inner(.locationUpdateFailed(error.localizedDescription)))
           }
-
-          if let error = await locationManager.locationError {
-            await send(.inner(.locationUpdateFailed(error)))
-          }
         }
 
       case .stopLocationUpdates:
         return .run { send in
           await MainActor.run {
-            let locationManager = LocationPermissionManager()
+            let locationManager = LocationPermissionManager.shared
             locationManager.stopLocationUpdates()
           }
         }
@@ -387,7 +368,7 @@ extension HomeReducer {
             try await getRouteUseCase.execute(
               from: from,
               to: destination.coordinate,
-              option: .walking
+              option: .traoptimal  // 최적 경로로 변경
             )
           }
           .mapError(DirectionError.from)
