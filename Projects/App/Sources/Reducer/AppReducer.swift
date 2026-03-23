@@ -188,6 +188,9 @@ extension AppReducer {
           await send(.view(.presentAuth))
         }
 
+      case .auth(.navigation(.presentMain)):
+        return .send(.view(.presentRoot))
+
 
     default:
       return .none

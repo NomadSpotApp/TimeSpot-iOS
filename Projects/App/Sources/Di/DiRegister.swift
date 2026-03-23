@@ -33,6 +33,18 @@ public final class AppDIManager {
         return KeychainTokenProvider(keychainManager: keychainManager) as TokenProviding
       }
       .register(DirectionInterface.self) { DirectionRepositoryImpl() }
+    // MARK: - 로그인
+      .register { AuthRepositoryImpl() as AuthInterface }
+      .register { GoogleOAuthRepositoryImpl() as GoogleOAuthInterface }
+      .register { GoogleOAuthProvider() as GoogleOAuthProviderInterface }
+      .register { AppleLoginRepositoryImpl() as AppleAuthRequestInterface }
+      .register { AppleOAuthRepositoryImpl() as AppleOAuthInterface }
+      .register { AppleOAuthProvider() as AppleOAuthProviderInterface }
+      // MARK: - 회원가입
+      .register { SignUpRepositoryImpl()  as SignUpInterface }
+
+
+
       .configure()
   }
 }
