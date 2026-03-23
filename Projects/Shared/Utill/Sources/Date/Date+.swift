@@ -7,7 +7,6 @@
 
 import Foundation
 
-import Model
 
 public extension Date {
   func formattedString() -> String {

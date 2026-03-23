@@ -21,7 +21,7 @@ public struct ToastView: View {
 
       // 메시지
       Text(toast.message)
-        .pretendardCustomFont(textStyle: .body1NormalBold)
+        .pretendardCustomFont(textStyle: .bodyBold)
         .foregroundColor(.white)
         .multilineTextAlignment(.leading)
         .fixedSize(horizontal: false, vertical: true)

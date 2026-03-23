@@ -18,6 +18,7 @@ public struct AppReducer: Sendable {
   public enum State {
     case splash(SplashReducer.State)
     case home(HomeReducer.State)
+    case auth(AuthCoordinator.State)
 
 
     public init() {
@@ -28,6 +29,7 @@ public struct AppReducer: Sendable {
     var animationID: String {
       switch self {
       case .splash: return "splash"
+      case .auth: return "auth"
       case .home: return "home"
       }
     }
@@ -70,16 +72,20 @@ public struct AppReducer: Sendable {
   public enum ScopeAction {
     case splash(SplashReducer.Action)
     case home(HomeReducer.Action)
+    case auth(AuthCoordinator.Action)
   }
 
   @Dependency(\.continuousClock) var clock
+
+  private enum Constants {
+    static let splashTransitionDelay: Duration = .seconds(2)
+  }
 
   private enum CancelID {
     case refreshTokenExpiredListener
     case splashRouting
     case authEffects
-    case staffEffects
-    case memberEffects
+    case mainEffects
   }
 
   public var body: some ReducerOf<Self> {
@@ -107,6 +113,9 @@ public struct AppReducer: Sendable {
     .ifCaseLet(\.home, action: \.scope.home) {
       HomeReducer()
     }
+    .ifCaseLet(\.auth, action: \.scope.auth) {
+      AuthCoordinator()
+    }
   }
 }
 
@@ -126,10 +135,9 @@ extension AppReducer {
       return .none
 
     case .presentAuth:
-//      state = .auth(.init())
+      state = .auth(.init())
       return .concatenate(
-        .cancel(id: CancelID.staffEffects),
-        .cancel(id: CancelID.memberEffects)
+        .cancel(id: CancelID.mainEffects),
       )
 
     }
@@ -146,13 +154,10 @@ extension AppReducer {
 
     case .refreshTokenExpired:
       // Refresh token이 만료된 경우 로그인 화면으로 이동
-
-//      state = .auth(.init())
-
+      state = .auth(.init())
       return .concatenate(
         .cancel(id: CancelID.splashRouting),
-        .cancel(id: CancelID.staffEffects),
-        .cancel(id: CancelID.memberEffects)
+        .cancel(id: CancelID.mainEffects),
       )
     }
   }
@@ -177,11 +182,22 @@ extension AppReducer {
   ) -> Effect<Action> {
     switch action {
       case .splash(.navigation(.presentHome)):
+        // 토큰이 있어서 메인 화면으로 이동
         return .run { send in
-          try await clock.sleep(for: .seconds(0.3))
-          await send(.view(.presentRoot))
+          try await clock.sleep(for: Constants.splashTransitionDelay)
+          await send(.view(.presentAuth))
         }
 
+      case .splash(.navigation(.presentAuth)):
+        // 토큰이 없어서 로그인 화면으로 이동
+        return .run { send in
+          try await clock.sleep(for: Constants.splashTransitionDelay)
+          await send(.view(.presentAuth))
+        }
+
+      case .auth(.navigation(.presentMain)):
+        // 로그인 완료 후 메인 화면으로
+        return .send(.view(.presentRoot))
 
     default:
       return .none

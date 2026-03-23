@@ -43,6 +43,11 @@ public extension InfoPlist {
       .setBaseURL("$(BASE_URL)")
       .setNMFGovClientId("$(NMFGovClientId)")
       .setNMFGovClientSecret("$(NMFGovClientSecret)")
+      .setGoogleReversedClientID("${REVERSED_CLIENT_ID}")
+      .setGoogleClientID("${GOOGLE_CLIENT_ID}")
+      .setGoogleClientiOSID("${GOOGLE_IOS_CLIENT_ID}")
+      .setGIDClientID("${GOOGLE_CLIENT_ID}")
+
       .setUILaunchScreens()
       .setLocationPermissions()
 
