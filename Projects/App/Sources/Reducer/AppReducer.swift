@@ -81,8 +81,7 @@ public struct AppReducer: Sendable {
     case refreshTokenExpiredListener
     case splashRouting
     case authEffects
-    case staffEffects
-    case memberEffects
+    case mainEffects
   }
 
   public var body: some ReducerOf<Self> {
@@ -134,8 +133,7 @@ extension AppReducer {
     case .presentAuth:
       state = .auth(.init())
       return .concatenate(
-        .cancel(id: CancelID.staffEffects),
-        .cancel(id: CancelID.memberEffects)
+        .cancel(id: CancelID.mainEffects),
       )
 
     }
@@ -152,13 +150,10 @@ extension AppReducer {
 
     case .refreshTokenExpired:
       // Refresh token이 만료된 경우 로그인 화면으로 이동
-
-//      state = .auth(.init())
-
+      state = .auth(.init())
       return .concatenate(
         .cancel(id: CancelID.splashRouting),
-        .cancel(id: CancelID.staffEffects),
-        .cancel(id: CancelID.memberEffects)
+        .cancel(id: CancelID.mainEffects),
       )
     }
   }
@@ -183,14 +178,22 @@ extension AppReducer {
   ) -> Effect<Action> {
     switch action {
       case .splash(.navigation(.presentHome)):
+        // 토큰이 있어서 메인 화면으로 이동
+        return .run { send in
+          try await clock.sleep(for: .seconds(2))
+          await send(.view(.presentRoot))
+        }
+
+      case .splash(.navigation(.presentAuth)):
+        // 토큰이 없어서 로그인 화면으로 이동
         return .run { send in
           try await clock.sleep(for: .seconds(2))
           await send(.view(.presentAuth))
         }
 
       case .auth(.navigation(.presentMain)):
+        // 로그인 완료 후 메인 화면으로
         return .send(.view(.presentRoot))
-
 
     default:
       return .none

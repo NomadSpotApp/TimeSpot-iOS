@@ -36,6 +36,9 @@ public struct SplashView: View {
         .opacity(logoOpacity)
     }
     .onAppear {
+      // 토큰 확인 시작
+      store.send(.view(.onAppear))
+
       // 1단계: 로고 확대
       withAnimation(.easeIn(duration: 0.6).delay(0.3)) {
         scale = 30.0
@@ -49,9 +52,6 @@ public struct SplashView: View {
       DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) {
         isFinished = true
       }
-    }
-    .onAppear {
-      store.send(.navigation(.presentHome))
     }
   }
 }

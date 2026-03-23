@@ -8,6 +8,7 @@
 
 import Foundation
 import ComposableArchitecture
+import UseCase
 
 
 @Reducer
@@ -15,6 +16,8 @@ public struct SplashReducer {
   public init() {}
 
   public struct State: Equatable {
+    public var isCheckingToken = false
+    public var hasValidToken = false
 
     public init() {}
   }
@@ -31,25 +34,26 @@ public struct SplashReducer {
   //MARK: - ViewAction
   @CasePathable
   public enum View {
-
+    case onAppear
   }
-
 
   //MARK: - AsyncAction 비동기 처리 액션
   public enum AsyncAction: Equatable {
-
+    case checkToken
   }
 
   //MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
+    case tokenCheckResult(Bool)
   }
 
   //MARK: - NavigationAction
   public enum NavigationAction: Equatable {
     case presentHome
-
+    case presentAuth
   }
 
+  @Dependency(\.keychainManager) var keychainManager
 
   public var body: some Reducer<State, Action> {
     BindingReducer()
@@ -80,7 +84,9 @@ extension SplashReducer {
     action: View
   ) -> Effect<Action> {
     switch action {
-
+      case .onAppear:
+        state.isCheckingToken = true
+        return .send(.async(.checkToken))
     }
   }
 
@@ -89,7 +95,16 @@ extension SplashReducer {
     action: AsyncAction
   ) -> Effect<Action> {
     switch action {
+      case .checkToken:
+        return .run { send in
+          // 키체인에서 액세스 토큰 확인
+          let token = await keychainManager.accessToken()
+          let hasToken = token != nil && !token!.isEmpty
 
+          // 1.5초 스플래시 시간 후 결과 전달
+          try await Task.sleep(for: .seconds(1.5))
+          await send(.inner(.tokenCheckResult(hasToken)))
+        }
     }
   }
 
@@ -101,6 +116,8 @@ extension SplashReducer {
       case .presentHome:
         return .none
 
+      case .presentAuth:
+        return .none
     }
   }
 
@@ -109,7 +126,17 @@ extension SplashReducer {
     action: InnerAction
   ) -> Effect<Action> {
     switch action {
+      case .tokenCheckResult(let hasToken):
+        state.isCheckingToken = false
+        state.hasValidToken = hasToken
 
+        if hasToken {
+          // 토큰이 있으면 메인 화면으로
+          return .send(.navigation(.presentHome))
+        } else {
+          // 토큰이 없으면 로그인 화면으로
+          return .send(.navigation(.presentAuth))
+        }
     }
   }
 }
