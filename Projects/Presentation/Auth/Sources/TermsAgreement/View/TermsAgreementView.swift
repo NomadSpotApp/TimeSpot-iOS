@@ -105,7 +105,11 @@ extension TermsAgreementView {
     CustomButton(
       action: {
         modalDismiss()
-        store.send(.scope(.close))
+
+        // 모달이 닫힌 후 약간의 지연을 두고 close 액션 전송
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+          store.send(.scope(.close))
+        }
       },
       title: "확인",
       config: CustomButtonConfig.create(),

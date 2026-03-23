@@ -10,18 +10,21 @@ import ComposableArchitecture
 
 import UseCase
 import Entity
+import LogMacro
 
 @Reducer
 public struct OnBoardingFeature {
   public init() {}
 
   @ObservableState
-  public struct State: Equatable, Hashable {
+  public struct State: Hashable {
 
     public init() {}
     var stepRange: ClosedRange<Int> = 1...4
     var activeStep: Int = 1
     var selectedMap: ExternalMapType? = nil
+    var loginEntity: LoginEntity? = nil
+    @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
   }
 
   public enum Action: ViewAction, BindableAction {
@@ -44,11 +47,12 @@ public struct OnBoardingFeature {
 
   //MARK: - AsyncAction 비동기 처리 액션
   public enum AsyncAction: Equatable {
-
+    case signup
   }
 
   //MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
+    case signUpResponse(Result<LoginEntity, SignUpError>)
   }
 
   //MARK: - NavigationAction
@@ -56,6 +60,11 @@ public struct OnBoardingFeature {
     case onBoardingCompleted
   }
 
+  nonisolated enum CancelID: Hashable {
+    case signup
+  }
+
+  @Dependency(\.signUpUseCase) var signUpUseCase
 
   public var body: some Reducer<State, Action> {
     BindingReducer()
@@ -88,13 +97,16 @@ extension OnBoardingFeature {
     switch action {
     case .nextStepButtonTapped:
       if state.activeStep >= state.stepRange.upperBound {
-        return .send(.navigation(.onBoardingCompleted))
+        return .send(.async(.signup))
       }
       state.activeStep += 1
       return .none
 
     case .mapSelected(let mapType):
       state.selectedMap = state.selectedMap == mapType ? nil : mapType
+        state.$userSession.withLock {
+          $0.mapType = mapType
+        }
       return .none
     }
   }
@@ -104,7 +116,17 @@ extension OnBoardingFeature {
     action: AsyncAction
   ) -> Effect<Action> {
     switch action {
-
+      case .signup:
+        return .run { [
+          userSession = state.userSession
+        ] send in
+          let signupResult = await Result {
+            try await signUpUseCase.registerUser(userSession: userSession)
+          }
+            .mapError(SignUpError.from)
+          return await send(.inner(.signUpResponse(signupResult)))
+        }
+        .cancellable(id: CancelID.signup, cancelInFlight: true)
     }
   }
 
@@ -125,7 +147,34 @@ extension OnBoardingFeature {
   ) -> Effect<Action> {
     switch action {
 
+      case .signUpResponse(let result):
+        switch result {
+          case .success(let data):
+            state.loginEntity = data
+            return .none
+
+          case .failure(let error):
+            #logDebug("회원가입 실패", error.localizedDescription)
+            return .none
+        }
     }
   }
 }
+
+// MARK: - State Equatable & Hashable
+extension OnBoardingFeature.State: Equatable {
+  public static func == (lhs: OnBoardingFeature.State, rhs: OnBoardingFeature.State) -> Bool {
+    lhs.stepRange == rhs.stepRange &&
+    lhs.activeStep == rhs.activeStep &&
+    lhs.selectedMap == rhs.selectedMap &&
+    lhs.loginEntity == rhs.loginEntity
+  }
+}
+extension OnBoardingFeature.State {
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(activeStep)
+    hasher.combine(selectedMap)
+  }
+}
+
 

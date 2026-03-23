@@ -6,9 +6,16 @@
 //
 
 import Foundation
-import ComposableArchitecture
+import AuthenticationServices
 
+import Entity
+import DesignSystem
 import Utill
+
+import ComposableArchitecture
+import LogMacro
+
+
 
 @Reducer
 public struct LoginFeature {
@@ -17,6 +24,12 @@ public struct LoginFeature {
   @ObservableState
   public struct State: Equatable, Hashable {
     @Presents var destination: Destination.State?
+    var nonce: String = ""
+    var appleAccessToken: String = ""
+    var appleLoginFullName: ASAuthorizationAppleIDCredential?
+    var loginEntity: LoginEntity?
+    var currentSocialType: SocialType?
+    @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
 
     public init() {}
   }
@@ -34,7 +47,7 @@ public struct LoginFeature {
   //MARK: - ViewAction
   @CasePathable
   public enum View {
-
+    case signInWithSocial(social: SocialType)
   }
 
   @Reducer
@@ -43,13 +56,16 @@ public struct LoginFeature {
   }
 
   //MARK: - AsyncAction 비동기 처리 액션
-  public enum AsyncAction: Equatable {
-
+  public enum AsyncAction {
+    case prepareAppleRequest(ASAuthorizationAppleIDRequest)
+    case appleLogin(Result<ASAuthorization, Error>, nonce: String)
+    case login(socialType: SocialType)
   }
 
   //MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
     case clearDestination
+    case loginResponse(Result<LoginEntity, AuthError>)
   }
 
   //MARK: - DelegateAction
@@ -57,9 +73,19 @@ public struct LoginFeature {
     case presentTermsAgreement
     case presentPrivacyWeb
     case presentOnBoarding
+    case presentMain
 
   }
 
+  nonisolated enum CancelID: Hashable {
+    case googleOAuth
+    case appleOAuth
+  }
+
+
+
+  @Dependency(\.appleManger) var appleLoginManger
+  @Dependency(\.unifiedOAuthUseCase) var unifiedOAuthUseCase
 
   public var body: some Reducer<State, Action> {
     BindingReducer()
@@ -94,7 +120,8 @@ extension LoginFeature {
     action: View
   ) -> Effect<Action> {
     switch action {
-
+      case .signInWithSocial(let social):
+        return .send(.async(.login(socialType: social)))
     }
   }
 
@@ -106,10 +133,10 @@ extension LoginFeature {
   ) -> Effect<Action> {
     switch action {
       case .presented(.termsService(.scope(.close))):
-        // 3초 후에 destination 해제
+        // destination 해제 후 온보딩으로 이동
         return .run { send in
-          try await Task.sleep(for: .seconds(1.2))
-          await send(.inner(.clearDestination))
+          // clearDestination 생략하고 바로 온보딩으로 이동
+          try await Task.sleep(for: .seconds(0.5))
           await send(.delegate(.presentOnBoarding))
         }
 
@@ -128,7 +155,51 @@ extension LoginFeature {
     action: AsyncAction
   ) -> Effect<Action> {
     switch action {
+      case .prepareAppleRequest(let request):
+        let nonce = appleLoginManger.prepare(request)
+        state.nonce = nonce
+        return .none
 
+      case .appleLogin(let result, let nonce):
+        state.currentSocialType = .apple
+        return .run { send in
+          guard
+            case .success(let auth) = result,
+            let credential = auth.credential as? ASAuthorizationAppleIDCredential,
+            !nonce.isEmpty
+          else {
+            await send(.inner(.loginResponse(.failure(.invalidCredential("Apple 인증 정보가 없습니다")))))
+            return
+          }
+
+          // Apple credential을 직접 처리하여 로그인 완료
+          let outcome = await unifiedOAuthUseCase.processOAuthFlow(
+            with: .apple,
+            appleCredential: credential,
+            nonce: nonce,
+            googleToken: nil
+          )
+          await send(.inner(.loginResponse(outcome)))
+        }
+        .cancellable(id: CancelID.appleOAuth)
+
+      case .login(let socialType):
+        state.currentSocialType = socialType
+        state.$userSession.withLock { $0.provider = socialType }
+        return .run { [
+          useEntity = state.userSession,
+          appleCredential = state.appleLoginFullName,
+          nonce = state.nonce
+        ] send in
+          let outcome = await unifiedOAuthUseCase.processOAuthFlow(
+            with: socialType,
+            appleCredential: appleCredential,
+            nonce: nonce,
+            googleToken: ""
+          )
+          return await send(.inner(.loginResponse(outcome)))
+        }
+        .cancellable(id: socialType == .apple ? CancelID.appleOAuth : CancelID.googleOAuth)
     }
   }
 
@@ -148,6 +219,9 @@ extension LoginFeature {
       case .presentOnBoarding:
         return .none
 
+      case .presentMain:
+        return .none
+
     }
   }
   
@@ -159,12 +233,60 @@ extension LoginFeature {
     case .clearDestination:
       state.destination = nil
       return .none
+
+      case .loginResponse(let result):
+        switch result {
+          case .success(let loginEntity):
+            state.loginEntity = loginEntity
+
+            if loginEntity.isNewUser {
+              return .send(.delegate(.presentTermsAgreement))
+            } else {
+              return .send(.delegate(.presentMain))
+            }
+
+
+          case .failure(let error):
+            #logNetwork("로그인 실패", error.localizedDescription)
+            let socialType = state.currentSocialType
+            return .run { send in
+              await MainActor.run {
+                let errorMessage: String
+                switch socialType {
+                  case .apple:
+                    errorMessage = "Apple 인증에 실패하였습니다."
+                  case .google:
+                    errorMessage = "구글 인증에 실패하였습니다."
+                  default:
+                    errorMessage = "인증에 실패했어요. 다시 시도해주세요."
+                }
+                ToastManager.shared.showError(errorMessage)
+              }
+            }
+        }
     }
   }
 }
 
 
 
-// MARK: - Destination State Equatable
+// MARK: - State Equatable & Hashable
+extension LoginFeature.State {
+  public static func == (lhs: LoginFeature.State, rhs: LoginFeature.State) -> Bool {
+    lhs.nonce == rhs.nonce &&
+    lhs.appleAccessToken == rhs.appleAccessToken &&
+    lhs.loginEntity == rhs.loginEntity &&
+    lhs.currentSocialType == rhs.currentSocialType &&
+    lhs.destination == rhs.destination
+  }
+
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(nonce)
+    hasher.combine(appleAccessToken)
+    hasher.combine(currentSocialType)
+  }
+}
+
+// MARK: - Destination State Equatable & Hashable
 extension LoginFeature.Destination.State: Equatable {}
 extension LoginFeature.Destination.State: Hashable {}

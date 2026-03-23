@@ -18,7 +18,7 @@ public struct OnBoardingCoordinator {
     var routes: [Route<OnBoardingScreen.State>]
 
     public init() {
-      self.routes = [.root(.onBoarding(.init()), withNavigation: true)]
+      self.routes = [.root(.onBoarding(.init()), withNavigation: false)]
     }
   }
 
@@ -100,9 +100,8 @@ extension OnBoardingCoordinator {
         return .none
 
       case .backToRootAction:
-        return .routeWithDelaysIfUnsupported(state.routes, action: \.router) {
-          $0.goBackToRoot()
-        }
+        state.routes.goBackToRoot()
+        return .none
     }
   }
 

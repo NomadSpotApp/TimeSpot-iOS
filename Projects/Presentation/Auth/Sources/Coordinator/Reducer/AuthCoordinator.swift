@@ -51,7 +51,7 @@ public struct AuthCoordinator {
 
   // MARK: - NavigationAction
   public enum NavigationAction: Equatable {
-    
+    case presentMain
   }
 
   public var body: some Reducer<State, Action> {
@@ -89,6 +89,9 @@ extension AuthCoordinator {
         state.routes.push(.onBoarding(.init()))
         return .none
 
+      case .routeAction(id: _, action: .login(.delegate(.presentMain))):
+        return .send(.navigation(.presentMain))
+
 
       default:
         return .none
@@ -105,9 +108,8 @@ extension AuthCoordinator {
         return .none
 
       case .backToRootAction:
-        return .routeWithDelaysIfUnsupported(state.routes, action: \.router) {
-          $0.goBackToRoot()
-        }
+        state.routes.goBackToRoot()
+        return .none
     }
   }
 
@@ -115,6 +117,10 @@ extension AuthCoordinator {
     state: inout State,
     action: NavigationAction
   ) -> Effect<Action> {
+    switch action {
+      case .presentMain:
+        return .none
+    }
 
   }
 

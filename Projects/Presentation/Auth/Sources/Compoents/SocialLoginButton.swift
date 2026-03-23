@@ -23,9 +23,9 @@ public struct SocialLoginButton: View {
     switch type {
       case .apple:
         appleLoginButton(type: type) { request in
-
+          store.send(.async(.prepareAppleRequest(request)))
         } onCompletion: { result  in
-
+          store.send(.async(.appleLogin(result, nonce: store.nonce)))
         }
 
       case .google:
@@ -75,6 +75,7 @@ extension SocialLoginButton {
             Spacer()
           }
         }
+        .allowsHitTesting(false)
         .allowsTightening(false)
         .clipShape(Capsule())
     }

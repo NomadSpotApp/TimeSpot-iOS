@@ -64,9 +64,10 @@ extension LoginView {
     VStack(alignment: .center, spacing: 8) {
       ForEach(SocialType.allCases) { type in
         SocialLoginButton(store: store, type: type) {
-          store.send(.delegate(.presentTermsAgreement))
+          // 애플 로그인은 SignInWithAppleButton 자체 처리 사용
+          // 구글 로그인만 여기서 처리
+          store.send(.view(.signInWithSocial(social: type)))
         }
-
       }
     }
     .padding(.horizontal, 22)

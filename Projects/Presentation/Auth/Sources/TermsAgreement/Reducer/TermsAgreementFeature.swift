@@ -85,9 +85,8 @@ extension TermsAgreementFeature {
   ) -> Effect<Action> {
     switch action {
       case .close:
-        return .run { send in
-          try await clock.sleep(for: .microseconds(300))
-        }
+        // 약관 동의 완료 - 바로 종료 신호를 보냄
+        return .none
     }
   }
 
