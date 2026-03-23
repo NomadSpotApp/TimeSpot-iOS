@@ -15,6 +15,10 @@ import UseCase
 public struct SplashReducer {
   public init() {}
 
+  private enum Constants {
+    static let tokenCheckDelay: Duration = .seconds(1.5)
+  }
+
   public struct State: Equatable {
     public var isCheckingToken = false
     public var hasValidToken = false
@@ -102,8 +106,13 @@ extension SplashReducer {
           let hasToken = token != nil && !token!.isEmpty
 
           // 1.5초 스플래시 시간 후 결과 전달
-          try await Task.sleep(for: .seconds(1.5))
-          await send(.inner(.tokenCheckResult(hasToken)))
+          do {
+            try await Task.sleep(for: Constants.tokenCheckDelay)
+            await send(.inner(.tokenCheckResult(hasToken)))
+          } catch {
+            // Task 취소 또는 기타 에러 처리
+            await send(.inner(.tokenCheckResult(hasToken)))
+          }
         }
     }
   }

@@ -77,6 +77,10 @@ public struct AppReducer: Sendable {
 
   @Dependency(\.continuousClock) var clock
 
+  private enum Constants {
+    static let splashTransitionDelay: Duration = .seconds(2)
+  }
+
   private enum CancelID {
     case refreshTokenExpiredListener
     case splashRouting
@@ -180,14 +184,14 @@ extension AppReducer {
       case .splash(.navigation(.presentHome)):
         // 토큰이 있어서 메인 화면으로 이동
         return .run { send in
-          try await clock.sleep(for: .seconds(2))
+          try await clock.sleep(for: Constants.splashTransitionDelay)
           await send(.view(.presentAuth))
         }
 
       case .splash(.navigation(.presentAuth)):
         // 토큰이 없어서 로그인 화면으로 이동
         return .run { send in
-          try await clock.sleep(for: .seconds(2))
+          try await clock.sleep(for: Constants.splashTransitionDelay)
           await send(.view(.presentAuth))
         }
 

@@ -16,6 +16,10 @@ import LogMacro
 public struct OnBoardingFeature {
   public init() {}
 
+  private enum SharedKeys {
+    static let userSession = "UserSession"
+  }
+
   @ObservableState
   public struct State: Hashable {
 
@@ -24,7 +28,7 @@ public struct OnBoardingFeature {
     var activeStep: Int = 1
     var selectedMap: ExternalMapType? = nil
     var loginEntity: LoginEntity? = nil
-    @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
+    @Shared(.inMemory(SharedKeys.userSession)) var userSession: UserSession = .empty
   }
 
   public enum Action: ViewAction, BindableAction {

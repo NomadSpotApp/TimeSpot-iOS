@@ -326,13 +326,13 @@ extension HomeReducer {
           // 지속적인 위치 업데이트 콜백 설정 (MainActor에서 실행)
           await MainActor.run {
             locationManager.onLocationUpdate = { location in
-              Task {
+              Task { @MainActor in
                 await send(.inner(.locationUpdated(location)))
               }
             }
 
             locationManager.onLocationError = { error in
-              Task {
+              Task { @MainActor in
                 await send(.inner(.locationUpdateFailed(error.localizedDescription)))
               }
             }

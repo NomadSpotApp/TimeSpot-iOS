@@ -18,7 +18,7 @@ public struct OnBoardingCoordinator {
     var routes: [Route<OnBoardingScreen.State>]
 
     public init() {
-      self.routes = [.root(.onBoarding(.init()), withNavigation: false)]
+      self.routes = [.root(.onBoarding(.init()), withNavigation: true)]
     }
   }
 
