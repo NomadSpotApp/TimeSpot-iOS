@@ -86,11 +86,8 @@ extension AuthCoordinator {
     switch action {
 
       case .routeAction(id: _, action: .login(.delegate(.presentOnBoarding))):
-        return .run { send in
-          await MainActor.run {
-            state.routes.push(.onBoarding(.init()))
-          }
-        }
+        state.routes.push(.onBoarding(.init()))
+        return .none
 
       case .routeAction(id: _, action: .login(.delegate(.presentMain))):
         return .send(.navigation(.presentMain))
