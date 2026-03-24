@@ -418,3 +418,18 @@ extension ExploreReducer {
     }
   }
 }
+
+// MARK: - ExploreReducer.State + Hashable
+extension ExploreReducer.State: Hashable {
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(locationPermissionStatus)
+    hasher.combine(currentLocation?.coordinate.latitude)
+    hasher.combine(currentLocation?.coordinate.longitude)
+    hasher.combine(isLocationPermissionDenied)
+    hasher.combine(locationError)
+    hasher.combine(isLoadingRoute)
+    hasher.combine(routeError)
+    hasher.combine(shouldReturnToCurrentLocation)
+    // Note: alert, selectedDestination, routeInfo are not hashed as they contain complex types
+  }
+}
