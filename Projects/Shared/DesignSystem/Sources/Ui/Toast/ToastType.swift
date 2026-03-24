@@ -28,28 +28,28 @@ public enum ToastType: Equatable {
   public var backgroundColor: Color {
     switch self {
       case .success:
-        return .gray700
+        return .gray800
       case .error:
-        return .gray700
+        return .gray800
       case .warning:
-        return .gray700
+        return .gray800
       case .info:
-        return .gray700
+        return .gray800
       case .loading:
-        return .gray700
+        return .gray800
     }
   }
 
   public var iconName: String? {
     switch self {
       case .success:
-        return "checkBlue"
+        return "warning"
       case .error:
-        return "errorXmark"
+        return "warning"
       case .warning:
-        return "errorXmark"
+        return "warning"
       case .info:
-        return "info.circle.fill"
+        return "warning"
       case .loading:
         return nil
     }

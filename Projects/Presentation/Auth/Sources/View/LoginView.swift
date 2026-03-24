@@ -39,6 +39,7 @@ public struct LoginView: View {
       ) { termServiceStore in
           TermsAgreementView(store: termServiceStore)
       }
+      .toastOverlay()
     }
   }
 }
