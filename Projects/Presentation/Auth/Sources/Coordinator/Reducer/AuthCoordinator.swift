@@ -87,7 +87,7 @@ extension AuthCoordinator {
 
       case .routeAction(id: _, action: .login(.delegate(.presentOnBoarding))):
         return .run { send in
-          await Task.yield()
+          try await Task.sleep(for: .milliseconds(50))
           await send(.inner(.pushOnBoarding))
         }
 
@@ -133,7 +133,10 @@ extension AuthCoordinator {
     state: inout State,
     action: AsyncAction
   ) -> Effect<Action> {
-
+    switch action {
+    default:
+      return .none
+    }
   }
 
   private func handleInnerAction(
