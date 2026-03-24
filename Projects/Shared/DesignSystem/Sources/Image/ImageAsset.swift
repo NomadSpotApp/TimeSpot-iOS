@@ -26,8 +26,13 @@ public enum ImageAsset: String {
   case onBoardingLogo1
   case onBoardingLogo2
   case onBoardingLogo3
+  case homeLogo
+  case logo
+  case loginlogo
 
   case warning
+  case setting
+  case time
 
   case none
 }

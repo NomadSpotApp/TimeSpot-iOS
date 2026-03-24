@@ -9,7 +9,6 @@ import SwiftUI
 
 public struct ToastView: View {
   let toast: ToastType
-  @StateObject private var toastManager = ToastManager.shared
 
   public init(toast: ToastType) {
     self.toast = toast
@@ -41,7 +40,7 @@ public struct ToastView: View {
 
 // MARK: - Toast Overlay Modifier
 public struct ToastOverlay: ViewModifier {
-  @StateObject private var toastManager = ToastManager.shared
+  @ObservedObject private var toastManager = ToastManager.shared
 
   public func body(content: Content) -> some View {
     content

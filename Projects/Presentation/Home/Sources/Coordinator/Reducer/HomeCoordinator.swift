@@ -1,30 +1,30 @@
 //
-//  AuthCoordinator.swift
-//  Auth
+//  HomeCoordinator.swift
+//  Home
 //
-//  Created by Wonji Suh  on 3/17/26.
+//  Created by Wonji Suh  on 3/24/26.
 //
 
 import ComposableArchitecture
 import TCACoordinators
-import OnBoarding
+import IdentifiedCollections
 
 @Reducer
-public struct AuthCoordinator {
+public struct HomeCoordinator {
 
   public init(){}
 
   @ObservableState
   public struct State: Equatable {
-    var routes: [Route<AuthScreen.State>]
+    var routes: [Route<HomeScreen.State>]
 
     public init() {
-      self.routes = [.root(.login(.init()), withNavigation: true)]
+      self.routes = [.root(.home(.init()), withNavigation: true)]
     }
   }
 
   public enum Action {
-    case router(IndexedRouterActionOf<AuthScreen>)
+    case router(IndexedRouterActionOf<HomeScreen>)
     case view(View)
     case async(AsyncAction)
     case inner(InnerAction)
@@ -46,13 +46,12 @@ public struct AuthCoordinator {
 
   // MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
-    case pushOnBoarding
-    case performPushOnBoarding
+
   }
 
   // MARK: - NavigationAction
   public enum NavigationAction: Equatable {
-    case presentMain
+
   }
 
   public var body: some Reducer<State, Action> {
@@ -79,21 +78,14 @@ public struct AuthCoordinator {
 
 }
 
-extension AuthCoordinator {
+extension HomeCoordinator {
   private func routerAction(
     state: inout State,
-    action: IndexedRouterActionOf<AuthScreen>
+    action: IndexedRouterActionOf<HomeScreen>
   ) -> Effect<Action> {
     switch action {
 
-      case .routeAction(id: _, action: .login(.delegate(.presentOnBoarding))):
-        return .send(.inner(.pushOnBoarding))
-
-      case .routeAction(id: _, action: .login(.delegate(.presentMain))):
-        return .send(.navigation(.presentMain))
-
-      case .routeAction(id: _, action: .onBoarding(.navigation(.onBoardingCompleted))):
-        return .send(.navigation(.presentMain))
+      
 
       default:
         return .none
@@ -119,11 +111,7 @@ extension AuthCoordinator {
     state: inout State,
     action: NavigationAction
   ) -> Effect<Action> {
-    switch action {
-      case .presentMain:
-        return .none
-    }
-
+    return .none
   }
 
   private func handleAsyncAction(
@@ -140,31 +128,21 @@ extension AuthCoordinator {
     state: inout State,
     action: InnerAction
   ) -> Effect<Action> {
-    switch action {
-      case .pushOnBoarding:
-        return .run { send in
-          await Task.yield()
-          await send(.inner(.performPushOnBoarding))
-        }
-        
-      case .performPushOnBoarding:
-        state.routes.push(.onBoarding(.init()))
-        return .none
-    }
+    return .none
   }
 
 }
 
-extension AuthCoordinator {
+extension HomeCoordinator {
   @Reducer
-  public enum AuthScreen {
-    case login(LoginFeature)
-    case onBoarding(OnBoardingFeature)
+  public enum HomeScreen {
+    case home(HomeReducer)
+    case explore(ExploreReducer)
   }
 }
 
 // MARK: - AuthScreen State Equatable & Hashable
-extension AuthCoordinator.AuthScreen.State: Equatable {}
-extension AuthCoordinator.AuthScreen.State: Hashable {}
+extension HomeCoordinator.HomeScreen.State: Equatable {}
+extension HomeCoordinator.HomeScreen.State: Hashable {}
 
 

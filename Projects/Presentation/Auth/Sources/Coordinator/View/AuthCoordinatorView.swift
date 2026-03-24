@@ -26,7 +26,7 @@ public struct AuthCoordinatorView: View {
             .navigationBarBackButtonHidden()
 
         case .onBoarding(let onBoardingStore):
-          OnBoardingCoordinatorView(store: onBoardingStore)
+          OnBoardingView(store: onBoardingStore)
             .navigationBarBackButtonHidden()
             .transition(.opacity.combined(with: .scale(scale: 0.98)))
       }

@@ -13,23 +13,43 @@ import CoreLocation
 import UIKit
 #endif
 
+// MARK: - Location Errors
+public enum LocationError: Error, LocalizedError {
+    case permissionDenied
+    case locationUnavailable
+    case timeout
+
+    public var errorDescription: String? {
+        switch self {
+        case .permissionDenied:
+            return "위치 권한이 거부되었습니다."
+        case .locationUnavailable:
+            return "위치 정보를 가져올 수 없습니다."
+        case .timeout:
+            return "위치 요청 시간이 초과되었습니다."
+        }
+    }
+}
+
 // Swift Concurrency를 사용한 위치 권한 전용 관리자
 @MainActor
-public class LocationPermissionManager: NSObject, Sendable {
+public final class LocationPermissionManager: NSObject, ObservableObject {
 
     // 싱글톤 인스턴스
     public static let shared = LocationPermissionManager()
-    public var authorizationStatus: CLAuthorizationStatus = .notDetermined
-    public var currentLocation: CLLocation?
-    public var locationError: String?
+    @Published public private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    @Published public private(set) var currentLocation: CLLocation?
+    @Published public private(set) var locationError: String?
 
     private let locationManager = CLLocationManager()
     private var authorizationContinuation: CheckedContinuation<CLAuthorizationStatus, Never>?
     private var locationContinuation: CheckedContinuation<CLLocation?, Error>?
 
-    // 지속적인 위치 업데이트 콜백
-    public var onLocationUpdate: ((CLLocation) -> Void)?
-    public var onLocationError: ((Error) -> Void)?
+    // 지속적인 위치 업데이트 콜백 (MainActor 격리)
+    @MainActor
+    public var onLocationUpdate: (@MainActor (CLLocation) -> Void)?
+    @MainActor
+    public var onLocationError: (@MainActor (Error) -> Void)?
 
     public override init() {
         super.init()
@@ -113,18 +133,14 @@ public class LocationPermissionManager: NSObject, Sendable {
         }
     }
 
-    public enum LocationError: Error {
-        case permissionDenied
-        case locationUnavailable
-        case timeout
-    }
-
     // 설정 앱으로 이동
     public func openLocationSettings() {
         #if canImport(UIKit)
-        if let settingsUrl = URL(string: UIApplication.openSettingsURLString),
-           UIApplication.shared.canOpenURL(settingsUrl) {
-            UIApplication.shared.open(settingsUrl)
+        Task { @MainActor in
+            if let settingsUrl = URL(string: UIApplication.openSettingsURLString),
+               UIApplication.shared.canOpenURL(settingsUrl) {
+                await UIApplication.shared.open(settingsUrl)
+            }
         }
         #endif
     }
@@ -164,7 +180,7 @@ extension LocationPermissionManager: CLLocationManagerDelegate {
             self.locationError = nil
 
             // 지속적인 위치 업데이트 콜백 호출
-            self.onLocationUpdate?(location)
+            await self.onLocationUpdate?(location)
 
             // continuation이 있으면 결과 반환 (일회성 요청용)
             if let continuation = self.locationContinuation {
@@ -179,7 +195,7 @@ extension LocationPermissionManager: CLLocationManagerDelegate {
             self.locationError = "위치 업데이트 실패: \(error.localizedDescription)"
 
             // 지속적인 위치 업데이트 에러 콜백 호출
-            self.onLocationError?(error)
+            await self.onLocationError?(error)
 
             // continuation이 있으면 에러 반환 (일회성 요청용)
             if let continuation = self.locationContinuation {

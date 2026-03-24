@@ -37,7 +37,7 @@ struct AppView: View {
 
           case .home:
             if let store = store.scope(state: \.home, action: \.scope.home) {
-              HomeView(store: store)
+              HomeCoordinatorView(store: store)
                 .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
 
