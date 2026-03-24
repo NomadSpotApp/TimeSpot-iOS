@@ -20,7 +20,8 @@ let packageSettings = PackageSettings(
     "XCTestDynamicOverlay": .staticFramework,
     "Clocks": .staticFramework,
     "ConcurrencyExtras": .staticFramework,
-    "WeaveDI": .staticFramework
+    "WeaveDI": .staticFramework,
+    "ReactiveSwift": .staticFramework
   ]
 )
 #endif

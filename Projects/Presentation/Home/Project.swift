@@ -12,8 +12,9 @@ let project = Project.makeModule(
   settings:  .settings(),
   dependencies: [
     .Domain(implements: .UseCase),
-    .Shared(implements: .DesignSystem),
+    .Shared(implements: .Shared),
     .SPM.composableArchitecture,
+    .SPM.tcaCoordinator,
     .xcframework(path: "./Resources/framework/NMapsMap.xcframework"),
     .xcframework(path: "./Resources/framework/NMapsGeometry.xcframework")
   ],
