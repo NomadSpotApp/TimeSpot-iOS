@@ -46,7 +46,7 @@ public struct AuthCoordinator {
 
   // MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
-
+    case pushOnBoarding
   }
 
   // MARK: - NavigationAction
@@ -86,8 +86,10 @@ extension AuthCoordinator {
     switch action {
 
       case .routeAction(id: _, action: .login(.delegate(.presentOnBoarding))):
-        state.routes.push(.onBoarding(.init()))
-        return .none
+        return .run { send in
+          await Task.yield()
+          await send(.inner(.pushOnBoarding))
+        }
 
       case .routeAction(id: _, action: .login(.delegate(.presentMain))):
         return .send(.navigation(.presentMain))
@@ -138,7 +140,11 @@ extension AuthCoordinator {
     state: inout State,
     action: InnerAction
   ) -> Effect<Action> {
-
+    switch action {
+      case .pushOnBoarding:
+        state.routes.push(.onBoarding(.init()))
+        return .none
+    }
   }
 }
 
