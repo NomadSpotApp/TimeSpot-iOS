@@ -101,8 +101,17 @@ extension ProfileCoordinator {
       case .routeAction(id: _, action: .setting(.delegate(.presentAuth))):
         return .send(.navigation(.presentAuth))
 
+
+      case .routeAction(id: _, action: .setting(.delegate(.presentWithDraw))):
+        state.routes.push(.withDraw(.init()))
+        return .none
+
       case .routeAction(id: _, action: .withDraw(.delegate(.presentBack))):
         return .send(.view(.backAction))
+
+      case .routeAction(id: _, action: .withDraw(.delegate(.presentAuth))):
+        return .send(.navigation(.presentAuth))
+
 
       default:
         return .none
