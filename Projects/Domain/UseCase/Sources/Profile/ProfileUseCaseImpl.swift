@@ -29,19 +29,25 @@ public struct ProfileUseCaseImpl: ProfileInterface {
     name: String,
     mapType: ExternalMapType
   ) async throws -> LoginEntity {
-    let editUserEntity =  try await repository.editUser(name: name, mapType: mapType)
-    try await keychainManager.save(
-      accessToken: editUserEntity.token.accessToken,
-      refreshToken: editUserEntity.token.refreshToken
-    )
-    
-    authRepository.updateSessionCredential(with: editUserEntity.token)
+    let editUserEntity = try await repository.editUser(name: name, mapType: mapType)
 
-    self.$mapURLScheme.withLock {
-      $0 = editUserEntity.mapURLScheme
+    do {
+      try await keychainManager.save(
+        accessToken: editUserEntity.token.accessToken,
+        refreshToken: editUserEntity.token.refreshToken
+      )
+
+      authRepository.updateSessionCredential(with: editUserEntity.token)
+
+      self.$mapURLScheme.withLock {
+        $0 = editUserEntity.mapURLScheme
+      }
+
+      return editUserEntity
+    } catch {
+      // 토큰 저장 실패 시 일관성 유지를 위해 에러 전파
+      throw error
     }
-
-    return editUserEntity
   }
 }
 

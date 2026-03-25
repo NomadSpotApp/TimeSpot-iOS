@@ -13,15 +13,23 @@ import Utill
 
 @Reducer
 public struct HomeFeature {
+  @Dependency(\.date.now) var now
+
   public init() {}
 
   @ObservableState
   public struct State: Equatable {
-    public init() {}
+    public init() {
+      let currentDate = Date()
+      departureTime = currentDate
+      currentTime = currentDate
+      todayDate = currentDate
+    }
+
     var departureTimePickerVisible: Bool = false
-    var departureTime: Date = .now
-    var currentTime: Date = .now
-    var todayDate: Date = .now
+    var departureTime: Date
+    var currentTime: Date
+    var todayDate: Date
     var isSelected: Bool = false
     var isDepartureTimeSet: Bool = false
   }
@@ -95,7 +103,7 @@ extension HomeFeature {
       return .none
 
     case .departureTimeChanged(let date):
-      state.currentTime = .now
+      state.currentTime = now
       state.departureTime = date
       state.departureTimePickerVisible = false
       state.isDepartureTimeSet = true

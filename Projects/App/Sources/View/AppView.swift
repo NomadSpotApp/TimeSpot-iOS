@@ -6,11 +6,9 @@
 //
 
 import SwiftUI
-
 import Presentation
-
-
 import ComposableArchitecture
+import DesignSystem
 
 struct AppView: View {
   @Bindable var store: StoreOf<AppReducer>
@@ -52,7 +50,7 @@ struct AppView: View {
 
     }
     .animation(
-      .spring(response: 0.52, dampingFraction: 0.94, blendDuration: 0.14),
+      .appDefault,
       value: store.state.animationID
     )
   }
