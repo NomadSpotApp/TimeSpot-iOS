@@ -17,7 +17,7 @@ public enum ExternalMapType: String, CaseIterable, Identifiable, Hashable, Equat
   public var description: String {
     switch self {
       case .appleMap:
-        return "애플지도"
+        return "지도"
 
       case .googleMap:
         return "Google Maps"

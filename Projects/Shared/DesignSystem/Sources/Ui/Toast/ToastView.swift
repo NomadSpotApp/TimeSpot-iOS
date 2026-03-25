@@ -9,34 +9,38 @@ import SwiftUI
 
 public struct ToastView: View {
   let toast: ToastType
-  @StateObject private var toastManager = ToastManager.shared
 
   public init(toast: ToastType) {
     self.toast = toast
   }
 
   public var body: some View {
-    HStack(alignment: .center, spacing: 8) {
-      leadingView
+    HStack(spacing: 12) {
+      Spacer()
+        .frame(width: 8)
 
+      leadingView
       // 메시지
       Text(toast.message)
         .pretendardCustomFont(textStyle: .bodyBold)
         .foregroundColor(.white)
         .multilineTextAlignment(.leading)
         .fixedSize(horizontal: false, vertical: true)
+
+      Spacer()
     }
     .padding(.horizontal, 20)
     .padding(.vertical, 11)
+    .frame(width: 361, height: 56)
     .background(toast.backgroundColor)
-    .cornerRadius(12)
+    .cornerRadius(30)
     .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
   }
 }
 
 // MARK: - Toast Overlay Modifier
 public struct ToastOverlay: ViewModifier {
-  @StateObject private var toastManager = ToastManager.shared
+  @ObservedObject private var toastManager = ToastManager.shared
 
   public func body(content: Content) -> some View {
     content
@@ -79,7 +83,7 @@ private extension ToastView {
           Image(assetName: iconName)
             .resizable()
             .scaledToFit()
-            .frame(width: 12, height: 12)
+            .frame(width: 24, height: 24)
         }
     }
   }

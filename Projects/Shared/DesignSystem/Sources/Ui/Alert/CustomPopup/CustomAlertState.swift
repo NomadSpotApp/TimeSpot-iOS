@@ -88,8 +88,8 @@ public extension CustomAlertState where Action == CustomAlertAction {
 
   static func logout() -> CustomAlertState<CustomAlertAction> {
     .alert(
-      title: "로그아웃 하시겠습니까?",
-      message: "다시 로그인해야 앱을 사용할 수 있습니다.",
+      title: "로그아웃",
+      message: "정말로 로그아웃 하시겠어요?",
       confirmTitle: "로그아웃",
       cancelTitle: "취소",
       isDestructive: false

@@ -107,4 +107,43 @@ public extension Date {
     dateFormatter.dateFormat = "yyyy년 MM월"
     return dateFormatter.string(from: self)
   }
+
+  /// 한국어 날짜 + 요일 포맷 (예: 2026년 3월 17일 화요일)
+  func formattedKoreanDateWithWeekday() -> String {
+    let dateFormatter = DateFormatter()
+    dateFormatter.locale = Locale(identifier: "ko_KR")
+    dateFormatter.dateFormat = "yyyy년 M월 d일 EEEE"
+    return dateFormatter.string(from: self)
+  }
+
+  /// 특정 날짜를 한국어 날짜 + 요일 포맷으로 변환 (예: 2026년 3월 17일 화요일)
+  static func formattedKoreanDateWithWeekday(from date: Date) -> String {
+    let dateFormatter = DateFormatter()
+    dateFormatter.locale = Locale(identifier: "ko_KR")
+    dateFormatter.dateFormat = "yyyy년 M월 d일 EEEE"
+    return dateFormatter.string(from: date)
+  }
+
+  /// 한국어 시간 포맷 (예: 오후 3시 32분)
+  func formattedKoreanTime() -> String {
+    let dateFormatter = DateFormatter()
+    dateFormatter.locale = Locale(identifier: "ko_KR")
+    dateFormatter.dateFormat = "a h시 m분"
+    return dateFormatter.string(from: self)
+  }
+
+  /// 특정 시간을 한국어 시간 포맷으로 변환 (예: 오후 3시 32분)
+  static func formattedKoreanTime(from date: Date) -> String {
+    let dateFormatter = DateFormatter()
+    dateFormatter.locale = Locale(identifier: "ko_KR")
+    dateFormatter.dateFormat = "a h시 m분"
+    return dateFormatter.string(from: date)
+  }
+}
+
+public extension Calendar {
+  func remainingTimeComponents(from currentTime: Date, to targetTime: Date) -> DateComponents {
+    let components = dateComponents([.hour, .minute], from: currentTime, to: targetTime)
+    return DateComponents(hour: max(components.hour ?? 0, 0), minute: max(components.minute ?? 0, 0))
+  }
 }

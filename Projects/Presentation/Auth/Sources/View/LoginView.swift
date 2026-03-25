@@ -39,6 +39,7 @@ public struct LoginView: View {
       ) { termServiceStore in
           TermsAgreementView(store: termServiceStore)
       }
+      .toastOverlay()
     }
   }
 }
@@ -50,10 +51,22 @@ extension LoginView {
   private func loginLogo() -> some View {
     VStack{
       Spacer()
+        .frame(height: 180)
 
-      Text("Time Spot")
-        .pretendardFont(family: .SemiBold, size: 48)
-        .foregroundStyle(.black)
+      Image(asset: .logo)
+        .resizable()
+        .scaledToFit()
+        .frame(width: 212, height: 38)
+
+      Spacer()
+        .frame(height: 30)
+
+      Image(asset: .loginlogo)
+        .resizable()
+        .scaledToFit()
+        .frame(height: 200)
+
+
 
       Spacer()
     }

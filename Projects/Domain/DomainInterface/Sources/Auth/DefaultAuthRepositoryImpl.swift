@@ -22,7 +22,10 @@ final public class DefaultAuthRepositoryImpl: AuthInterface {
       token: AuthTokens(
         accessToken: "mock_access_token_\(UUID().uuidString)",
         refreshToken: "mock_refresh_token_\(UUID().uuidString)"
-      ), email: "test@test.com",
+      ),
+      email: "test@test.com",
+      mapType: nil,
+      mapURLScheme: nil
     )
   }
 
@@ -33,18 +36,19 @@ final public class DefaultAuthRepositoryImpl: AuthInterface {
     )
   }
 
-//  public func withDraw(token: String) async throws -> WithdrawEntity {
-//    return WithdrawEntity(isSuccess: true)
-//  }
-//
-//  public func logout() async throws -> AuthExitEntity {
-//    // Mock 로그아웃 성공 응답
-//    return AuthExitEntity(
-//      code: "200",
-//      message: "로그아웃이 성공적으로 완료되었습니다.",
-//      detail: "사용자 세션이 종료되었습니다."
-//    )
-//  }
+  public func logout() async throws -> LogoutEntity {
+    LogoutEntity(
+      code: 200,
+      message: "로그아웃 되었습니다."
+    )
+  }
+
+  public func withDraw() async throws -> LogoutEntity {
+    LogoutEntity(
+      code: 200,
+      message: "회원 탈퇴 되었습니다."
+    )
+  }
 
   public func updateSessionCredential(with tokens: AuthTokens) {
     // Mock 구현체에서는 아무것도 하지 않음 (테스트/프리뷰용)

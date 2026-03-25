@@ -41,17 +41,7 @@ final public class AuthRepositoryImpl: AuthInterface, @unchecked Sendable {
     return dto.data.toDomain()
   }
 
-//  public func login(
-//    provider socialProvider: SocialType,
-//    token: String
-//  ) async throws -> LoginEntity {
-//    let dto: LoginResponseDTO = try await provider.request(
-//      .login(body: OAuthLoginRequest(provider: socialProvider.description, token: token))
-//     )
-//    return dto.toDomain()
-//  }
-//
-//
+
 //  // MARK: - 토큰 재발급
   public func refresh() async throws -> AuthTokens {
     let refreshToken  = await keychainManager.refreshToken() ?? ""
@@ -100,52 +90,17 @@ final public class AuthRepositoryImpl: AuthInterface, @unchecked Sendable {
   }
 
   // MARK: - 로그아웃
-//  public func logout() async throws -> AuthExitEntity {
-//    let response = try await authProvider.requestResponse(.logout)
-//    let decoder = JSONDecoder()
-//
-//    if (200...299).contains(response.statusCode) {
-//      keychainManager.clear()
-//      if response.data.isEmpty {
-//        return AuthExitEntity()
-//      }
-//      if let successDTO = try? decoder.decode(LogOutDTO.self, from: response.data) {
-//        return successDTO.toDomain()
-//      }
-//      return AuthExitEntity()
-//    }
-//
-//    if let errorDTO = try? decoder.decode(LogOutDTO.self, from: response.data) {
-//      return errorDTO.toDomain()
-//    }
-//    
-//    let errorMessage = String(data: response.data, encoding: .utf8)
-//    return AuthExitEntity(message: errorMessage)
-//  }
-//
-//  // MARK: - 계정 삭제
-//  public func withDraw(token: String) async throws -> WithdrawEntity {
-//    let response = try await provider.requestResponse(.withdraw(token: token))
-//    let decoder = JSONDecoder()
-//
-//    if (200...299).contains(response.statusCode) {
-//      if response.data.isEmpty {
-//        return WithdrawEntity(isSuccess: true)
-//      }
-//      if let successDTO = try? decoder.decode(WithdrawDTO.self, from: response.data) {
-//        return successDTO.toDomain(isSuccess: true)
-//      }
-//      return WithdrawEntity(isSuccess: true)
-//    }
-//
-//    if let errorDTO = try? decoder.decode(WithdrawDTO.self, from: response.data) {
-//      return errorDTO.toDomain(isSuccess: false)
-//    }
-//    return WithdrawEntity(
-//      isSuccess: false,
-//      message: String(data: response.data, encoding: .utf8)
-//    )
-//  }
+  public func logout() async throws -> LogoutEntity {
+    let dto: LogoutDTOModel = try await authProvider.request(.logout)
+    try await keychainManager.clear()
+    return dto.toDomain()
+  }
+  // MARK: - 계정 삭제
+  public func withDraw() async throws -> LogoutEntity {
+    let dto: LogoutDTOModel = try await authProvider.request(.withDraw)
+    try await keychainManager.clear()
+    return dto.toDomain()
+  }
 
   // MARK: - 세션 Credential 업데이트
   public func updateSessionCredential(with tokens: AuthTokens) {

@@ -8,6 +8,7 @@
 import Foundation
 import ComposableArchitecture
 
+import DesignSystem
 import UseCase
 import Entity
 import LogMacro
@@ -22,8 +23,8 @@ public struct OnBoardingFeature {
 
   @ObservableState
   public struct State: Hashable {
-
     public init() {}
+    @Presents public var customAlert: CustomAlertState<CustomAlertAction>?
     var stepRange: ClosedRange<Int> = 1...4
     var activeStep: Int = 1
     var selectedMap: ExternalMapType? = nil
@@ -37,7 +38,13 @@ public struct OnBoardingFeature {
     case async(AsyncAction)
     case inner(InnerAction)
     case navigation(NavigationAction)
+    case scope(ScopeAction)
 
+  }
+
+  @CasePathable
+  public enum ScopeAction {
+    case customAlert(PresentationAction<CustomAlertAction>)
   }
 
   //MARK: - ViewAction
@@ -88,12 +95,34 @@ public struct OnBoardingFeature {
 
         case .navigation(let navigationAction):
           return handleNavigationAction(state: &state, action: navigationAction)
+
+        case .scope(let scopeAction):
+          return handleScopeAction(state: &state, action: scopeAction)
       }
+    }
+    .ifLet(\.$customAlert, action: \.scope.customAlert) {
+      CustomConfirmAlert()
     }
   }
 }
 
 extension OnBoardingFeature {
+  private func handleScopeAction(
+    state: inout State,
+    action: ScopeAction
+  ) -> Effect<Action> {
+    switch action {
+    case .customAlert(.presented(.confirmTapped)),
+         .customAlert(.presented(.cancelTapped)),
+         .customAlert(.dismiss):
+      state.customAlert = nil
+      return .none
+
+    case .customAlert(.presented(.policyTapped)):
+      return .none
+    }
+  }
+
   private func handleViewAction(
     state: inout State,
     action: View
@@ -159,6 +188,13 @@ extension OnBoardingFeature {
 
           case .failure(let error):
             #logDebug("회원가입 실패", error.localizedDescription)
+            state.customAlert = .alert(
+              title: "회원가입 실패",
+              message: error.errorDescription ?? "회원가입 중 문제가 발생했어요.",
+              confirmTitle: "확인",
+              cancelTitle: "닫기",
+              isDestructive: false
+            )
             return .none
         }
     }
@@ -176,9 +212,9 @@ extension OnBoardingFeature.State: Equatable {
 }
 extension OnBoardingFeature.State {
   public func hash(into hasher: inout Hasher) {
+    hasher.combine(customAlert != nil)
     hasher.combine(activeStep)
     hasher.combine(selectedMap)
   }
 }
-
 

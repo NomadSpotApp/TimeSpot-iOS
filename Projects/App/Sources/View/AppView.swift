@@ -6,11 +6,9 @@
 //
 
 import SwiftUI
-
 import Presentation
-
-
 import ComposableArchitecture
+import DesignSystem
 
 struct AppView: View {
   @Bindable var store: StoreOf<AppReducer>
@@ -32,20 +30,28 @@ struct AppView: View {
           case .auth:
             if let store = store.scope(state: \.auth, action: \.scope.auth) {
               AuthCoordinatorView(store: store)
-                .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                .transition(.asymmetric(
+                  insertion: .move(edge: .trailing),
+                  removal: .move(edge: .leading)
+                ))
             }
 
           case .home:
             if let store = store.scope(state: \.home, action: \.scope.home) {
-              HomeView(store: store)
-                .transition(.opacity.combined(with: .scale(scale: 0.98)))
+              HomeCoordinatorView(store: store)
+                .transition(.asymmetric(
+                  insertion: .move(edge: .trailing),
+                  removal: .move(edge: .leading)
+                ))
             }
 
         }
       }
 
     }
-
+    .animation(
+      .appDefault,
+      value: store.state.animationID
+    )
   }
 }
-
