@@ -109,6 +109,7 @@ public extension ProfileError {
     case .unknownError(let message):
       return message.contains("잘못된 AccessToken")
       || message.contains("유효하지 않은 토큰")
+      || message.contains("해당 회원을 찾을 수 없습니다")
       || message.contains("statusCodeError(401)")
       || message.contains("401")
 

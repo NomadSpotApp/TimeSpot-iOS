@@ -133,7 +133,9 @@ final public class DefaultSignUpRepositoryImpl: SignUpInterface, @unchecked Send
       isNewUser: true, // 회원가입이므로 신규 사용자
       provider: input.provider,
       token: authTokens,
-      email: input.email
+      email: input.email,
+      mapType: input.mapType,
+      mapURLScheme: nil
     )
   }
 }
