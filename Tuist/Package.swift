@@ -30,7 +30,7 @@ let package = Package(
   name: "TimeSpot",
   dependencies: [
     .package(url: "https://github.com/pointfreeco/swift-composable-architecture", exact: "1.23.0"),
-    .package(url: "https://github.com/johnpatrickmorgan/TCACoordinators.git", exact: "0.14.0"),
+    .package(url: "https://github.com/johnpatrickmorgan/TCACoordinators.git", exact: "0.13.0"),
     .package(url: "https://github.com/Roy-wonji/WeaveDI.git", from: "3.4.0"),
     .package(url: "https://github.com/google/GoogleSignIn-iOS", from: "9.0.0"),
     .package(url: "https://github.com/Roy-wonji/AsyncMoya",  from: "1.1.8"),
