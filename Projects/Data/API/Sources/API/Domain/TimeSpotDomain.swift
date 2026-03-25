@@ -11,6 +11,7 @@ import AsyncMoya
 
 public enum TimeSpotDomain {
   case auth
+  case place
   case profile
 }
 
@@ -23,6 +24,8 @@ extension TimeSpotDomain: DomainType {
     switch self {
     case .auth:
       return "api/v1/auth"
+      case .place:
+        return "api/v1/place"
     case .profile:
       return "api/v1/users"
     }

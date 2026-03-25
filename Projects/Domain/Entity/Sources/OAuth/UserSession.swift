@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct UserSession: Equatable {
+public struct UserSession: Equatable, Hashable {
   public var name: String
   public var email: String
   public var provider: SocialType
@@ -32,4 +32,3 @@ public struct UserSession: Equatable {
 public extension UserSession {
   static let empty = UserSession()
 }
-
