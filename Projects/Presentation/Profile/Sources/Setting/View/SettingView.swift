@@ -64,7 +64,7 @@ extension SettingView {
       SettingMenuRowView(
         title: "시간 알림",
         action: {
-
+          store.send(.delegate(.presentNotificationSetting))
         }
       )
 

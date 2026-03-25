@@ -81,6 +81,7 @@ public struct SettingFeature {
     case presentBack
     case presentAuth
     case presentWithDraw
+    case presentNotificationSetting
 
   }
 
@@ -221,6 +222,9 @@ extension SettingFeature {
         return .none
 
       case .presentWithDraw:
+        return .none
+
+      case .presentNotificationSetting:
         return .none
     }
   }
