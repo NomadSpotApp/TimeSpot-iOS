@@ -74,6 +74,15 @@ public class ProfileRepositoryImpl: ProfileInterface, @unchecked Sendable {
       throw ProfileError.unknownError(error.localizedDescription)
     }
   }
+
+  public func editUser(
+    name: String,
+    mapType: ExternalMapType
+  ) async throws -> LoginEntity {
+    let body: ProfileRequest = ProfileRequest(nickname: name, mapApi: mapType.type)
+    let dto: LoginDTOModel = try await provider.request(.editProfile(body: body))
+    return dto.data.toDomain()
+  }
 }
 
 private struct ProfileErrorResponseDTO: Decodable {

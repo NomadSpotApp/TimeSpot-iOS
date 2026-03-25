@@ -17,6 +17,7 @@ public enum AuthService {
   case login(body: OAuthLoginRequest)
   case refresh(refreshToken: String)
   case logout
+  case withDraw
 
 }
 
@@ -28,6 +29,9 @@ extension AuthService: BaseTargetType {
     switch self {
       case .login, .refresh, .logout:
         return .auth
+
+      case .withDraw:
+        return .profile
     }
   }
 
@@ -39,6 +43,8 @@ extension AuthService: BaseTargetType {
         return AuthAPI.refresh.description
       case .logout:
         return AuthAPI.logout.description
+      case .withDraw:
+        return AuthAPI.withDraw.description
     }
   }
 
@@ -50,6 +56,8 @@ extension AuthService: BaseTargetType {
     switch self {
       case .login, .refresh, .logout:
         return .post
+      case .withDraw:
+        return .delete
     }
   }
 
@@ -59,14 +67,14 @@ extension AuthService: BaseTargetType {
         return body.toDictionary
       case .refresh(let refreshToken):
         return refreshToken.toDictionary(key: "refreshToken")
-      case .logout:
+      case .logout, .withDraw:
         return nil
     }
   }
 
   public var headers: [String : String]? {
     switch self {
-      case .logout:
+      case .logout, .withDraw:
         return APIHeader.baseHeader
       default:
         return APIHeader.notAccessTokenHeader
