@@ -19,7 +19,7 @@ public struct AuthCoordinator {
     var routes: [Route<AuthScreen.State>]
 
     public init() {
-      self.routes = [.root(.login(.init()), withNavigation: true)]
+      self.routes = [.root(.login(.init()), embedInNavigationView: true)]
     }
   }
 

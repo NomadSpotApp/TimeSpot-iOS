@@ -7,7 +7,7 @@
 
 import ComposableArchitecture
 import TCACoordinators
-import IdentifiedCollections
+import Profile
 
 @Reducer
 public struct HomeCoordinator {
@@ -19,7 +19,7 @@ public struct HomeCoordinator {
     var routes: [Route<HomeScreen.State>]
 
     public init() {
-      self.routes = [.root(.home(.init()), withNavigation: true)]
+      self.routes = [.root(.home(.init()), embedInNavigationView: true)]
     }
   }
 
@@ -46,11 +46,13 @@ public struct HomeCoordinator {
 
   // MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
-
+    case presentProfile
+    case presentProfileWithAnimation
   }
 
   // MARK: - NavigationAction
   public enum NavigationAction: Equatable {
+    case presentAuth
 
   }
 
@@ -84,8 +86,17 @@ extension HomeCoordinator {
     action: IndexedRouterActionOf<HomeScreen>
   ) -> Effect<Action> {
     switch action {
+      case .routeAction(id: _, action: .home(.delegate(.presentProfile))):
+        return .run { send in
+          await send(.inner(.presentProfileWithAnimation))
+        }
 
-      
+      case .routeAction(id: _, action: .profile(.navigation(.presentRoot))):
+        return .send(.view(.backAction))
+
+      case .routeAction(id: _, action: .profile(.navigation(.presentAuth))):
+        return .send(.navigation(.presentAuth))
+
 
       default:
         return .none
@@ -111,7 +122,10 @@ extension HomeCoordinator {
     state: inout State,
     action: NavigationAction
   ) -> Effect<Action> {
-    return .none
+    switch action {
+      case .presentAuth:
+        return .none
+    }
   }
 
   private func handleAsyncAction(
@@ -128,7 +142,15 @@ extension HomeCoordinator {
     state: inout State,
     action: InnerAction
   ) -> Effect<Action> {
-    return .none
+    switch action {
+    case .presentProfile:
+      state.routes.push(.profile(.init()))
+      return .none
+
+    case .presentProfileWithAnimation:
+      state.routes.push(.profile(.init()))
+      return .none
+    }
   }
 
 }
@@ -136,12 +158,13 @@ extension HomeCoordinator {
 extension HomeCoordinator {
   @Reducer
   public enum HomeScreen {
-    case home(HomeReducer)
+    case home(HomeFeature)
     case explore(ExploreReducer)
+    case profile(ProfileCoordinator)
   }
 }
 
-// MARK: - AuthScreen State Equatable & Hashable
+// MARK: - HomeScreen State Equatable & Hashable
 extension HomeCoordinator.HomeScreen.State: Equatable {}
 extension HomeCoordinator.HomeScreen.State: Hashable {}
 
