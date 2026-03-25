@@ -5,7 +5,9 @@
 //  Created by Wonji Suh  on 3/1/26.
 //
 
+import Foundation
 import Presentation
+import Home
 import ComposableArchitecture
 import Entity
 import LogMacro
@@ -17,12 +19,12 @@ public struct AppReducer: Sendable {
   @ObservableState
   public enum State {
     case splash(SplashReducer.State)
-    case home(HomeReducer.State)
+    case home(HomeCoordinator.State)
     case auth(AuthCoordinator.State)
 
 
     public init() {
-      self = .splash(SplashReducer.State())
+      self = .splash(.init())
     }
 
     // Animation identifier for SwiftUI transitions
@@ -53,7 +55,8 @@ public struct AppReducer: Sendable {
 
   //MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
-
+    case updateToHome
+    case updateToAuth
   }
 
   //MARK: - 비동기 처리 액션
@@ -71,7 +74,7 @@ public struct AppReducer: Sendable {
   @CasePathable
   public enum ScopeAction {
     case splash(SplashReducer.Action)
-    case home(HomeReducer.Action)
+    case home(HomeCoordinator.Action)
     case auth(AuthCoordinator.Action)
   }
 
@@ -89,6 +92,16 @@ public struct AppReducer: Sendable {
   }
 
   public var body: some ReducerOf<Self> {
+    EmptyReducer()
+      .ifCaseLet(\.splash, action: \.scope.splash) {
+      SplashReducer()
+    }
+    .ifCaseLet(\.home, action: \.scope.home) {
+      HomeCoordinator()
+    }
+    .ifCaseLet(\.auth, action: \.scope.auth) {
+      AuthCoordinator()
+    }
     Reduce { state, action in
       switch action {
       case .view(let viewAction):
@@ -106,15 +119,6 @@ public struct AppReducer: Sendable {
       case .scope(let scopeAction):
         return handleScopeAction(state: &state, action: scopeAction)
       }
-    }
-    .ifCaseLet(\.splash, action: \.scope.splash) {
-      SplashReducer()
-    }
-    .ifCaseLet(\.home, action: \.scope.home) {
-      HomeReducer()
-    }
-    .ifCaseLet(\.auth, action: \.scope.auth) {
-      AuthCoordinator()
     }
   }
 }
@@ -185,7 +189,7 @@ extension AppReducer {
         // 토큰이 있어서 메인 화면으로 이동
         return .run { send in
           try await clock.sleep(for: Constants.splashTransitionDelay)
-          await send(.view(.presentAuth))
+          await send(.view(.presentRoot))
         }
 
       case .splash(.navigation(.presentAuth)):
@@ -196,8 +200,10 @@ extension AppReducer {
         }
 
       case .auth(.navigation(.presentMain)):
-        // 로그인 완료 후 메인 화면으로
         return .send(.view(.presentRoot))
+
+      case .home(.router(.routeAction(id: _, action: .profile(.navigation(.presentAuth))))):
+        return .send(.view(.presentAuth))
 
     default:
       return .none
