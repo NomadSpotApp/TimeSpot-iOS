@@ -35,6 +35,7 @@ public struct OnBoardingView: View {
         Spacer()
       }
     }
+    .customAlert($store.scope(state: \.customAlert, action: \.scope.customAlert))
   }
 }
 

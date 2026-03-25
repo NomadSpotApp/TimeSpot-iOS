@@ -21,6 +21,7 @@ public struct UnifiedOAuthUseCase {
   @Dependency(\.keychainManager) private var keychainManager: KeychainManaging
   @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
   @Shared(.appStorage("appleUserName")) var savedAppleUserName: String?
+  @Shared(.appStorage("mapUrlScheme")) var mapURLScheme: String?
 
   public init() {}
 }
@@ -82,7 +83,7 @@ public extension UnifiedOAuthUseCase {
 
     let loginEntity = try await authRepository.login(
       provider: .apple,
-      token: payload.idToken ?? ""
+      token: payload.idToken
     )
 
     print("애플 코드 \(payload.authorizationCode ?? "")")
@@ -92,6 +93,9 @@ public extension UnifiedOAuthUseCase {
       $0.provider = .apple
       $0.email = loginEntity.email
       $0.authCode = payload.authorizationCode ?? ""
+    }
+    self.$mapURLScheme.withLock {
+      $0 = loginEntity.mapURLScheme
     }
 
     try await keychainManager.save(
@@ -124,6 +128,9 @@ public extension UnifiedOAuthUseCase {
     self.$userSession.withLock {
       $0.email = loginEntity.email
     }
+    self.$mapURLScheme.withLock {
+      $0 = loginEntity.mapURLScheme
+    }
 
 
     try await keychainManager.save(
@@ -131,11 +138,12 @@ public extension UnifiedOAuthUseCase {
       refreshToken: loginEntity.token.refreshToken
     )
 
-
     // AuthSessionManager의 credential도 업데이트
     authRepository.updateSessionCredential(with: loginEntity.token)
     return loginEntity
   }
+
+
 
   /// OAuth 플로우 처리 (TCA용)
   func processOAuthFlow(

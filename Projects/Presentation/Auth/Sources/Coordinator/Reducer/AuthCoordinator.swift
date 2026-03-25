@@ -19,7 +19,7 @@ public struct AuthCoordinator {
     var routes: [Route<AuthScreen.State>]
 
     public init() {
-      self.routes = [.root(.login(.init()), withNavigation: true)]
+      self.routes = [.root(.login(.init()), embedInNavigationView: true)]
     }
   }
 
@@ -46,7 +46,8 @@ public struct AuthCoordinator {
 
   // MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
-
+    case pushOnBoarding
+    case performPushOnBoarding
   }
 
   // MARK: - NavigationAction
@@ -86,18 +87,13 @@ extension AuthCoordinator {
     switch action {
 
       case .routeAction(id: _, action: .login(.delegate(.presentOnBoarding))):
-        return .run { send in
-          await MainActor.run {
-            state.routes.push(.onBoarding(.init()))
-          }
-        }
+        return .send(.inner(.pushOnBoarding))
 
       case .routeAction(id: _, action: .login(.delegate(.presentMain))):
         return .send(.navigation(.presentMain))
 
-      case .routeAction(id: _, action: .onBoarding(.navigation(.presentMain))):
+      case .routeAction(id: _, action: .onBoarding(.navigation(.onBoardingCompleted))):
         return .send(.navigation(.presentMain))
-
 
       default:
         return .none
@@ -134,25 +130,41 @@ extension AuthCoordinator {
     state: inout State,
     action: AsyncAction
   ) -> Effect<Action> {
-
+    switch action {
+    default:
+      return .none
+    }
   }
 
   private func handleInnerAction(
     state: inout State,
     action: InnerAction
   ) -> Effect<Action> {
-
+    switch action {
+      case .pushOnBoarding:
+        return .run { send in
+          await Task.yield()
+          await send(.inner(.performPushOnBoarding))
+        }
+        
+      case .performPushOnBoarding:
+        state.routes.push(.onBoarding(.init()))
+        return .none
+    }
   }
+
 }
 
 extension AuthCoordinator {
   @Reducer
   public enum AuthScreen {
     case login(LoginFeature)
-    case onBoarding(OnBoardingCoordinator)
+    case onBoarding(OnBoardingFeature)
   }
 }
 
 // MARK: - AuthScreen State Equatable & Hashable
 extension AuthCoordinator.AuthScreen.State: Equatable {}
 extension AuthCoordinator.AuthScreen.State: Hashable {}
+
+

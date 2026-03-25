@@ -19,6 +19,7 @@ public protocol SignUpUseCaseInterface: Sendable {
 public struct SignUpUseCaseImpl: SignUpUseCaseInterface {
   @Dependency(\.signUpRepository) var repository
   @Dependency(\.keychainManager) private var keychainManager
+  @Dependency(\.authRepository) private var authRepository: AuthInterface
 
   public init() {
 
@@ -42,6 +43,9 @@ public struct SignUpUseCaseImpl: SignUpUseCaseInterface {
       refreshToken: signUpUser.token.refreshToken
     )
 
+    // AuthSessionManager의 credential도 업데이트
+    authRepository.updateSessionCredential(with: signUpUser.token)
+    
     return signUpUser
 
   }
