@@ -22,6 +22,7 @@ public struct ProfileFeature {
     var profileEntity: ProfileEntity?  = nil
     var errorMessage: String? = nil
     var isLoading: Bool = false
+    @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
 
     public init() {}
   }
@@ -158,6 +159,10 @@ extension ProfileFeature {
           case .success(let data):
             state.profileEntity = data
             state.errorMessage = nil
+            state.$userSession.withLock {
+              $0.name = state.profileEntity?.nickname ?? ""
+              $0.mapType = state.profileEntity?.mapType ?? .appleMap
+            }
             return .none
 
           case .failure(let error):
@@ -183,5 +188,6 @@ extension ProfileFeature.State: Hashable {
     hasher.combine(profileEntity)
     hasher.combine(errorMessage)
     hasher.combine(isLoading)
+    hasher.combine(userSession)
   }
 }
