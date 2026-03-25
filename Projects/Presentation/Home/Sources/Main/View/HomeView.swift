@@ -13,9 +13,9 @@ import Utill
 import ComposableArchitecture
 
 public struct HomeView: View {
-  @Bindable var store: StoreOf<HomeReducer>
+  @Bindable var store: StoreOf<HomeFeature>
 
-  public init(store: StoreOf<HomeReducer>) {
+  public init(store: StoreOf<HomeFeature>) {
     self.store = store
   }
 
@@ -60,16 +60,7 @@ extension HomeView {
             .ignoresSafeArea(edges: .top)
 
           VStack {
-            HStack {
-              Spacer()
-
-              Image(asset: .setting)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 56, height: 56)
-            }
-            .padding(.top, 10)
-            .padding(.horizontal, 14)
+            navigationBar()
 
             Spacer()
           }
@@ -103,6 +94,26 @@ extension HomeView {
     }
     .frame(height: heroHeight)
   }
+
+  @ViewBuilder
+  fileprivate func navigationBar() -> some View {
+    HStack {
+      Spacer()
+
+      Button {
+        store.send(.delegate(.presentProfile))
+      } label: {
+        Image(asset: .profile)
+          .resizable()
+          .scaledToFit()
+          .frame(width: 56, height: 56)
+      }
+      .buttonStyle(.plain)
+    }
+    .padding(.top, 10)
+    .padding(.horizontal, 14)
+  }
+
 
 
   @ViewBuilder
@@ -154,19 +165,18 @@ extension HomeView {
   fileprivate func departureTimePickerView() -> some View {
     DatePicker(
       "출발 시간 선택",
-      selection: Binding(
-        get: { store.departureTime },
-        set: { newValue in
-          store.send(.view(.departureTimeChanged(newValue)))
-        }
-      ),
+      selection: $store.departureTime,
       displayedComponents: [.hourAndMinute]
     )
     .datePickerStyle(.wheel)
     .labelsHidden()
     .environment(\.locale, Locale(identifier: "ko_KR"))
-    .frame(width: 176)
+    .onChange(of: store.departureTime) { _, newValue in
+      store.send(.view(.departureTimeChanged(newValue)))
+    }
     .frame(height: 180)
+    .clipped()
+    .frame(width: 176)
     .background(.gray300)
     .clipShape(RoundedRectangle(cornerRadius: 24))
   }
