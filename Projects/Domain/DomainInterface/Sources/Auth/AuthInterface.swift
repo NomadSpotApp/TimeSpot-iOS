@@ -15,8 +15,8 @@ import Entity
 public protocol AuthInterface: Sendable {
   func login(provider: SocialType, token: String) async throws -> LoginEntity
   func refresh()  async throws -> AuthTokens
+  func logout() async throws -> LogoutEntity
 //  func withDraw(token: String) async throws -> WithdrawEntity
-//  func logout() async throws -> AuthExitEntity
   func updateSessionCredential(with tokens: AuthTokens)
 }
 
