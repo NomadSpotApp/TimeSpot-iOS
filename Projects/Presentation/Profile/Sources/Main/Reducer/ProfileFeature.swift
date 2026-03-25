@@ -10,7 +10,7 @@ import Foundation
 import ComposableArchitecture
 import Entity
 
-import  UseCase
+import UseCase
 
 @Reducer
 public struct ProfileFeature {
