@@ -40,6 +40,14 @@ public struct ProfileCoordinatorView: View {
               insertion: .move(edge: .trailing),
               removal: .move(edge: .leading)
             ))
+
+        case .notification(let notificationStore):
+          NotificationSettingView(store: notificationStore)
+            .navigationBarBackButtonHidden()
+            .transition(.asymmetric(
+              insertion: .move(edge: .trailing),
+              removal: .move(edge: .leading)
+            ))
       }
     }
   }
