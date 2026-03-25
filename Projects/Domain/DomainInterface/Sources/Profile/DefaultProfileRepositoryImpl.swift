@@ -20,4 +20,22 @@ final public class DefaultProfileRepositoryImpl: ProfileInterface {
       provider: .apple
     )
   }
+
+  public func editUser(
+    name: String,
+    mapType: ExternalMapType
+  ) async throws -> LoginEntity {
+    return LoginEntity(
+      name: name,
+      isNewUser: false,
+      provider: .apple,
+      token: AuthTokens(
+        accessToken: "mock_access_token_\(UUID().uuidString)",
+        refreshToken: "mock_refresh_token_\(UUID().uuidString)"
+      ),
+      email: "test@example.com",
+      mapType: mapType,
+      mapURLScheme: nil
+    )
+  }
 }

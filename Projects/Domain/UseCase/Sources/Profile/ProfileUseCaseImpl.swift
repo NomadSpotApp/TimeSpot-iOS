@@ -15,11 +15,33 @@ import ComposableArchitecture
 
 public struct ProfileUseCaseImpl: ProfileInterface {
   @Dependency(\.profileRepository) var repository
+  @Dependency(\.keychainManager) private var keychainManager: KeychainManaging
+  @Dependency(\.authRepository) private var authRepository: AuthInterface
+  @Shared(.appStorage("mapUrlScheme")) var mapURLScheme: String?
 
   public init() {}
 
   public func fetchUser() async throws -> ProfileEntity {
     return try await repository.fetchUser()
+  }
+
+  public func editUser(
+    name: String,
+    mapType: ExternalMapType
+  ) async throws -> LoginEntity {
+    let editUserEntity =  try await repository.editUser(name: name, mapType: mapType)
+    try await keychainManager.save(
+      accessToken: editUserEntity.token.accessToken,
+      refreshToken: editUserEntity.token.refreshToken
+    )
+    
+    authRepository.updateSessionCredential(with: editUserEntity.token)
+
+    self.$mapURLScheme.withLock {
+      $0 = editUserEntity.mapURLScheme
+    }
+
+    return editUserEntity
   }
 }
 

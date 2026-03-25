@@ -32,6 +32,10 @@ public struct AuthUseCaseImpl: AuthInterface {
     return try await repository.logout()
   }
 
+  public func withDraw() async throws -> LogoutEntity {
+    return try await repository.withDraw()
+  }
+
   public func updateSessionCredential(with tokens: Entity.AuthTokens)  {
     return repository.updateSessionCredential(with: tokens)
   }

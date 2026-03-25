@@ -21,6 +21,7 @@ public struct UnifiedOAuthUseCase {
   @Dependency(\.keychainManager) private var keychainManager: KeychainManaging
   @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
   @Shared(.appStorage("appleUserName")) var savedAppleUserName: String?
+  @Shared(.appStorage("mapUrlScheme")) var mapURLScheme: String?
 
   public init() {}
 }
@@ -93,6 +94,9 @@ public extension UnifiedOAuthUseCase {
       $0.email = loginEntity.email
       $0.authCode = payload.authorizationCode ?? ""
     }
+    self.$mapURLScheme.withLock {
+      $0 = loginEntity.mapURLScheme
+    }
 
     try await keychainManager.save(
       accessToken: loginEntity.token.accessToken,
@@ -123,6 +127,9 @@ public extension UnifiedOAuthUseCase {
 
     self.$userSession.withLock {
       $0.email = loginEntity.email
+    }
+    self.$mapURLScheme.withLock {
+      $0 = loginEntity.mapURLScheme
     }
 
 
