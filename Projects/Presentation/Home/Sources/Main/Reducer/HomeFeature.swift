@@ -12,7 +12,7 @@ import Utill
 
 
 @Reducer
-public struct HomeReducer {
+public struct HomeFeature {
   public init() {}
 
   @ObservableState
@@ -55,7 +55,7 @@ public struct HomeReducer {
 
   //MARK: - NavigationAction
   public enum DelegateAction: Equatable {
-
+    case presentProfile
 
   }
 
@@ -84,7 +84,7 @@ public struct HomeReducer {
   }
 }
 
-extension HomeReducer {
+extension HomeFeature {
   private func handleViewAction(
     state: inout State,
     action: View
@@ -114,7 +114,10 @@ extension HomeReducer {
     state: inout State,
     action: DelegateAction
   ) -> Effect<Action> {
-    return .none
+    switch action {
+      case .presentProfile:
+        return .none
+    }
   }
 
   private func handleInnerAction(
@@ -125,7 +128,7 @@ extension HomeReducer {
   }
 }
 
-extension HomeReducer.State {
+extension HomeFeature.State {
   var hasRemainingTimeResult: Bool {
     isDepartureTimeSet && !departureTimePickerVisible
   }
@@ -148,7 +151,7 @@ extension HomeReducer.State {
 }
 
 // MARK: - HomeReducer.State + Hashable
-extension HomeReducer.State: Hashable {
+extension HomeFeature.State: Hashable {
   public func hash(into hasher: inout Hasher) {
     hasher.combine(departureTimePickerVisible)
     hasher.combine(todayDate)
