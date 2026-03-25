@@ -95,30 +95,12 @@ final public class AuthRepositoryImpl: AuthInterface, @unchecked Sendable {
     try await keychainManager.clear()
     return dto.toDomain()
   }
-//
-//  // MARK: - 계정 삭제
-//  public func withDraw(token: String) async throws -> WithdrawEntity {
-//    let response = try await provider.requestResponse(.withdraw(token: token))
-//    let decoder = JSONDecoder()
-//
-//    if (200...299).contains(response.statusCode) {
-//      if response.data.isEmpty {
-//        return WithdrawEntity(isSuccess: true)
-//      }
-//      if let successDTO = try? decoder.decode(WithdrawDTO.self, from: response.data) {
-//        return successDTO.toDomain(isSuccess: true)
-//      }
-//      return WithdrawEntity(isSuccess: true)
-//    }
-//
-//    if let errorDTO = try? decoder.decode(WithdrawDTO.self, from: response.data) {
-//      return errorDTO.toDomain(isSuccess: false)
-//    }
-//    return WithdrawEntity(
-//      isSuccess: false,
-//      message: String(data: response.data, encoding: .utf8)
-//    )
-//  }
+  // MARK: - 계정 삭제
+  public func withDraw() async throws -> LogoutEntity {
+    let dto: LogoutDTOModel = try await authProvider.request(.withDraw)
+    try await keychainManager.clear()
+    return dto.toDomain()
+  }
 
   // MARK: - 세션 Credential 업데이트
   public func updateSessionCredential(with tokens: AuthTokens) {

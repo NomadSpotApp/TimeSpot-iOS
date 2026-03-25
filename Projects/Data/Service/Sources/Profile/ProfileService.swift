@@ -16,6 +16,7 @@ import AsyncMoya
 
 public enum ProfileService {
   case fetchProfile
+  case editProfile(body: ProfileRequest)
 }
 
 
@@ -30,6 +31,9 @@ extension ProfileService: BaseTargetType {
     switch self {
       case .fetchProfile:
         return ProfileAPI.user.description
+
+      case .editProfile:
+        return ProfileAPI.editUser.description
     }
   }
 
@@ -41,6 +45,9 @@ extension ProfileService: BaseTargetType {
     switch self {
       case .fetchProfile:
         return .get
+
+      case .editProfile:
+        return .post
     }
   }
 
@@ -48,6 +55,9 @@ extension ProfileService: BaseTargetType {
     switch self {
       case .fetchProfile:
         return nil
+
+      case .editProfile(let body):
+        return body.toDictionary
     }
   }
 
