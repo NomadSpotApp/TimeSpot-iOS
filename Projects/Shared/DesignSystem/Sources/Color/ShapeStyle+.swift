@@ -15,6 +15,7 @@ public extension ShapeStyle where Self == Color {
   static var gray300: Color {  .init(hex: "EDEDED") }
   static var gray400: Color {  .init(hex: "D4D4D4") }
   static var gray500: Color {  .init(hex: "BABABA") }
+  static var gray550: Color {  .init(hex: "B0B0B0") }
   static var gray600: Color {  .init(hex: "A1A1A1") }
   static var gray700: Color {  .init(hex: "878787") }
   static var gray800: Color {  .init(hex: "545454") }
@@ -22,6 +23,10 @@ public extension ShapeStyle where Self == Color {
   static var lightGray: Color { .init(hex: "CCCCCC") }
   static var mediumGray: Color { .init(hex: "6C6C6C")}
   static var slateGray : Color { .init(hex: "949FB1") }
+  static var blueGray300: Color { .init(hex: "9EA3AE") }
+  static var blueGray600: Color { .init(hex: "5E6880") }
+  static var blueGray800: Color { .init(hex: "2E3951") }
+  static var neutral200: Color { .init(hex: "D9D9D9") }
 
   static var enableColor: Color { .init(hex: "E2E2E2")}
 
@@ -49,5 +54,7 @@ public extension ShapeStyle where Self == Color {
   static var navy800: Color {  .init(hex: "12234D") }
   static var navy900: Color {  .init(hex: "0C1834") }
 
-}
+  static var staticBlack: Color { .init(hex: "000000") }
+  static var staticWhite: Color { .init(hex: "FFFFFF") }
 
+}
