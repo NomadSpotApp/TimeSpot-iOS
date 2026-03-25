@@ -19,10 +19,6 @@ import Entity
 public struct SettingFeature {
   public init() {}
 
-  enum CustomAlertMode: Equatable, Hashable {
-    case logoutConfirmation
-    case logoutError
-  }
 
   @ObservableState
   public struct State: Equatable {
@@ -30,8 +26,16 @@ public struct SettingFeature {
     var customAlertMode: CustomAlertMode? = nil
     var logoutEntity: LogoutEntity? = nil
     var errorMessage: String? = nil
+    var editProfileEntity: LoginEntity? = nil
+    @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
+    @Shared(.appStorage("mapUrlScheme")) var mapURLScheme: String?
 
     public init() {}
+  }
+
+  enum CustomAlertMode: Equatable, Hashable {
+    case logoutConfirmation
+    case logoutError
   }
 
   public enum Action: ViewAction, BindableAction {
@@ -54,6 +58,7 @@ public struct SettingFeature {
   public enum View {
     case timeNotificationRowTapped
     case logoutRowTapped
+    case mapTypeSelected(ExternalMapType)
   }
 
 
@@ -61,26 +66,31 @@ public struct SettingFeature {
   //MARK: - AsyncAction 비동기 처리 액션
   public enum AsyncAction: Equatable {
     case logout
+    case editProfile(previousMapType: ExternalMapType)
   }
 
   //MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
     case presentLogoutConfirmationAlert
     case logoutResponse(Result<LogoutEntity, AuthError>)
+    case editProfileResponse(Result<LoginEntity, ProfileError>, previousMapType: ExternalMapType)
   }
 
   //MARK: - DelegateAction
   public enum DelegateAction: Equatable {
     case presentBack
     case presentAuth
+    case presentWithDraw
 
   }
 
   nonisolated enum CancelID: Hashable {
     case logout
+    case editProfile
   }
 
   @Dependency(\.authUseCase) var authUseCase
+  @Dependency(\.profileUseCase) var profileUseCase
 
 
   public var body: some Reducer<State, Action> {
@@ -120,6 +130,14 @@ extension SettingFeature {
     switch action {
     case .timeNotificationRowTapped:
       return .none
+
+    case .mapTypeSelected(let mapType):
+      let previousMapType = state.userSession.mapType
+      state.$userSession.withLock {
+        $0.mapType = mapType
+      }
+      return .send(.async(.editProfile(previousMapType: previousMapType)))
+
     case .logoutRowTapped:
       return .send(.inner(.presentLogoutConfirmationAlert))
     }
@@ -173,6 +191,21 @@ extension SettingFeature {
         }
         .cancellable(id: CancelID.logout, cancelInFlight: true)
 
+      case let .editProfile(previousMapType):
+        return .run { [
+          userSession = state.userSession
+        ] send in
+          let result = await Result {
+            try await profileUseCase.editUser(
+              name: userSession.name,
+              mapType: userSession.mapType
+            )
+          }
+            .mapError(ProfileError.from)
+          await send(.inner(.editProfileResponse(result, previousMapType: previousMapType)))
+        }
+        .cancellable(id: CancelID.editProfile, cancelInFlight: true)
+
     }
   }
 
@@ -185,6 +218,9 @@ extension SettingFeature {
         return .none
 
       case .presentAuth:
+        return .none
+
+      case .presentWithDraw:
         return .none
     }
   }
@@ -222,6 +258,27 @@ extension SettingFeature {
 
 
         }
+
+      case let .editProfileResponse(result, previousMapType):
+        switch result {
+          case .success(let data):
+            state.editProfileEntity = data
+            state.$userSession.withLock {
+              $0.mapType = data.mapType ?? $0.mapType
+            }
+            state.$mapURLScheme.withLock {
+              $0 = data.mapURLScheme
+            }
+            return .none
+
+          case .failure(let error):
+            state.errorMessage = error.errorDescription
+            state.$userSession.withLock {
+              $0.mapType = previousMapType
+            }
+            return .none
+        }
+
     }
   }
 }
@@ -231,5 +288,6 @@ extension SettingFeature.State: Hashable {
     hasher.combine(customAlertMode)
     hasher.combine(logoutEntity)
     hasher.combine(errorMessage)
+    hasher.combine(userSession)
   }
 }

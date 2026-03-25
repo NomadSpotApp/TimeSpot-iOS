@@ -9,6 +9,7 @@ import SwiftUI
 import UIKit
 
 import DesignSystem
+import Entity
 
 import ComposableArchitecture
 
@@ -75,12 +76,30 @@ extension SettingView {
         }
       )
 
-      SettingMenuRowView(
-        title: "연동된 지도",
-        trailingText: "Google Maps",
-        accessory: .dropdown,
-        showsDivider: false
-      )
+      Menu {
+        ForEach(ExternalMapType.allCases) { mapType in
+          Button {
+            store.send(.view(.mapTypeSelected(mapType)))
+          } label: {
+            if store.userSession.mapType == mapType {
+              Label(mapType.description, systemImage: "checkmark")
+                .pretendardCustomFont(textStyle: .bodyMedium)
+                .foregroundStyle(.gray800)
+            } else {
+              Text(mapType.description)
+                .pretendardCustomFont(textStyle: .bodyMedium)
+                .foregroundStyle(.gray800)
+            }
+          }
+        }
+      } label: {
+        SettingMenuRowView(
+          title: "연동된 지도",
+          trailingText: store.userSession.mapType.description,
+          accessory: .dropdown,
+          showsDivider: false
+        )
+      }
     }
   }
 
@@ -104,7 +123,10 @@ extension SettingView {
 
       SettingMenuRowView(
         title: "회원 탈퇴",
-        showsDivider: false
+        showsDivider: false,
+        action:  {
+          store.send(.delegate(.presentWithDraw))
+        }
       )
     }
   }
