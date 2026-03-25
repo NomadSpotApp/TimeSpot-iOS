@@ -42,6 +42,8 @@ public final class AppDIManager {
       .register { AppleOAuthProvider() as AppleOAuthProviderInterface }
       // MARK: - 회원가입
       .register { SignUpRepositoryImpl()  as SignUpInterface }
+    // MARK: - 프로필
+      .register(ProfileInterface.self) { ProfileRepositoryImpl() }
 
 
 

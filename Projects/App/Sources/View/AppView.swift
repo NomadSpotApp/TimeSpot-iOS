@@ -32,20 +32,28 @@ struct AppView: View {
           case .auth:
             if let store = store.scope(state: \.auth, action: \.scope.auth) {
               AuthCoordinatorView(store: store)
-                .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                .transition(.asymmetric(
+                  insertion: .move(edge: .trailing),
+                  removal: .move(edge: .leading)
+                ))
             }
 
           case .home:
             if let store = store.scope(state: \.home, action: \.scope.home) {
               HomeCoordinatorView(store: store)
-                .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                .transition(.asymmetric(
+                  insertion: .move(edge: .trailing),
+                  removal: .move(edge: .leading)
+                ))
             }
 
         }
       }
 
     }
-
+    .animation(
+      .spring(response: 0.52, dampingFraction: 0.94, blendDuration: 0.14),
+      value: store.state.animationID
+    )
   }
 }
-
