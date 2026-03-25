@@ -106,12 +106,18 @@ extension ProfileCoordinator {
         state.routes.push(.withDraw(.init()))
         return .none
 
+      case .routeAction(id: _, action: .setting(.delegate(.presentNotificationSetting))):
+        state.routes.push(.notification(.init()))
+        return .none
+
       case .routeAction(id: _, action: .withDraw(.delegate(.presentBack))):
         return .send(.view(.backAction))
 
       case .routeAction(id: _, action: .withDraw(.delegate(.presentAuth))):
         return .send(.navigation(.presentAuth))
 
+      case .routeAction(id: _, action: .notification(.delegate(.presentBack))):
+        return .send(.view(.backAction))
 
       default:
         return .none
@@ -171,6 +177,7 @@ extension ProfileCoordinator {
     case profile(ProfileFeature)
     case setting(SettingFeature)
     case withDraw(WithDrawFeature)
+    case notification(NotificationSettingFeature)
   }
 }
 
