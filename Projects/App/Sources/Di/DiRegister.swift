@@ -46,6 +46,8 @@ public final class AppDIManager {
       .register(ProfileInterface.self) { ProfileRepositoryImpl() }
     // MARK: - 히스토리
       .register(HistoryInterface.self) { HistoryRepositoryImpl() }
+    // MARK: - 역
+      .register(StationInterface.self) { StationRepositoryImpl() }
 
 
 
