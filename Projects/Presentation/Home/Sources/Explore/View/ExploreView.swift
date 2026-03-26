@@ -9,6 +9,7 @@
 import SwiftUI
 import ComposableArchitecture
 import CoreLocation
+import UIKit
 
 import DesignSystem
 import Entity
@@ -16,6 +17,19 @@ import Entity
 public struct ExploreView: View {
   @Bindable var store: StoreOf<ExploreReducer>
   @Environment(\.dismiss) private var dismiss
+  @State private var cardDragOffset: CGFloat = 0
+  @State private var cardBaseOffset: CGFloat = 0
+  @State private var isCardTransitioning = false
+
+  private var cardTravelDistance: CGFloat {
+    UIScreen.main.bounds.width - 8
+  }
+
+  private var cardSwipeThreshold: CGFloat {
+    (UIScreen.main.bounds.width - 32) / 2
+  }
+
+  private let cardHeight: CGFloat = 182
 
   public init(store: StoreOf<ExploreReducer>) {
     self.store = store
@@ -32,7 +46,7 @@ public struct ExploreView: View {
 
         Spacer()
 
-        currentLocationButton()
+        bottomSection()
       }
     }
     .onAppear {
@@ -54,7 +68,16 @@ private extension ExploreView {
       routeInfo: store.routeInfo,
       destination: store.selectedDestination,
       spots: filteredSpots,
-      returnToLocation: store.shouldReturnToCurrentLocation
+      selectedSpotID: store.userSession.selectedExploreSpotID.isEmpty
+        ? nil
+        : store.userSession.selectedExploreSpotID,
+      returnToLocation: store.shouldReturnToCurrentLocation,
+      onSpotTapped: { spotID in
+        store.send(.view(.spotTapped(spotID)))
+      },
+      onMapTapped: {
+        store.send(.view(.spotCardChanged(nil)))
+      }
     )
     .ignoresSafeArea(.all)
   }
@@ -67,6 +90,19 @@ private extension ExploreView {
       let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
       return matchesCategory && matchesQuery
     }
+  }
+
+  var selectedSpot: ExploreMapSpot? {
+    guard store.isSpotCardVisible else { return nil }
+
+    let selectedSpotID = store.userSession.selectedExploreSpotID
+
+    if !selectedSpotID.isEmpty,
+       let selectedSpot = filteredSpots.first(where: { $0.id == selectedSpotID }) {
+      return selectedSpot
+    }
+
+    return nil
   }
 
   @ViewBuilder
@@ -108,7 +144,7 @@ private extension ExploreView {
       ZStack(alignment: .leading) {
         if store.searchText.isEmpty {
           Text("\(store.userSession.travelStationName)역")
-            .pretendardFont(family: .Regular, size: 18)
+            .pretendardCustomFont(textStyle: .titleRegular)
             .foregroundStyle(.gray600)
         }
 
@@ -119,7 +155,7 @@ private extension ExploreView {
             set: { store.send(.view(.searchTextChanged($0))) }
           )
         )
-        .pretendardFont(family: .Regular, size: 18)
+        .pretendardCustomFont(textStyle: .titleRegular)
         .foregroundStyle(.staticBlack)
         .textInputAutocapitalization(.never)
         .autocorrectionDisabled()
@@ -157,50 +193,132 @@ private extension ExploreView {
 
   @ViewBuilder
   func categoryChip(_ category: ExploreCategory) -> some View {
-    let isSelected = store.selectedCategory == category
-
-    Button {
-      store.send(.view(.categoryTapped(category)))
-    } label: {
-      HStack(spacing: 4) {
-        categoryIcon(for: category, isSelected: isSelected)
-
-        Text(category.title)
-          .pretendardFont(family: .Medium, size: 14)
-          .foregroundStyle(isSelected ? .staticBlack : .gray700)
+    ExploreCategoryChipView(
+      category: category,
+      isSelected: store.selectedCategory == category,
+      action: {
+        store.send(.view(.categoryTapped(category)))
       }
-      .padding(.vertical, 10)
-      .padding(.horizontal, 16)
-      .background(isSelected ? .orange200 : .staticWhite)
-      .overlay {
-        Capsule()
-          .stroke(isSelected ? .orange800 : .gray300, lineWidth: 1)
-      }
-      .clipShape(Capsule())
-      .shadow(color: .black.opacity(isSelected ? 0.04 : 0.08), radius: 8, y: 2)
-    }
-    .buttonStyle(.plain)
+    )
   }
 
   @ViewBuilder
-  func currentLocationButton() -> some View {
-    HStack {
-      Spacer()
+  func bottomSection() -> some View {
+    let hasSelectedSpotCard = selectedSpot != nil
 
-      Button {
-        store.send(.view(.returnToCurrentLocation))
-      } label: {
-        Image(asset: .location)
-          .resizable()
-          .scaledToFit()
-          .frame(width: 24, height: 24)
-          .frame(width: 48, height: 48)
-          .background(.staticWhite, in: Circle())
-          .shadow(color: .black.opacity(0.12), radius: 8, y: 2)
+    ZStack(alignment: .bottom) {
+      if let selectedSpot {
+        ExploreSelectedSpotCardView(
+          currentSpot: selectedSpot,
+          adjacentSpot: adjacentSpot,
+          currentOffset: cardBaseOffset + cardDragOffset,
+          adjacentOffset: adjacentCardOffset,
+          cardOpacity: cardOpacity,
+          onRouteTap: {},
+          onDragChanged: handleCardDragChanged,
+          onDragEnded: handleCardDragEnded
+        )
+          .padding(.horizontal, 16)
+          .frame(height: cardHeight)
       }
-      .padding(.trailing, 16)
-      .padding(.bottom, 36)
+
+      ExploreFloatingControlsView(
+        showsListButton: hasSelectedSpotCard,
+        controlsBottomPadding: hasSelectedSpotCard ? cardHeight + 20 : 0,
+        onListTap: {},
+        onCurrentLocationTap: {
+          store.send(.view(.returnToCurrentLocation))
+        }
+      )
     }
+    .padding(.bottom, 36)
+  }
+
+  func moveSelectedSpot(next: Bool) {
+    guard !filteredSpots.isEmpty else { return }
+    guard !isCardTransitioning else { return }
+
+    let currentIndex = filteredSpots.firstIndex(where: { $0.id == store.userSession.selectedExploreSpotID }) ?? 0
+    let newIndex: Int
+    let entryOffset: CGFloat = next ? -cardTravelDistance : cardTravelDistance
+
+    if next {
+      newIndex = (currentIndex + 1) % filteredSpots.count
+    } else {
+      newIndex = (currentIndex - 1 + filteredSpots.count) % filteredSpots.count
+    }
+
+    isCardTransitioning = true
+
+    withAnimation(.interactiveSpring(response: 0.28, dampingFraction: 0.9)) {
+      cardDragOffset = next ? cardTravelDistance : -cardTravelDistance
+    }
+
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+      _ = store.send(.view(.spotCardChanged(filteredSpots[newIndex].id)))
+      cardBaseOffset = entryOffset
+      cardDragOffset = 0
+
+      withAnimation(.interactiveSpring(response: 0.36, dampingFraction: 0.88)) {
+        cardBaseOffset = 0
+      }
+
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
+        isCardTransitioning = false
+      }
+    }
+  }
+
+  func handleCardDragChanged(_ value: DragGesture.Value) {
+    guard !isCardTransitioning else { return }
+    let limitedOffset = max(min(value.translation.width, cardTravelDistance), -cardTravelDistance)
+    cardDragOffset = limitedOffset
+  }
+
+  func handleCardDragEnded(_ value: DragGesture.Value) {
+    guard !isCardTransitioning else { return }
+
+    if value.translation.width > cardSwipeThreshold {
+      moveSelectedSpot(next: true)
+      return
+    }
+
+    if value.translation.width < -cardSwipeThreshold {
+      moveSelectedSpot(next: false)
+      return
+    }
+
+    withAnimation(.interactiveSpring(response: 0.3, dampingFraction: 0.88)) {
+      cardDragOffset = 0
+    }
+  }
+
+  var adjacentSpot: ExploreMapSpot? {
+    guard let currentIndex = filteredSpots.firstIndex(where: { $0.id == store.userSession.selectedExploreSpotID }) else {
+      return nil
+    }
+    guard abs(cardDragOffset) > 0 else {
+      return nil
+    }
+
+    let adjacentIndex: Int
+    if cardDragOffset >= 0 {
+      adjacentIndex = (currentIndex + 1) % filteredSpots.count
+    } else {
+      adjacentIndex = (currentIndex - 1 + filteredSpots.count) % filteredSpots.count
+    }
+    return filteredSpots[adjacentIndex]
+  }
+
+  var adjacentCardOffset: CGFloat? {
+    guard adjacentSpot != nil else { return nil }
+    let baseOffset = cardDragOffset >= 0 ? -cardTravelDistance : cardTravelDistance
+    return baseOffset + cardDragOffset
+  }
+
+  var cardOpacity: Double {
+    let progress = min(abs(cardBaseOffset + cardDragOffset) / cardTravelDistance, 1)
+    return 1 - (progress * 0.02)
   }
 
   func scrollToCategory(
@@ -235,41 +353,4 @@ private extension ExploreView {
     }
   }
 
-  @ViewBuilder
-  func categoryIcon(
-    for category: ExploreCategory,
-    isSelected: Bool
-  ) -> some View {
-    switch category {
-    case .all:
-      Image(asset: isSelected ? .tapAll : .all)
-        .resizable()
-        .scaledToFit()
-        .frame(width: 16, height: 16)
-    case .cafe:
-        Image(asset: isSelected ? .tapCaffe  : .cafe)
-          .resizable()
-          .scaledToFit()
-          .frame(width: 16, height: 16)
-    case .restaurant:
-      Image(asset: isSelected ? .tapFood : .food)
-        .resizable()
-        .scaledToFit()
-        .frame(width: 16, height: 16)
-    case .activity:
-      Image(asset: isSelected ? .tapGame : .game)
-        .resizable()
-        .scaledToFit()
-        .frame(width: 16, height: 16)
-        .foregroundStyle(isSelected ? .orange800 : .gray700)
-
-      case .etc:
-        Image(asset: isSelected ? .tapEtc : .etc)
-          .resizable()
-          .scaledToFit()
-          .frame(width: 16, height: 16)
-          .foregroundStyle(isSelected ? .orange800 : .gray700)
-
-    }
-  }
 }
