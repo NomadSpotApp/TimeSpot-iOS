@@ -38,6 +38,26 @@ public struct HomeView: View {
         Spacer()
       }
     }
+    .presentDSModal(
+      item: $store.scope(state: \.trainStation, action: \.trainStation),
+      height: .fraction(0.88),
+      showDragIndicator: true
+    ) { trainStationStore in
+      TrainStationView(store: trainStationStore)
+    }
+    .customAlert($store.scope(state: \.customAlert, action: \.customAlert))
+    .toastOverlay(
+      position: .bottom,
+      horizontalPadding: 20,
+      bottomPadding: 140
+    )
+    .onAppear {
+      store.send(.view(.onAppear))
+    }
+    .onChange(of: store.shouldShowDepartureWarningToast) { _, shouldShow in
+      guard shouldShow else { return }
+      ToastManager.shared.showWarning("대기 시간이 부족합니다 (최소 20분 필요)")
+    }
   }
 }
 
@@ -101,7 +121,7 @@ extension HomeView {
       Spacer()
 
       Button {
-        store.send(.delegate(.presentProfile))
+        store.send(.view(.profileButtonTapped))
       } label: {
         Image(asset: .profile)
           .resizable()
@@ -118,18 +138,23 @@ extension HomeView {
 
   @ViewBuilder
   fileprivate func selectStationView() -> some View {
-    VStack(alignment: .center, spacing: 0) {
-      Text(store.todayDate.formattedKoreanDateWithWeekday())
-        .pretendardCustomFont(textStyle: .body2Medium)
-        .foregroundStyle(.gray900.opacity(0.9))
-        .padding(.bottom, 4)
+    Button {
+      store.send(.view(.selectStationButtonTapped))
+    } label: {
+      VStack(alignment: .center, spacing: 0) {
+        Text(store.todayDate.formattedKoreanDateWithWeekday())
+          .pretendardCustomFont(textStyle: .body2Medium)
+          .foregroundStyle(.gray900.opacity(0.9))
+          .padding(.bottom, 4)
 
-      Text("SEOUL")
-        .pretendardFont(family: .Bold, size: 64)
-        .foregroundStyle(store.isSelected ? .gray900 : .slateGray)
-        .tracking(-2.2)
+        Text(store.selectedStation.homeTitle)
+          .pretendardFont(family: .Bold, size: 64)
+          .foregroundStyle(store.isSelected || store.hasSelectedStation ? .gray900 : .slateGray)
+          .tracking(-2.2)
+      }
+      .frame(maxWidth: .infinity)
     }
-    .frame(maxWidth: .infinity)
+    .buttonStyle(.plain)
   }
 
   @ViewBuilder
@@ -258,10 +283,12 @@ extension HomeView {
   @ViewBuilder
   fileprivate func exploreNearbyButton() -> some View {
     CustomButton(
-      action: {},
+      action: {
+        store.send(.view(.exploreNearbyButtonTapped))
+      },
       title: "주변 탐색 시작하기",
       config: CustomButtonConfig.create(),
-      isEnable: false
+      isEnable: store.isExploreNearbyEnabled
     )
     .padding(.horizontal, 24)
   }

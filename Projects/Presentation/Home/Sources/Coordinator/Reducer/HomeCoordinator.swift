@@ -48,6 +48,7 @@ public struct HomeCoordinator {
   public enum InnerAction: Equatable {
     case presentProfile
     case presentProfileWithAnimation
+    case presentExplore
   }
 
   // MARK: - NavigationAction
@@ -90,6 +91,12 @@ extension HomeCoordinator {
         return .run { send in
           await send(.inner(.presentProfileWithAnimation))
         }
+
+      case .routeAction(id: _, action: .home(.delegate(.presentExplore))):
+        return .send(.inner(.presentExplore))
+
+      case .routeAction(id: _, action: .home(.delegate(.presentAuth))):
+        return .send(.navigation(.presentAuth))
 
       case .routeAction(id: _, action: .profile(.navigation(.presentRoot))):
         return .send(.view(.backAction))
@@ -150,6 +157,10 @@ extension HomeCoordinator {
     case .presentProfileWithAnimation:
       state.routes.push(.profile(.init()))
       return .none
+
+    case .presentExplore:
+      state.routes.push(.explore(.init()))
+      return .none
     }
   }
 
@@ -167,5 +178,3 @@ extension HomeCoordinator {
 // MARK: - HomeScreen State Equatable & Hashable
 extension HomeCoordinator.HomeScreen.State: Equatable {}
 extension HomeCoordinator.HomeScreen.State: Hashable {}
-
-
