@@ -20,27 +20,25 @@ public struct CustomNavigationBackBar: View {
   }
 
   public var body: some View {
-    HStack {
-      Image(asset: .leftArrow)
-        .resizable()
-        .scaledToFit()
-        .frame(width: 60, height: 60)
-        .onTapGesture {
-          buttonAction()
-        }
-
-      Spacer()
-
+    ZStack {
       if !title.isEmpty {
         Text(title)
           .pretendardCustomFont(textStyle: .titleBold)
           .foregroundStyle(.staticBlack)
-
-        Spacer()
-      } else {
-        Spacer()
       }
 
+      HStack {
+        Image(asset: .leftArrow)
+          .resizable()
+          .scaledToFit()
+          .frame(width: 60, height: 60)
+          .contentShape(Rectangle())
+          .onTapGesture {
+            buttonAction()
+          }
+
+        Spacer()
+      }
     }
   }
 }

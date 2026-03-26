@@ -40,7 +40,6 @@ public struct CustomNavigationBar: View {
 
       Spacer()
 
-
       Text(title)
         .pretendardCustomFont(textStyle: .titleBold)
         .foregroundStyle(.staticBlack)

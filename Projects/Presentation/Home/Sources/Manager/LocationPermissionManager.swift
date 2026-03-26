@@ -65,7 +65,11 @@ public final class LocationPermissionManager: NSObject, ObservableObject {
 
     // async/await을 사용한 위치 권한 요청
     public func requestLocationPermission() async -> CLAuthorizationStatus {
-        guard CLLocationManager.locationServicesEnabled() else {
+        let isLocationServicesEnabled = await Task.detached {
+            CLLocationManager.locationServicesEnabled()
+        }.value
+
+        guard isLocationServicesEnabled else {
             locationError = "위치 서비스가 비활성화되어 있습니다. 설정에서 활성화해 주세요."
             return .denied
         }
@@ -146,8 +150,10 @@ public final class LocationPermissionManager: NSObject, ObservableObject {
     }
 
     // 위치 서비스 사용 가능 여부
-    public var isLocationServicesEnabled: Bool {
-        CLLocationManager.locationServicesEnabled()
+    public func isLocationServicesEnabled() async -> Bool {
+        await Task.detached {
+            CLLocationManager.locationServicesEnabled()
+        }.value
     }
 
     // 권한 상태 문자열

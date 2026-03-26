@@ -9,232 +9,256 @@
 import SwiftUI
 import ComposableArchitecture
 import CoreLocation
+
+import DesignSystem
 import Entity
 
 public struct ExploreView: View {
   @Bindable var store: StoreOf<ExploreReducer>
+  @Environment(\.dismiss) private var dismiss
 
-    public init(store: StoreOf<ExploreReducer>) {
-        self.store = store
-    }
+  public init(store: StoreOf<ExploreReducer>) {
+    self.store = store
+  }
 
-    public var body: some View {
-      ZStack {
-          // 네이버 지도 뷰
-          NaverMapComponent(
-              locationPermissionStatus: store.locationPermissionStatus,
-              currentLocation: store.currentLocation,
-              routeInfo: store.routeInfo,
-              destination: store.selectedDestination,
-              returnToLocation: store.shouldReturnToCurrentLocation
-          )
-          .ignoresSafeArea(.all)
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
+  public var body: some View {
+    ZStack {
+      mapView()
 
-          // 위치 권한 거부 시 오버레이
-          if store.isLocationPermissionDenied {
-              LocationPermissionOverlay(
-                  onSettingsButtonTapped: {
-                      store.send(.view(.openSettings))
-                  },
-                  onRetryButtonTapped: {
-                      store.send(.view(.retryLocationPermission))
-                  }
-              )
-          }
+      VStack(spacing: 0) {
+        headerSection()
+          .padding(.top, 8)
+          .padding(.horizontal, 20)
 
-          // 🎯 네이버 스타일 위치 버튼 (우측 하단)
-          VStack {
-              Spacer()
-              HStack {
-                  Spacer()
+        Spacer()
 
-                  // 네이버 스타일 위치 버튼
-                  Button(action: {
-                      store.send(.view(.returnToCurrentLocation))
-                  }) {
-                      Image(systemName: "location.fill")
-                          .font(.system(size: 18, weight: .medium))
-                          .foregroundColor(.blue)
-                          .frame(width: 44, height: 44)
-                          .background(Color.white)
-                          .clipShape(Circle())
-                          .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
-                  }
-                  .padding(.trailing, 16)
-                  .padding(.bottom, 120)
-              }
-          }
-
-          // 길찾기 컨트롤 UI
-          VStack {
-              // 경로 정보 표시 (상단으로 이동)
-              if let routeInfo = store.routeInfo,
-                 let destination = store.selectedDestination {
-                  routeInfoCard(routeInfo: routeInfo, destination: destination)
-                      .padding(.horizontal)
-                      .padding(.top, 50) // 상단 패딩으로 변경
-              }
-
-              Spacer()
-
-              // 길찾기 버튼들
-              HStack(spacing: 12) {
-                  if store.currentLocation != nil && !store.isLocationPermissionDenied {
-                      // 강남역으로 도보 가기 버튼
-                      Button(action: {
-                          store.send(.view(.searchRouteToGangnam))
-                      }) {
-                          HStack(spacing: 6) {
-                              Image(systemName: "figure.walk")
-                              Text("강남역으로")
-                          }
-                          .font(.system(size: 14, weight: .semibold))
-                          .foregroundColor(.white)
-                          .padding(.horizontal, 16)
-                          .padding(.vertical, 10)
-                          .background(Color.blue)
-                          .cornerRadius(20)
-                      }
-                      .disabled(store.isLoadingRoute)
-
-                      // 경로 초기화 버튼 (경로가 있을 때만)
-                      if store.routeInfo != nil {
-                          Button(action: {
-                              store.send(.view(.clearRoute))
-                          }) {
-                              Image(systemName: "xmark.circle.fill")
-                                  .font(.system(size: 14))
-                                  .foregroundColor(.red)
-                                  .padding(10)
-                                  .background(Color.white)
-                                  .cornerRadius(18)
-                                  .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
-                          }
-                      }
-                  }
-              }
-              .padding(.horizontal)
-              .padding(.bottom, 50)
-
-              // 로딩 상태
-              if store.isLoadingRoute {
-                  HStack {
-                      ProgressView()
-                          .scaleEffect(0.8)
-                      Text("경로를 찾는 중...")
-                          .font(.caption)
-                          .foregroundColor(.gray)
-                  }
-                  .padding()
-                  .background(Color.white.opacity(0.9))
-                  .cornerRadius(10)
-                  .padding(.bottom, 30)
-              }
-
-              // 에러 메시지
-              if let error = store.routeError {
-                  Text("❌ \(error)")
-                      .font(.caption)
-                      .foregroundColor(.red)
-                      .padding()
-                      .background(Color.white.opacity(0.9))
-                      .cornerRadius(10)
-                      .padding(.horizontal)
-                      .padding(.bottom, 30)
-              }
-          }
+        currentLocationButton()
       }
-      .toolbar {
-          ToolbarItem(placement: .navigationBarTrailing) {
-              if store.locationPermissionStatus == .authorizedWhenInUse ||
-                 store.locationPermissionStatus == .authorizedAlways {
-                  Button("정확한 위치") {
-                      store.send(.view(.requestFullAccuracy))
-                  }
-                  .font(.caption)
-                  .foregroundColor(.blue)
-              }
-          }
-      }
-      .onAppear {
-          store.send(.view(.onAppear))
-      }
-      .onDisappear {
-          store.send(.view(.onDisappear))
-      }
-      .alert($store.scope(state: \.alert, action: \.scope.alert))
     }
-
-    // MARK: - 경로 정보 카드
-    private func routeInfoCard(routeInfo: RouteInfo, destination: Destination) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "location.circle.fill")
-                    .foregroundColor(.red)
-                Text(destination.name)
-                    .font(.system(size: 18, weight: .bold))
-                Spacer()
-            }
-
-            Divider()
-
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Image(systemName: "figure.walk")
-                            .foregroundColor(.blue)
-                        Text("거리: \(formatDistance(routeInfo.distance))")
-                            .font(.system(size: 14))
-                    }
-
-                    HStack {
-                        Image(systemName: "clock.fill")
-                            .foregroundColor(.green)
-                        Text("도보: \(routeInfo.duration)분")
-                            .font(.system(size: 14))
-                    }
-                }
-
-                Spacer()
-
-                if routeInfo.tollFare > 0 {
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("톨비: \(formatCurrency(routeInfo.tollFare))")
-                            .font(.system(size: 12))
-                            .foregroundColor(.orange)
-
-                        if routeInfo.taxiFare > 0 {
-                            Text("택시비: \(formatCurrency(routeInfo.taxiFare))")
-                                .font(.system(size: 12))
-                                .foregroundColor(.gray)
-                        }
-                    }
-                }
-            }
-        }
-        .padding()
-        .background(Color.white.opacity(0.95))
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+    .onAppear {
+      store.send(.view(.onAppear))
     }
-
-    // MARK: - Helper Methods
-    private func formatDistance(_ meters: Int) -> String {
-        if meters < 1000 {
-            return "\(meters)m"
-        } else {
-            let kilometers = Double(meters) / 1000.0
-            return String(format: "%.1fkm", kilometers)
-        }
+    .onDisappear {
+      store.send(.view(.onDisappear))
     }
-
-    private func formatCurrency(_ amount: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        return "\(formatter.string(from: NSNumber(value: amount)) ?? "\(amount)")원"
-    }
-
+    .alert($store.scope(state: \.alert, action: \.scope.alert))
+  }
 }
 
+private extension ExploreView {
+  @ViewBuilder
+  func mapView() -> some View {
+    NaverMapComponent(
+      locationPermissionStatus: store.locationPermissionStatus,
+      currentLocation: store.currentLocation,
+      routeInfo: store.routeInfo,
+      destination: store.selectedDestination,
+      returnToLocation: store.shouldReturnToCurrentLocation
+    )
+    .ignoresSafeArea(.all)
+  }
 
+  @ViewBuilder
+  func headerSection() -> some View {
+    VStack(spacing: 0) {
+      HStack(spacing: 12) {
+        backButton()
+        searchBar()
+      }
+
+      categoryScrollView()
+        .padding(.top, 12)
+    }
+  }
+
+  @ViewBuilder
+  func backButton() -> some View {
+    Button {
+      dismiss()
+    } label: {
+      Image(asset: .leftArrow)
+        .resizable()
+        .scaledToFit()
+        .frame(width: 56, height: 56)
+        .background(.staticWhite)
+        .clipShape(Circle())
+        .shadow(color: .black.opacity(0.08), radius: 12, y: 2)
+    }
+    .buttonStyle(.plain)
+  }
+
+  @ViewBuilder
+  func searchBar() -> some View {
+    HStack(spacing: 8) {
+      Image(systemName: "magnifyingglass")
+        .font(.system(size: 16, weight: .medium))
+        .foregroundStyle(.gray600)
+
+      ZStack(alignment: .leading) {
+        if store.searchText.isEmpty {
+          Text("\(store.userSession.travelStationName)역")
+            .pretendardFont(family: .Regular, size: 18)
+            .foregroundStyle(.gray600)
+        }
+
+        TextField(
+          "",
+          text: Binding(
+            get: { store.searchText },
+            set: { store.send(.view(.searchTextChanged($0))) }
+          )
+        )
+        .pretendardFont(family: .Regular, size: 18)
+        .foregroundStyle(.staticBlack)
+        .textInputAutocapitalization(.never)
+        .autocorrectionDisabled()
+      }
+    }
+    .padding(.horizontal, 24)
+    .frame(height: 56)
+    .background(.staticWhite)
+    .clipShape(RoundedRectangle(cornerRadius: 28))
+    .shadow(color: .black.opacity(0.08), radius: 12, y: 2)
+  }
+
+  @ViewBuilder
+  func categoryScrollView() -> some View {
+    ScrollViewReader { proxy in
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(spacing: 8) {
+          ForEach(ExploreCategory.allCases, id: \.self) { category in
+            categoryChip(category)
+            .id(category)
+          }
+        }
+        .padding(.horizontal, 2)
+      }
+      .onAppear {
+        scrollToCategory(store.selectedCategory, with: proxy, animated: false)
+      }
+      .onChange(of: store.selectedCategory) { _, category in
+        DispatchQueue.main.async {
+          scrollToCategory(category, with: proxy)
+        }
+      }
+    }
+  }
+
+  @ViewBuilder
+  func categoryChip(_ category: ExploreCategory) -> some View {
+    let isSelected = store.selectedCategory == category
+
+    Button {
+      store.send(.view(.categoryTapped(category)))
+    } label: {
+      HStack(spacing: 4) {
+        categoryIcon(for: category, isSelected: isSelected)
+
+        Text(category.title)
+          .pretendardFont(family: .Medium, size: 14)
+          .foregroundStyle(isSelected ? .staticBlack : .gray700)
+      }
+      .padding(.vertical, 10)
+      .padding(.horizontal, 16)
+      .background(isSelected ? .orange200 : .staticWhite)
+      .overlay {
+        Capsule()
+          .stroke(isSelected ? .orange800 : .gray300, lineWidth: 1)
+      }
+      .clipShape(Capsule())
+      .shadow(color: .black.opacity(isSelected ? 0.04 : 0.08), radius: 8, y: 2)
+    }
+    .buttonStyle(.plain)
+  }
+
+  @ViewBuilder
+  func currentLocationButton() -> some View {
+    HStack {
+      Spacer()
+
+      Button {
+        store.send(.view(.returnToCurrentLocation))
+      } label: {
+        Image(asset: .location)
+          .resizable()
+          .scaledToFit()
+          .frame(width: 24, height: 24)
+          .frame(width: 48, height: 48)
+          .background(.staticWhite, in: Circle())
+          .shadow(color: .black.opacity(0.12), radius: 8, y: 2)
+      }
+      .padding(.trailing, 16)
+      .padding(.bottom, 36)
+    }
+  }
+
+  func scrollToCategory(
+    _ category: ExploreCategory,
+    with proxy: ScrollViewProxy,
+    animated: Bool = true
+  ) {
+    let targetCategory: ExploreCategory
+    switch category {
+    case .all, .cafe:
+      targetCategory = .all
+    case .restaurant:
+      targetCategory = .cafe
+    case .activity:
+      targetCategory = .restaurant
+    case .etc:
+      targetCategory = .activity
+    @unknown default:
+      targetCategory = .all
+    }
+
+    let action = {
+      proxy.scrollTo(targetCategory, anchor: .leading)
+    }
+
+    if animated {
+      withAnimation(.easeInOut(duration: 0.2)) {
+        action()
+      }
+    } else {
+      action()
+    }
+  }
+
+  @ViewBuilder
+  func categoryIcon(
+    for category: ExploreCategory,
+    isSelected: Bool
+  ) -> some View {
+    switch category {
+    case .all:
+      Image(asset: isSelected ? .tapAll : .all)
+        .resizable()
+        .scaledToFit()
+        .frame(width: 16, height: 16)
+    case .cafe:
+        Image(asset: isSelected ? .tapCaffe  : .cafe)
+          .resizable()
+          .scaledToFit()
+          .frame(width: 16, height: 16)
+    case .restaurant:
+      Image(asset: isSelected ? .tapFood : .food)
+        .resizable()
+        .scaledToFit()
+        .frame(width: 16, height: 16)
+    case .activity:
+      Image(asset: isSelected ? .tapGame : .game)
+        .resizable()
+        .scaledToFit()
+        .frame(width: 16, height: 16)
+        .foregroundStyle(isSelected ? .orange800 : .gray700)
+
+      case .etc:
+        Image(asset: isSelected ? .tapEtc : .etc)
+          .resizable()
+          .scaledToFit()
+          .frame(width: 16, height: 16)
+          .foregroundStyle(isSelected ? .orange800 : .gray700)
+
+    }
+  }
+}

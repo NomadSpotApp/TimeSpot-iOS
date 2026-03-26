@@ -32,7 +32,7 @@ public struct AuthUseCaseImpl: AuthInterface {
     return try await repository.logout()
   }
 
-  public func withDraw() async throws -> LogoutEntity {
+  public func withDraw() async throws -> Entity.LogoutEntity {
     return try await repository.withDraw()
   }
 

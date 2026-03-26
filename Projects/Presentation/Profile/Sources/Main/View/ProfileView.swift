@@ -15,31 +15,6 @@ import ComposableArchitecture
 public struct ProfileView: View {
   @Bindable var store: StoreOf<ProfileFeature>
 
-  //TODO: - 제거 할거 
-  private let travelHistoryItems: [TravelHistoryCardItem] = [
-    .init(
-      visitedAt: Calendar.current.date(from: DateComponents(year: 2026, month: 3, day: 10, hour: 13, minute: 5)) ?? .now,
-      placeName: "스테이션 카페",
-      departureName: "강릉역",
-      durationText: "25분 소요",
-      departureTimeText: "오후 1:05"
-    ),
-    .init(
-      visitedAt: Calendar.current.date(from: DateComponents(year: 2026, month: 3, day: 7, hour: 9, minute: 20)) ?? .now,
-      placeName: "오죽헌",
-      departureName: "강릉역",
-      durationText: "18분 소요",
-      departureTimeText: "오전 9:20"
-    ),
-    .init(
-      visitedAt: Calendar.current.date(from: DateComponents(year: 2026, month: 3, day: 1, hour: 18, minute: 40)) ?? .now,
-      placeName: "안목해변",
-      departureName: "강릉역",
-      durationText: "32분 소요",
-      departureTimeText: "오후 6:40"
-    )
-  ]
-
   public init(store: StoreOf<ProfileFeature>) {
     self.store = store
   }
@@ -85,13 +60,8 @@ public struct ProfileView: View {
 }
 
 extension ProfileView {
-  private var sortedTravelHistoryItems: [TravelHistoryCardItem] {
-    switch store.travelHistorySort {
-    case .recent:
-      return travelHistoryItems.sorted { $0.visitedAt > $1.visitedAt }
-    case .oldest:
-      return travelHistoryItems.sorted { $0.visitedAt < $1.visitedAt }
-    }
+  private var travelHistoryItems: [HistoryItemEntity] {
+    store.historyEntity?.items ?? []
   }
 
   @ViewBuilder
@@ -165,7 +135,7 @@ extension ProfileView {
             Spacer()
               .frame(height: 4)
 
-            Text("24곳")
+            Text("\(store.profileEntity?.totalVisitCount ?? 0)곳")
               .pretendardFont(family: .SemiBold, size: 16)
               .foregroundStyle(.staticWhite)
 
@@ -189,7 +159,7 @@ extension ProfileView {
             Spacer()
               .frame(height: 4)
 
-            Text("5시간 20분")
+            Text(store.profileEntity?.formattedJourneyTime ?? "0시간00분")
               .pretendardFont(family: .SemiBold, size: 16)
               .foregroundStyle(.staticWhite)
 
@@ -269,14 +239,44 @@ extension ProfileView {
       Spacer()
         .frame(height: 20)
 
-      ScrollView(.vertical) {
-        VStack(spacing: 12) {
-          ForEach(sortedTravelHistoryItems) { item in
-            TravelHistoryCardView(item: item)
+      if travelHistoryItems.isEmpty, !store.isHistoryLoading, !store.isHistoryLoadingMore {
+        VStack(spacing: 0) {
+          Spacer()
+
+          Image(asset: .empyTravel)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 100, height: 100)
+
+          Spacer()
+            .frame(height: 24)
+
+          Text("저장된 히스토리가 없습니다.")
+            .pretendardCustomFont(textStyle: .bodyRegular)
+            .foregroundStyle(.gray550)
+
+          Spacer()
+        }
+        .frame(maxWidth: .infinity)
+      } else {
+        ScrollView(.vertical) {
+          LazyVStack(spacing: 12) {
+            ForEach(travelHistoryItems) { item in
+              TravelHistoryCardView(item: item.toCardItem())
+                .onAppear {
+                  store.send(.view(.historyRowAppeared(item.id)))
+                }
+            }
+
+            if store.isHistoryLoadingMore {
+              ProgressView()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+            }
           }
         }
+        .scrollIndicators(.hidden)
       }
-      .scrollIndicators(.hidden)
     }
   }
 
@@ -545,6 +545,21 @@ extension ProfileView {
           RoundedRectangle(cornerRadius: 24)
             .stroke(.neutral200, style: .init(lineWidth: 1))
         }
+    )
+  }
+}
+
+private extension HistoryItemEntity {
+  func toCardItem() -> TravelHistoryCardItem {
+    let visitedDate = startTime.toDate() ?? .now
+    let departureDate = trainDepartureTime.toDate() ?? .now
+
+    return TravelHistoryCardItem(
+      visitedAt: visitedDate,
+      placeName: placeName,
+      departureName: stationName,
+      durationText: "\(totalDurationMinutes)분 소요",
+      departureTimeText: departureDate.formattedKoreanTime()
     )
   }
 }

@@ -202,6 +202,9 @@ extension AppReducer {
       case .auth(.navigation(.presentMain)):
         return .send(.view(.presentRoot))
 
+      case .home(.router(.routeAction(id: _, action: .home(.delegate(.presentAuth))))):
+        return .send(.view(.presentAuth))
+
       case .home(.router(.routeAction(id: _, action: .profile(.navigation(.presentAuth))))):
         return .send(.view(.presentAuth))
 

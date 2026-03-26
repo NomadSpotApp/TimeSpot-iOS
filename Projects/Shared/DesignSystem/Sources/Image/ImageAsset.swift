@@ -19,6 +19,20 @@ public enum ImageAsset: String {
   case arrowRight
   case leftArrow
   case lineHeight
+  case all
+  case game
+  case shopping
+  case etc
+  case food
+  case tapAll
+  case cafe
+  case tapCaffe
+  case tapGame
+  case tapShopping
+  case tapEtc
+  case tapFood
+  case location
+
 
 
   // MARK: - 지도
@@ -33,6 +47,7 @@ public enum ImageAsset: String {
   case logo
   case loginlogo
 
+
   case warning
   case setting
   case time
@@ -40,6 +55,9 @@ public enum ImageAsset: String {
   case arrowtriangleDown
   case travelLine
   case warningTriangle
+  case mapSharp
+  case subway
+  case empyTravel
 
   case none
 }

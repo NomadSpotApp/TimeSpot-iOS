@@ -13,6 +13,8 @@ public enum TimeSpotDomain {
   case auth
   case place
   case profile
+  case history
+  case station
 }
 
 extension TimeSpotDomain: DomainType {
@@ -28,6 +30,10 @@ extension TimeSpotDomain: DomainType {
         return "api/v1/place"
     case .profile:
       return "api/v1/users"
+      case .history:
+        return "api/v1/histories"
+      case .station:
+        return "api/v1/stations"
     }
   }
 }

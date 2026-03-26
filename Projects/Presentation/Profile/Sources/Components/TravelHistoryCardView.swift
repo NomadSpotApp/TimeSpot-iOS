@@ -9,29 +9,8 @@ import SwiftUI
 
 import DesignSystem
 import Utill
+import Entity
 
-public struct TravelHistoryCardItem: Identifiable, Hashable {
-  public let id = UUID()
-  public let visitedAt: Date
-  public let placeName: String
-  public let departureName: String
-  public let durationText: String
-  public let departureTimeText: String
-
-  public init(
-    visitedAt: Date,
-    placeName: String,
-    departureName: String,
-    durationText: String,
-    departureTimeText: String
-  ) {
-    self.visitedAt = visitedAt
-    self.placeName = placeName
-    self.departureName = departureName
-    self.durationText = durationText
-    self.departureTimeText = departureTimeText
-  }
-}
 
 public struct TravelHistoryCardView: View {
   let item: TravelHistoryCardItem
@@ -75,12 +54,15 @@ public struct TravelHistoryCardView: View {
           Text(item.departureName)
             .pretendardCustomFont(textStyle: .titleRegular)
             .foregroundStyle(.staticBlack)
+            .lineLimit(1)
+            .minimumScaleFactor(0.9)
 
           Text("출발역")
             .pretendardCustomFont(textStyle: .body2Medium)
             .foregroundStyle(.gray800)
+            .lineLimit(1)
         }
-        .frame(width: 52, alignment: .trailing)
+        .frame(width: 72, alignment: .trailing)
       }
 
       Spacer()

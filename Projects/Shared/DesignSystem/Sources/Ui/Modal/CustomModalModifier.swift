@@ -64,6 +64,7 @@ public struct CustomModalModifier<Item: Identifiable & Equatable, ModalContent: 
           }
         )
     }
+    .ignoresSafeArea(.keyboard, edges: .bottom)
   }
 
   // MARK: - Private Views
@@ -78,6 +79,7 @@ public struct CustomModalModifier<Item: Identifiable & Equatable, ModalContent: 
   private var backgroundView: some View {
     Color.black.opacity(0.4)
       .ignoresSafeArea()
+      .ignoresSafeArea(.keyboard, edges: .bottom)
       .transition(.opacity.animation(.easeInOut(duration: 0.3)))
       .onTapGesture { dismissModal() }
   }
@@ -128,6 +130,7 @@ public struct CustomModalModifier<Item: Identifiable & Equatable, ModalContent: 
         .gesture(dragGesture)
         .transition(.move(edge: .bottom))
         .animation(.easeOut(duration: 0.3), value: item != nil)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
       }
     }
   }
@@ -215,4 +218,3 @@ public extension View {
     )
   }
 }
-
