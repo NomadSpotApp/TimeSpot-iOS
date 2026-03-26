@@ -38,15 +38,19 @@ actor TokenRefreshManager {
 
         do {
             let tokens = try await authRepository.refresh()
+          #if DEBUG
           #logDebug("✅ Token refresh completed successfully: \(tokens)")
+          #else
+          #logDebug("✅ Token refresh completed successfully")
+          #endif
 
             // 키체인에 새 토큰 저장
           try await keychainManager.save(accessToken: tokens.accessToken, refreshToken: tokens.refreshToken)
 
             // AuthSessionManager에 새 credential 업데이트
             let newCredential = AccessTokenCredential.make(
-                accessToken: "",
-                refreshToken: ""
+                accessToken: tokens.accessToken,
+                refreshToken: tokens.refreshToken
             )
 
             // 메인 스레드에서 세션 매니저 업데이트

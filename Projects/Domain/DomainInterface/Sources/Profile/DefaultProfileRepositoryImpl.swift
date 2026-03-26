@@ -17,16 +17,17 @@ final public class DefaultProfileRepositoryImpl: ProfileInterface {
       email: "test@example.com",
       nickname: "Mock User",
       mapType: .appleMap,
-      provider: .apple
+      provider: .apple,
+      totalVisitCount: 24,
+      totalJourneyMinutes: 320
     )
   }
 
   public func editUser(
-    name: String,
     mapType: ExternalMapType
   ) async throws -> LoginEntity {
     return LoginEntity(
-      name: name,
+      name: "테스터",
       isNewUser: false,
       provider: .apple,
       token: AuthTokens(
