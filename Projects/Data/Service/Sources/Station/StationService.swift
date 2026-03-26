@@ -66,7 +66,7 @@ extension StationService: BaseTargetType {
   public var headers: [String : String]? {
     switch self {
     case .allStation:
-      return APIHeader.notAccessTokenHeader
+      return APIHeader.baseHeader
     case .addFavoriteStation, .deleteFavoriteStation:
       return APIHeader.baseHeader
     }

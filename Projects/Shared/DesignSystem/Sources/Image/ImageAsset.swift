@@ -39,6 +39,11 @@ public enum ImageAsset: String {
   case naverMap
   case googleMap
   case appleMap
+  case shoppingPin
+  case cafePin
+  case etcPin
+  case foodPin
+  case gamePin
 
   case onBoardingLogo1
   case onBoardingLogo2
