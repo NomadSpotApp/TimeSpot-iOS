@@ -12,6 +12,7 @@ import ComposableArchitecture
 import CoreLocation
 import UseCase
 import Entity
+import LogMacro
 
 @Reducer
 public struct ExploreReducer: Sendable {
@@ -24,6 +25,7 @@ public struct ExploreReducer: Sendable {
     public var isLocationPermissionDenied: Bool = false
     public var locationError: String?
     public var searchText: String = ""
+    public var spots: [ExploreMapSpot] = []
     @Presents public var alert: AlertState<Alert>?
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
 
@@ -140,6 +142,9 @@ extension ExploreReducer {
   ) -> Effect<Action> {
     switch action {
       case .onAppear:
+        if state.spots.isEmpty {
+          state.spots = ExploreMapSpot.mockSpots
+        }
         return .run { send in
           let locationManager = await LocationPermissionManager.shared
           let currentStatus = await locationManager.authorizationStatus
@@ -238,7 +243,7 @@ extension ExploreReducer {
         return .none
 
       case .locationUpdateFailed(let error):
-        print("위치 업데이트 실패: \(error)")
+        #logDebug(" [ExploreReducer] 위치 업데이트 실패: \(error)")
         return .none
 
       // 길찾기 관련 액션
@@ -254,10 +259,10 @@ extension ExploreReducer {
         case .success(let routeInfo):
           state.routeInfo = routeInfo
           state.routeError = nil
-          print("✅ 경로 검색 완료: \(routeInfo.distance)m, \(routeInfo.duration)분")
+          #logDebug(" [ExploreReducer] 경로 검색 완료: \(routeInfo.distance)m, \(routeInfo.duration)분")
         case .failure(let error):
           state.routeError = error.localizedDescription
-          print("🚨 경로 검색 실패: \(error.localizedDescription)")
+          #logDebug(" [ExploreReducer] 경로 검색 실패: \(error.localizedDescription)")
         }
         return .none
 
@@ -396,10 +401,101 @@ extension ExploreReducer.State: Hashable {
     hasher.combine(currentLocation?.coordinate.longitude)
     hasher.combine(isLocationPermissionDenied)
     hasher.combine(locationError)
+    hasher.combine(spots)
     hasher.combine(isLoadingRoute)
     hasher.combine(routeError)
     hasher.combine(shouldReturnToCurrentLocation)
     hasher.combine(userSession)
     // Note: alert, selectedDestination, routeInfo are not hashed as they contain complex types
+  }
+}
+
+public struct ExploreMapSpot: Identifiable {
+  public let id: String
+  public let name: String
+  public let category: ExploreCategory
+  public let coordinate: CLLocationCoordinate2D
+
+  public init(
+    id: String,
+    name: String,
+    category: ExploreCategory,
+    coordinate: CLLocationCoordinate2D
+  ) {
+    self.id = id
+    self.name = name
+    self.category = category
+    self.coordinate = coordinate
+  }
+
+  public static let mockSpots: [ExploreMapSpot] = [
+    .init(
+      id: "cityhall-cafe-1",
+      name: "시청 브루잉",
+      category: .cafe,
+      coordinate: CLLocationCoordinate2D(latitude: 37.5669, longitude: 126.9789)
+    ),
+    .init(
+      id: "cityhall-cafe-2",
+      name: "덕수궁 카페",
+      category: .cafe,
+      coordinate: CLLocationCoordinate2D(latitude: 37.5658, longitude: 126.9758)
+    ),
+    .init(
+      id: "cityhall-food-1",
+      name: "시청역 한식당",
+      category: .restaurant,
+      coordinate: CLLocationCoordinate2D(latitude: 37.5652, longitude: 126.9797)
+    ),
+    .init(
+      id: "cityhall-food-2",
+      name: "정동길 다이닝",
+      category: .restaurant,
+      coordinate: CLLocationCoordinate2D(latitude: 37.5674, longitude: 126.9739)
+    ),
+    .init(
+      id: "cityhall-activity-1",
+      name: "덕수궁 산책",
+      category: .activity,
+      coordinate: CLLocationCoordinate2D(latitude: 37.5659, longitude: 126.9751)
+    ),
+    .init(
+      id: "cityhall-activity-2",
+      name: "서울광장 이벤트",
+      category: .activity,
+      coordinate: CLLocationCoordinate2D(latitude: 37.5663, longitude: 126.9779)
+    ),
+    .init(
+      id: "cityhall-etc-1",
+      name: "시청 소품샵",
+      category: .etc,
+      coordinate: CLLocationCoordinate2D(latitude: 37.5677, longitude: 126.9808)
+    ),
+    .init(
+      id: "cityhall-etc-2",
+      name: "서울 굿즈 스토어",
+      category: .etc,
+      coordinate: CLLocationCoordinate2D(latitude: 37.5648, longitude: 126.9770)
+    )
+  ]
+}
+
+extension ExploreMapSpot: Equatable {
+  public static func == (lhs: ExploreMapSpot, rhs: ExploreMapSpot) -> Bool {
+    lhs.id == rhs.id
+    && lhs.name == rhs.name
+    && lhs.category == rhs.category
+    && lhs.coordinate.latitude == rhs.coordinate.latitude
+    && lhs.coordinate.longitude == rhs.coordinate.longitude
+  }
+}
+
+extension ExploreMapSpot: Hashable {
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(id)
+    hasher.combine(name)
+    hasher.combine(category)
+    hasher.combine(coordinate.latitude)
+    hasher.combine(coordinate.longitude)
   }
 }

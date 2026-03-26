@@ -10,7 +10,9 @@ import SwiftUI
 import UIKit
 import CoreLocation
 import NMapsMap
+import DesignSystem
 import Entity
+import LogMacro
 
 // 네이버 맵을 SwiftUI에서 사용하기 위한 컴포넌트
 public struct NaverMapComponent: UIViewRepresentable {
@@ -18,11 +20,14 @@ public struct NaverMapComponent: UIViewRepresentable {
   let currentLocation: CLLocation?
   let routeInfo: RouteInfo?
   let destination: Destination?
+  let spots: [ExploreMapSpot]
   let returnToLocation: Bool // 현재 위치로 돌아가기 트리거
 
   // 마커와 경로를 저장할 변수들
   private static var currentMarker: NMFMarker?
   private static var destinationMarker: NMFMarker?
+  private static var spotMarkers: [String: NMFMarker] = [:]
+  private static var selectedSpotID: String?
   private static var routePath: NMFPath?
 
   public init(
@@ -30,12 +35,14 @@ public struct NaverMapComponent: UIViewRepresentable {
     currentLocation: CLLocation?,
     routeInfo: RouteInfo? = nil,
     destination: Destination? = nil,
+    spots: [ExploreMapSpot] = [],
     returnToLocation: Bool = false
   ) {
     self.locationPermissionStatus = locationPermissionStatus
     self.currentLocation = currentLocation
     self.routeInfo = routeInfo
     self.destination = destination
+    self.spots = spots
     self.returnToLocation = returnToLocation
   }
 
@@ -74,6 +81,8 @@ public struct NaverMapComponent: UIViewRepresentable {
     // 기존 마커들과 경로 제거
     Self.currentMarker?.mapView = nil
     Self.destinationMarker?.mapView = nil
+    Self.spotMarkers.values.forEach { $0.mapView = nil }
+    Self.spotMarkers.removeAll()
     Self.routePath?.mapView = nil
 
     // 위치 권한이 허용되었고 현재 위치가 있을 때 - 항상 현재 위치 마커 표시
@@ -101,9 +110,9 @@ public struct NaverMapComponent: UIViewRepresentable {
         currentMarker.mapView = uiView
         Self.currentMarker = currentMarker
 
-        print("🔴 [NaverMap] 출발점 빨간색 마커 추가 (텍스트 없이)")
+        #logDebug(" [NaverMapComponent] 출발점 마커 추가")
       } else {
-        print("🎯 [NaverMap] 네이버 기본 위치 오버레이만 사용")
+        #logDebug(" [NaverMapComponent] 기본 위치 오버레이 사용")
       }
     }
 
@@ -120,22 +129,61 @@ public struct NaverMapComponent: UIViewRepresentable {
       destinationMarker.mapView = uiView
       Self.destinationMarker = destinationMarker
 
-      print("🗺️ [NaverMap] 목적지 3D 마커 추가 (32x32): \(destination.name)")
+      #logDebug(" [NaverMapComponent] 목적지 마커 추가: \(destination.name)")
+    }
+
+    if !spots.contains(where: { $0.id == Self.selectedSpotID }) {
+      Self.selectedSpotID = nil
+    }
+
+    for spot in spots {
+      let marker = NMFMarker()
+      marker.position = NMGLatLng(
+        lat: spot.coordinate.latitude,
+        lng: spot.coordinate.longitude
+      )
+      marker.iconImage = NMFOverlayImage(image: markerImage(for: spot.category))
+      marker.anchor = CGPoint(x: 0.5, y: 1.0)
+      marker.captionText = spot.name
+      marker.captionColor = .black
+      marker.captionHaloColor = .white
+      Self.applySpotMarkerStyle(
+        marker,
+        isSelected: spot.id == Self.selectedSpotID
+      )
+      marker.touchHandler = { _ in
+        Self.selectedSpotID = spot.id
+        Self.updateSpotMarkerSelection()
+        let cameraPosition = NMFCameraPosition(
+          NMGLatLng(
+            lat: spot.coordinate.latitude,
+            lng: spot.coordinate.longitude
+          ),
+          zoom: 17
+        )
+        let cameraUpdate = NMFCameraUpdate(position: cameraPosition)
+        cameraUpdate.animation = .easeIn
+        cameraUpdate.animationDuration = 0.3
+        uiView.moveCamera(cameraUpdate)
+        return true
+      }
+      marker.mapView = uiView
+      Self.spotMarkers[spot.id] = marker
     }
 
     // 도보 경로 그리기
     if let routeInfo = routeInfo, !routeInfo.paths.isEmpty {
-      print("🗺️ [NaverMap] 경로 정보: \(routeInfo.paths.count)개 좌표, 거리: \(routeInfo.distance)m")
+      #logDebug(" [NaverMapComponent] 경로 정보: 좌표 \(routeInfo.paths.count)개, 거리 \(routeInfo.distance)m")
 
       // 경로 좌표들을 NMGLatLng 배열로 변환
       let pathCoords = routeInfo.paths.map { coordinate in
-        print("📍 좌표: \(coordinate.latitude), \(coordinate.longitude)")
+        #logDebug(" [NaverMapComponent] 경로 좌표: \(coordinate.latitude), \(coordinate.longitude)")
         return NMGLatLng(lat: coordinate.latitude, lng: coordinate.longitude)
       }
 
       // 좌표가 부족한 경우 체크
       guard pathCoords.count >= 2 else {
-        print("🚨 [NaverMap] 경로 좌표가 부족합니다: \(pathCoords.count)개")
+        #logDebug(" [NaverMapComponent] 경로 좌표 부족: \(pathCoords.count)개")
         return
       }
 
@@ -155,11 +203,46 @@ public struct NaverMapComponent: UIViewRepresentable {
       // 🎯 경로 전체가 보이도록 카메라 조정 (중앙으로)
       adjustCameraToFitRoute(mapView: uiView, routeCoords: pathCoords, currentLocation: currentLocation)
 
-      print("🔵 [NaverMap] 경로 표시 및 카메라 조정 완료")
+      #logDebug(" [NaverMapComponent] 경로 표시 및 카메라 조정 완료")
     }
   }
 
   // MARK: - Helper Functions
+
+  private func markerImage(for category: ExploreCategory) -> UIImage {
+    let asset: ImageAsset
+    switch category {
+    case .all:
+      asset = .etcPin
+    case .cafe:
+      asset = .cafePin
+    case .restaurant:
+      asset = .foodPin
+    case .activity:
+      asset = .gamePin
+    case .etc:
+      asset = .etcPin
+    @unknown default:
+      asset = .etcPin
+    }
+
+    return UIImage(asset) ?? UIImage()
+  }
+
+  private static func applySpotMarkerStyle(
+    _ marker: NMFMarker,
+    isSelected: Bool
+  ) {
+    marker.width = isSelected ? 36 : 20
+    marker.height = isSelected ? 43 : 24
+    marker.zIndex = isSelected ? 100 : 10
+  }
+
+  private static func updateSpotMarkerSelection() {
+    for (spotID, marker) in spotMarkers {
+      applySpotMarkerStyle(marker, isSelected: spotID == selectedSpotID)
+    }
+  }
 
   // 3D 효과가 있는 핀 마커 이미지 생성
   private func create3DMarkerImage(color: UIColor, size: CGSize) -> UIImage {
@@ -252,7 +335,7 @@ public struct NaverMapComponent: UIViewRepresentable {
     cameraUpdate.animationDuration = 1.0
     mapView.moveCamera(cameraUpdate)
 
-    print("📹 [NaverMap] 경로 전체가 보이도록 카메라 조정 완료")
+    #logDebug(" [NaverMapComponent] 경로 전체가 보이도록 카메라 조정 완료")
   }
 
   private func createCircleMarkerImage(color: UIColor, size: CGSize) -> UIImage {
