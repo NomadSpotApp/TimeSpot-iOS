@@ -258,6 +258,9 @@ extension HomeFeature {
       state.departureTime = date
       state.departureTimePickerVisible = false
       state.isDepartureTimeSet = true
+      state.$userSession.withLock {
+        $0.remainingMinutes = state.remainingTotalMinutes
+      }
       guard state.shouldShowDepartureWarningToast else {
         return .none
       }
@@ -385,6 +388,7 @@ extension HomeFeature {
       state.$userSession.withLock {
         $0.travelID = ""
         $0.travelStationName = ""
+        $0.remainingMinutes = 0
       }
       return .none
     }

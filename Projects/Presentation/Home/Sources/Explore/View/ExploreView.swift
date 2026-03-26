@@ -53,9 +53,20 @@ private extension ExploreView {
       currentLocation: store.currentLocation,
       routeInfo: store.routeInfo,
       destination: store.selectedDestination,
+      spots: filteredSpots,
       returnToLocation: store.shouldReturnToCurrentLocation
     )
     .ignoresSafeArea(.all)
+  }
+
+  var filteredSpots: [ExploreMapSpot] {
+    let query = store.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    return store.spots.filter { spot in
+      let matchesCategory = store.selectedCategory == .all || spot.category == store.selectedCategory
+      let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
+      return matchesCategory && matchesQuery
+    }
   }
 
   @ViewBuilder
