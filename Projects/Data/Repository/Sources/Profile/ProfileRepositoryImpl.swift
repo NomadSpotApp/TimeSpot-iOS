@@ -76,10 +76,9 @@ public class ProfileRepositoryImpl: ProfileInterface, @unchecked Sendable {
   }
 
   public func editUser(
-    name: String,
     mapType: ExternalMapType
   ) async throws -> LoginEntity {
-    let body: ProfileRequest = ProfileRequest(nickname: name, mapApi: mapType.type)
+    let body: ProfileRequest = ProfileRequest(mapApi: mapType.type)
     let dto: LoginDTOModel = try await provider.request(.editProfile(body: body))
     return dto.data.toDomain()
   }
