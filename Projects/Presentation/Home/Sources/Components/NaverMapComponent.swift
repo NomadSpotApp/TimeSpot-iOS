@@ -21,13 +21,17 @@ public struct NaverMapComponent: UIViewRepresentable {
   let routeInfo: RouteInfo?
   let destination: Destination?
   let spots: [ExploreMapSpot]
+  let selectedSpotID: String?
   let returnToLocation: Bool // 현재 위치로 돌아가기 트리거
+  let onSpotTapped: ((String) -> Void)?
+  let onMapTapped: (() -> Void)?
 
   // 마커와 경로를 저장할 변수들
   private static var currentMarker: NMFMarker?
   private static var destinationMarker: NMFMarker?
   private static var spotMarkers: [String: NMFMarker] = [:]
   private static var selectedSpotID: String?
+  private static var lastSyncedSpotID: String?
   private static var routePath: NMFPath?
 
   public init(
@@ -36,18 +40,29 @@ public struct NaverMapComponent: UIViewRepresentable {
     routeInfo: RouteInfo? = nil,
     destination: Destination? = nil,
     spots: [ExploreMapSpot] = [],
-    returnToLocation: Bool = false
+    selectedSpotID: String? = nil,
+    returnToLocation: Bool = false,
+    onSpotTapped: ((String) -> Void)? = nil,
+    onMapTapped: (() -> Void)? = nil
   ) {
     self.locationPermissionStatus = locationPermissionStatus
     self.currentLocation = currentLocation
     self.routeInfo = routeInfo
     self.destination = destination
     self.spots = spots
+    self.selectedSpotID = selectedSpotID
     self.returnToLocation = returnToLocation
+    self.onSpotTapped = onSpotTapped
+    self.onMapTapped = onMapTapped
+  }
+
+  public func makeCoordinator() -> Coordinator {
+    Coordinator(parent: self)
   }
 
   public func makeUIView(context: Context) -> NMFMapView {
     let mapView = NMFMapView()
+    context.coordinator.parent = self
 
     // 지도 기본 설정
     mapView.positionMode = .normal
@@ -62,6 +77,7 @@ public struct NaverMapComponent: UIViewRepresentable {
 
     // 🎯 네이버 지도 위치 오버레이 설정 (항상 기본 오버레이 사용)
     mapView.locationOverlay.hidden = false
+    mapView.touchDelegate = context.coordinator
 
     // 현재 위치가 있으면 그 위치로, 없으면 서울로 초기 설정
     let initialLatitude = currentLocation?.coordinate.latitude ?? 37.5666805
@@ -78,6 +94,7 @@ public struct NaverMapComponent: UIViewRepresentable {
   }
 
   public func updateUIView(_ uiView: NMFMapView, context: Context) {
+    context.coordinator.parent = self
     // 기존 마커들과 경로 제거
     Self.currentMarker?.mapView = nil
     Self.destinationMarker?.mapView = nil
@@ -91,13 +108,14 @@ public struct NaverMapComponent: UIViewRepresentable {
 
       // 현재 위치로 돌아가기 버튼이 눌렸을 때만 카메라 이동
       if returnToLocation {
-        let cameraPosition = NMFCameraPosition(
-          NMGLatLng(lat: location.coordinate.latitude, lng: location.coordinate.longitude),
+        moveCamera(
+          on: uiView,
+          to: NMGLatLng(
+            lat: location.coordinate.latitude,
+            lng: location.coordinate.longitude
+          ),
           zoom: 16
         )
-        let cameraUpdate = NMFCameraUpdate(position: cameraPosition)
-        cameraUpdate.animationDuration = 0.8
-        uiView.moveCamera(cameraUpdate)
       }
 
       // 경로가 있을 때는 출발점에 빨간색 마커도 추가로 표시
@@ -132,6 +150,10 @@ public struct NaverMapComponent: UIViewRepresentable {
       #logDebug(" [NaverMapComponent] 목적지 마커 추가: \(destination.name)")
     }
 
+    let previousSpotID = Self.lastSyncedSpotID
+    Self.selectedSpotID = selectedSpotID
+    Self.lastSyncedSpotID = selectedSpotID
+
     if !spots.contains(where: { $0.id == Self.selectedSpotID }) {
       Self.selectedSpotID = nil
     }
@@ -154,21 +176,32 @@ public struct NaverMapComponent: UIViewRepresentable {
       marker.touchHandler = { _ in
         Self.selectedSpotID = spot.id
         Self.updateSpotMarkerSelection()
-        let cameraPosition = NMFCameraPosition(
-          NMGLatLng(
+        onSpotTapped?(spot.id)
+        moveCamera(
+          on: uiView,
+          to: NMGLatLng(
             lat: spot.coordinate.latitude,
             lng: spot.coordinate.longitude
           ),
           zoom: 17
         )
-        let cameraUpdate = NMFCameraUpdate(position: cameraPosition)
-        cameraUpdate.animation = .easeIn
-        cameraUpdate.animationDuration = 0.3
-        uiView.moveCamera(cameraUpdate)
         return true
       }
       marker.mapView = uiView
       Self.spotMarkers[spot.id] = marker
+    }
+
+    if let selectedSpotID = Self.selectedSpotID,
+       selectedSpotID != previousSpotID,
+       let selectedSpot = spots.first(where: { $0.id == selectedSpotID }) {
+      moveCamera(
+        on: uiView,
+        to: NMGLatLng(
+          lat: selectedSpot.coordinate.latitude,
+          lng: selectedSpot.coordinate.longitude
+        ),
+        zoom: 17
+      )
     }
 
     // 도보 경로 그리기
@@ -207,6 +240,18 @@ public struct NaverMapComponent: UIViewRepresentable {
     }
   }
 
+  public final class Coordinator: NSObject, NMFMapViewTouchDelegate {
+    var parent: NaverMapComponent
+
+    init(parent: NaverMapComponent) {
+      self.parent = parent
+    }
+
+    public func mapView(_ mapView: NMFMapView, didTapMap latlng: NMGLatLng, point: CGPoint) {
+      parent.onMapTapped?()
+    }
+  }
+
   // MARK: - Helper Functions
 
   private func markerImage(for category: ExploreCategory) -> UIImage {
@@ -242,6 +287,18 @@ public struct NaverMapComponent: UIViewRepresentable {
     for (spotID, marker) in spotMarkers {
       applySpotMarkerStyle(marker, isSelected: spotID == selectedSpotID)
     }
+  }
+
+  private func moveCamera(
+    on mapView: NMFMapView,
+    to target: NMGLatLng,
+    zoom: Double
+  ) {
+    let cameraPosition = NMFCameraPosition(target, zoom: zoom)
+    let cameraUpdate = NMFCameraUpdate(position: cameraPosition)
+    cameraUpdate.animation = .easeOut
+    cameraUpdate.animationDuration = 0.45
+    mapView.moveCamera(cameraUpdate)
   }
 
   // 3D 효과가 있는 핀 마커 이미지 생성
