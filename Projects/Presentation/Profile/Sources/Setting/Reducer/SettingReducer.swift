@@ -198,7 +198,6 @@ extension SettingFeature {
         ] send in
           let result = await Result {
             try await profileUseCase.editUser(
-              name: userSession.name,
               mapType: userSession.mapType
             )
           }

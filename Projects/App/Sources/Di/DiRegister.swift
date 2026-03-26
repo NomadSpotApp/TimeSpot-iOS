@@ -40,10 +40,14 @@ public final class AppDIManager {
       .register { AppleLoginRepositoryImpl() as AppleAuthRequestInterface }
       .register { AppleOAuthRepositoryImpl() as AppleOAuthInterface }
       .register { AppleOAuthProvider() as AppleOAuthProviderInterface }
-      // MARK: - 회원가입
+    // MARK: - 회원가입
       .register { SignUpRepositoryImpl() as SignUpInterface }
-      // MARK: - 프로필
+    // MARK: - 프로필
       .register(ProfileInterface.self) { ProfileRepositoryImpl() }
+    // MARK: - 히스토리
+      .register(HistoryInterface.self) { HistoryRepositoryImpl() }
+    // MARK: - 역
+      .register(StationInterface.self) { StationRepositoryImpl() }
 
 
 

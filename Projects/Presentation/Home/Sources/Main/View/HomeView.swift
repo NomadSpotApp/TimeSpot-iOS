@@ -15,6 +15,31 @@ import ComposableArchitecture
 public struct HomeView: View {
   @Bindable var store: StoreOf<HomeFeature>
 
+  // MARK: - Layout Constants
+  private enum Layout {
+    enum Hero {
+      static let height: CGFloat = 524
+      static let cornerRadius: CGFloat = 40
+    }
+
+    enum TimePicker {
+      static let width: CGFloat = 176
+      static let height: CGFloat = 180
+      static let offset = UIOffset(horizontal: -184, vertical: 492)
+      static let cornerRadius: CGFloat = 28
+    }
+
+    enum TimeCapsule {
+      static let height: CGFloat = 77
+      static let cornerRadius: CGFloat = 28
+    }
+
+    enum TimeDisplay {
+      static let cornerRadius: CGFloat = 36
+    }
+  }
+
+
   public init(store: StoreOf<HomeFeature>) {
     self.store = store
   }
@@ -38,6 +63,26 @@ public struct HomeView: View {
         Spacer()
       }
     }
+    .presentDSModal(
+      item: $store.scope(state: \.trainStation, action: \.trainStation),
+      height: .fraction(0.88),
+      showDragIndicator: true
+    ) { trainStationStore in
+      TrainStationView(store: trainStationStore)
+    }
+    .customAlert($store.scope(state: \.customAlert, action: \.customAlert))
+    .toastOverlay(
+      position: .bottom,
+      horizontalPadding: 20,
+      bottomPadding: 140
+    )
+    .onAppear {
+      store.send(.view(.onAppear))
+    }
+    .onChange(of: store.shouldShowDepartureWarningToast) { _, shouldShow in
+      guard shouldShow else { return }
+      ToastManager.shared.showWarning(HomeFeature.Strings.insufficientWaitTime)
+    }
   }
 }
 
@@ -47,15 +92,13 @@ extension HomeView {
 
   @ViewBuilder
   fileprivate func logoContentView() -> some View {
-    let heroHeight: CGFloat = 524
-
     GeometryReader { geometry in
       ZStack(alignment: .topLeading) {
         ZStack(alignment: .top) {
           Image(asset: .homeLogo)
             .resizable()
             .scaledToFill()
-            .frame(width: geometry.size.width, height: heroHeight, alignment: .top)
+            .frame(width: geometry.size.width, height: Layout.Hero.height, alignment: .top)
             .scaleEffect(1.06, anchor: .top)
             .ignoresSafeArea(edges: .top)
 
@@ -74,25 +117,25 @@ extension HomeView {
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
           .padding(.bottom, 28)
         }
-        .frame(width: geometry.size.width, height: heroHeight)
+        .frame(width: geometry.size.width, height: Layout.Hero.height)
         .background(.clear)
         .clipShape(
           UnevenRoundedRectangle(
             cornerRadii: .init(
-              bottomLeading: 40,
-              bottomTrailing: 40
+              bottomLeading: Layout.Hero.cornerRadius,
+              bottomTrailing: Layout.Hero.cornerRadius
             )
           )
         )
 
         if store.departureTimePickerVisible {
           departureTimePickerView()
-            .offset(x: geometry.size.width - 8 - 176 - 8, y: 492)
+            .offset(x: geometry.size.width + Layout.TimePicker.offset.horizontal, y: Layout.TimePicker.offset.vertical)
             .zIndex(2)
         }
       }
     }
-    .frame(height: heroHeight)
+    .frame(height: Layout.Hero.height)
   }
 
   @ViewBuilder
@@ -101,7 +144,7 @@ extension HomeView {
       Spacer()
 
       Button {
-        store.send(.delegate(.presentProfile))
+        store.send(.view(.profileButtonTapped))
       } label: {
         Image(asset: .profile)
           .resizable()
@@ -118,25 +161,30 @@ extension HomeView {
 
   @ViewBuilder
   fileprivate func selectStationView() -> some View {
-    VStack(alignment: .center, spacing: 0) {
-      Text(store.todayDate.formattedKoreanDateWithWeekday())
-        .pretendardCustomFont(textStyle: .body2Medium)
-        .foregroundStyle(.gray900.opacity(0.9))
-        .padding(.bottom, 4)
+    Button {
+      store.send(.view(.selectStationButtonTapped))
+    } label: {
+      VStack(alignment: .center, spacing: 0) {
+        Text(store.todayDate.formattedKoreanDateWithWeekday())
+          .pretendardCustomFont(textStyle: .body2Medium)
+          .foregroundStyle(.gray900.opacity(0.9))
+          .padding(.bottom, 4)
 
-      Text("SEOUL")
-        .pretendardFont(family: .Bold, size: 64)
-        .foregroundStyle(store.isSelected ? .gray900 : .slateGray)
-        .tracking(-2.2)
+        Text(store.selectedStation.homeTitle)
+          .pretendardFont(family: .Bold, size: 64)
+          .foregroundStyle(store.isSelected || store.hasSelectedStation ? .gray900 : .slateGray)
+          .tracking(-2.2)
+      }
+      .frame(maxWidth: .infinity)
     }
-    .frame(maxWidth: .infinity)
+    .buttonStyle(.plain)
   }
 
   @ViewBuilder
   fileprivate func selectTrainTimeView() -> some View {
     HStack(alignment: .top, spacing: 10) {
       timeCapsuleView(
-        title: "현재 시간",
+        title: HomeFeature.Strings.currentTime,
         time: store.currentTime.formattedKoreanTime(),
         timeColor: .gray900,
         backgroundColor: .gray100
@@ -146,7 +194,7 @@ extension HomeView {
         store.send(.view(.departureTimeButtonTapped))
       } label: {
         timeCapsuleView(
-          title: "출발 시간",
+          title: HomeFeature.Strings.departureTime,
           time: store.isDepartureTimeSet
             ? store.departureTime.formattedKoreanTime()
             : store.currentTime.formattedKoreanTime(),
@@ -157,15 +205,16 @@ extension HomeView {
       .buttonStyle(.plain)
       .frame(maxWidth: .infinity)
     }
-    .padding(.horizontal, 8)
-    .padding(.top, 4)
+    .padding(.horizontal, 24)
+    .padding(.top, 8)
   }
 
   @ViewBuilder
   fileprivate func departureTimePickerView() -> some View {
     DatePicker(
-      "출발 시간 선택",
+      HomeFeature.Strings.departureTimeSelection,
       selection: $store.departureTime,
+      in: store.currentTime...,
       displayedComponents: [.hourAndMinute]
     )
     .datePickerStyle(.wheel)
@@ -174,11 +223,11 @@ extension HomeView {
     .onChange(of: store.departureTime) { _, newValue in
       store.send(.view(.departureTimeChanged(newValue)))
     }
-    .frame(height: 180)
+    .frame(height: Layout.TimePicker.height)
     .clipped()
-    .frame(width: 176)
+    .frame(width: Layout.TimePicker.width)
     .background(.gray300)
-    .clipShape(RoundedRectangle(cornerRadius: 24))
+    .clipShape(RoundedRectangle(cornerRadius: Layout.TimePicker.cornerRadius))
   }
 
   @ViewBuilder
@@ -198,9 +247,9 @@ extension HomeView {
         .foregroundStyle(timeColor)
     }
     .frame(maxWidth: .infinity)
-    .frame(height: 77)
+    .frame(height: Layout.TimeCapsule.height)
     .background(backgroundColor)
-    .cornerRadius(32)
+    .cornerRadius(Layout.TimeCapsule.cornerRadius)
   }
 
 
@@ -215,7 +264,7 @@ extension HomeView {
           .foregroundStyle(store.hasRemainingTimeResult ? .gray900 : .enableColor)
           .frame(height: 69)
 
-        Text("HOURS")
+        Text(HomeFeature.Strings.hours)
           .pretendardCustomFont(textStyle: .caption)
           .foregroundStyle(store.hasRemainingTimeResult ? .gray900 : .enableColor)
 
@@ -238,7 +287,7 @@ extension HomeView {
           .foregroundStyle(store.hasRemainingTimeResult ? .gray900 : .enableColor)
           .frame(height: 69)
 
-        Text("MINUTES")
+        Text(HomeFeature.Strings.minutes)
           .pretendardCustomFont(textStyle: .caption)
           .foregroundStyle(store.hasRemainingTimeResult ? .gray900 : .enableColor)
 
@@ -249,7 +298,7 @@ extension HomeView {
     }
     .padding(.vertical, 21)
     .background(
-      RoundedRectangle(cornerRadius: 36)
+      RoundedRectangle(cornerRadius: Layout.TimeDisplay.cornerRadius)
         .fill(.white)
     )
     .padding(.horizontal, 24)
@@ -258,10 +307,12 @@ extension HomeView {
   @ViewBuilder
   fileprivate func exploreNearbyButton() -> some View {
     CustomButton(
-      action: {},
-      title: "주변 탐색 시작하기",
+      action: {
+        store.send(.view(.exploreNearbyButtonTapped))
+      },
+      title: HomeFeature.Strings.exploreNearby,
       config: CustomButtonConfig.create(),
-      isEnable: false
+      isEnable: store.isExploreNearbyEnabled
     )
     .padding(.horizontal, 24)
   }

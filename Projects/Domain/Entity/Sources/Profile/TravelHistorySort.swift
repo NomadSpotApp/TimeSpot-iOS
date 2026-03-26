@@ -19,4 +19,13 @@ public enum TravelHistorySort: String, CaseIterable, Equatable, Hashable {
         return "오래된 순"
     }
   }
+
+  public var description: String {
+    switch self {
+      case .oldest:
+        return "createdAt,ASC"
+      case .recent:
+        return  "createdAt,DESC"
+    }
+  }
 }

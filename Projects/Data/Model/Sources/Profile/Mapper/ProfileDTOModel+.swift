@@ -34,7 +34,9 @@ public extension ProfileResponseDTO {
       email: self.email,
       nickname: self.nickname,
       mapType: mapType,
-      provider: provider
+      provider: provider,
+      totalVisitCount: totalVisitCount,
+      totalJourneyMinutes: totalJourneyMinutes
     )
   }
 }

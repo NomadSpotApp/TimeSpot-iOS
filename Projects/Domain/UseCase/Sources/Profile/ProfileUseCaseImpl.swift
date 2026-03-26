@@ -26,10 +26,9 @@ public struct ProfileUseCaseImpl: ProfileInterface {
   }
 
   public func editUser(
-    name: String,
     mapType: ExternalMapType
   ) async throws -> LoginEntity {
-    let editUserEntity = try await repository.editUser(name: name, mapType: mapType)
+    let editUserEntity = try await repository.editUser(mapType: mapType)
 
     do {
       try await keychainManager.save(
