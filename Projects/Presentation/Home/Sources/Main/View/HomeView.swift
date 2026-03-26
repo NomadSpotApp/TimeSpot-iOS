@@ -15,6 +15,29 @@ import ComposableArchitecture
 public struct HomeView: View {
   @Bindable var store: StoreOf<HomeFeature>
 
+  // MARK: - Layout Constants
+  private enum LayoutConstants {
+    static let heroHeight: CGFloat = 524
+    static let pickerWidth: CGFloat = 176
+    static let pickerHeight: CGFloat = 180
+    static let pickerOffset = UIOffset(horizontal: -184, vertical: 492)
+    static let timeCapsuleHeight: CGFloat = 77
+    static let cornerRadius: CGFloat = 28
+    static let heroCornerRadius: CGFloat = 40
+    static let timeLeftCornerRadius: CGFloat = 36
+  }
+
+  // MARK: - String Constants (준비: 향후 국제화용)
+  private enum Strings {
+    static let currentTime = "현재 시간"
+    static let departureTime = "출발 시간"
+    static let hours = "HOURS"
+    static let minutes = "MINUTES"
+    static let exploreNearby = "주변 탐색 시작하기"
+    static let departureTimeSelection = "출발 시간 선택"
+    static let insufficientWaitTime = "대기 시간이 부족합니다 (최소 20분 필요)"
+  }
+
   public init(store: StoreOf<HomeFeature>) {
     self.store = store
   }
@@ -56,7 +79,7 @@ public struct HomeView: View {
     }
     .onChange(of: store.shouldShowDepartureWarningToast) { _, shouldShow in
       guard shouldShow else { return }
-      ToastManager.shared.showWarning("대기 시간이 부족합니다 (최소 20분 필요)")
+      ToastManager.shared.showWarning(Strings.insufficientWaitTime)
     }
   }
 }
@@ -67,15 +90,13 @@ extension HomeView {
 
   @ViewBuilder
   fileprivate func logoContentView() -> some View {
-    let heroHeight: CGFloat = 524
-
     GeometryReader { geometry in
       ZStack(alignment: .topLeading) {
         ZStack(alignment: .top) {
           Image(asset: .homeLogo)
             .resizable()
             .scaledToFill()
-            .frame(width: geometry.size.width, height: heroHeight, alignment: .top)
+            .frame(width: geometry.size.width, height: LayoutConstants.heroHeight, alignment: .top)
             .scaleEffect(1.06, anchor: .top)
             .ignoresSafeArea(edges: .top)
 
@@ -94,25 +115,25 @@ extension HomeView {
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
           .padding(.bottom, 28)
         }
-        .frame(width: geometry.size.width, height: heroHeight)
+        .frame(width: geometry.size.width, height: LayoutConstants.heroHeight)
         .background(.clear)
         .clipShape(
           UnevenRoundedRectangle(
             cornerRadii: .init(
-              bottomLeading: 40,
-              bottomTrailing: 40
+              bottomLeading: LayoutConstants.heroCornerRadius,
+              bottomTrailing: LayoutConstants.heroCornerRadius
             )
           )
         )
 
         if store.departureTimePickerVisible {
           departureTimePickerView()
-            .offset(x: geometry.size.width - 8 - 176 - 8, y: 492)
+            .offset(x: geometry.size.width + LayoutConstants.pickerOffset.horizontal, y: LayoutConstants.pickerOffset.vertical)
             .zIndex(2)
         }
       }
     }
-    .frame(height: heroHeight)
+    .frame(height: LayoutConstants.heroHeight)
   }
 
   @ViewBuilder
@@ -161,7 +182,7 @@ extension HomeView {
   fileprivate func selectTrainTimeView() -> some View {
     HStack(alignment: .top, spacing: 10) {
       timeCapsuleView(
-        title: "현재 시간",
+        title: Strings.currentTime,
         time: store.currentTime.formattedKoreanTime(),
         timeColor: .gray900,
         backgroundColor: .gray100
@@ -171,7 +192,7 @@ extension HomeView {
         store.send(.view(.departureTimeButtonTapped))
       } label: {
         timeCapsuleView(
-          title: "출발 시간",
+          title: Strings.departureTime,
           time: store.isDepartureTimeSet
             ? store.departureTime.formattedKoreanTime()
             : store.currentTime.formattedKoreanTime(),
@@ -189,7 +210,7 @@ extension HomeView {
   @ViewBuilder
   fileprivate func departureTimePickerView() -> some View {
     DatePicker(
-      "출발 시간 선택",
+      Strings.departureTimeSelection,
       selection: $store.departureTime,
       in: store.currentTime...,
       displayedComponents: [.hourAndMinute]
@@ -200,11 +221,11 @@ extension HomeView {
     .onChange(of: store.departureTime) { _, newValue in
       store.send(.view(.departureTimeChanged(newValue)))
     }
-    .frame(height: 180)
+    .frame(height: LayoutConstants.pickerHeight)
     .clipped()
-    .frame(width: 176)
+    .frame(width: LayoutConstants.pickerWidth)
     .background(.gray300)
-    .clipShape(RoundedRectangle(cornerRadius: 24))
+    .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.cornerRadius))
   }
 
   @ViewBuilder
@@ -224,9 +245,9 @@ extension HomeView {
         .foregroundStyle(timeColor)
     }
     .frame(maxWidth: .infinity)
-    .frame(height: 77)
+    .frame(height: LayoutConstants.timeCapsuleHeight)
     .background(backgroundColor)
-    .cornerRadius(28)
+    .cornerRadius(LayoutConstants.cornerRadius)
   }
 
 
@@ -241,7 +262,7 @@ extension HomeView {
           .foregroundStyle(store.hasRemainingTimeResult ? .gray900 : .enableColor)
           .frame(height: 69)
 
-        Text("HOURS")
+        Text(Strings.hours)
           .pretendardCustomFont(textStyle: .caption)
           .foregroundStyle(store.hasRemainingTimeResult ? .gray900 : .enableColor)
 
@@ -264,7 +285,7 @@ extension HomeView {
           .foregroundStyle(store.hasRemainingTimeResult ? .gray900 : .enableColor)
           .frame(height: 69)
 
-        Text("MINUTES")
+        Text(Strings.minutes)
           .pretendardCustomFont(textStyle: .caption)
           .foregroundStyle(store.hasRemainingTimeResult ? .gray900 : .enableColor)
 
@@ -275,7 +296,7 @@ extension HomeView {
     }
     .padding(.vertical, 21)
     .background(
-      RoundedRectangle(cornerRadius: 36)
+      RoundedRectangle(cornerRadius: LayoutConstants.timeLeftCornerRadius)
         .fill(.white)
     )
     .padding(.horizontal, 24)
@@ -287,7 +308,7 @@ extension HomeView {
       action: {
         store.send(.view(.exploreNearbyButtonTapped))
       },
-      title: "주변 탐색 시작하기",
+      title: Strings.exploreNearby,
       config: CustomButtonConfig.create(),
       isEnable: store.isExploreNearbyEnabled
     )

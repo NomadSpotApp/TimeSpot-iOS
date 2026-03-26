@@ -105,22 +105,37 @@ private extension ExploreView {
 
   @ViewBuilder
   func categoryScrollView() -> some View {
-    ScrollView(.horizontal, showsIndicators: false) {
-      HStack(spacing: 8) {
-        ForEach(ExploreCategory.allCases, id: \.self) { category in
-          categoryChip(category)
+    ScrollViewReader { proxy in
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(spacing: 8) {
+          ForEach(ExploreCategory.allCases, id: \.self) { category in
+            categoryChip(category) {
+              scrollToCategory(category, with: proxy)
+            }
+            .id(category)
+          }
         }
+        .padding(.horizontal, 2)
       }
-      .padding(.horizontal, 2)
+      .onAppear {
+        scrollToCategory(store.selectedCategory, with: proxy, animated: false)
+      }
+      .onChange(of: store.selectedCategory) { _, category in
+        scrollToCategory(category, with: proxy)
+      }
     }
   }
 
   @ViewBuilder
-  func categoryChip(_ category: ExploreCategory) -> some View {
+  func categoryChip(
+    _ category: ExploreCategory,
+    onTap: @escaping () -> Void
+  ) -> some View {
     let isSelected = store.selectedCategory == category
 
     Button {
       store.send(.view(.categoryTapped(category)))
+      onTap()
     } label: {
       HStack(spacing: 4) {
         categoryIcon(for: category, isSelected: isSelected)
@@ -160,6 +175,24 @@ private extension ExploreView {
       }
       .padding(.trailing, 16)
       .padding(.bottom, 36)
+    }
+  }
+
+  func scrollToCategory(
+    _ category: ExploreCategory,
+    with proxy: ScrollViewProxy,
+    animated: Bool = true
+  ) {
+    let action = {
+      proxy.scrollTo(category == .all ? ExploreCategory.all : category, anchor: .leading)
+    }
+
+    if animated {
+      withAnimation(.easeInOut(duration: 0.2)) {
+        action()
+      }
+    } else {
+      action()
     }
   }
 
