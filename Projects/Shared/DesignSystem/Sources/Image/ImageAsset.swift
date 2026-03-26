@@ -25,7 +25,8 @@ public enum ImageAsset: String {
   case etc
   case food
   case tapAll
-  case tapCaffee
+  case cafe
+  case tapCaffe
   case tapGame
   case tapShopping
   case tapEtc

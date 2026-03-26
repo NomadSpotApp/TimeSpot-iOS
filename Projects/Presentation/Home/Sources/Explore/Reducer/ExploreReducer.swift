@@ -23,6 +23,7 @@ public struct ExploreReducer: Sendable {
     public var currentLocation: CLLocation?
     public var isLocationPermissionDenied: Bool = false
     public var locationError: String?
+    public var searchText: String = ""
     @Presents public var alert: AlertState<Alert>?
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
 
@@ -66,6 +67,7 @@ public struct ExploreReducer: Sendable {
     case retryLocationPermission
     case requestFullAccuracy
     case openSettings
+    case searchTextChanged(String)
     case categoryTapped(ExploreCategory)
     // 길찾기 관련 액션
     case searchRouteToGangnam
@@ -167,6 +169,10 @@ extension ExploreReducer {
             UIApplication.shared.open(settingsUrl)
           }
         }
+
+      case .searchTextChanged(let text):
+        state.searchText = text
+        return .none
 
       case .categoryTapped(let category):
         state.selectedCategory = category

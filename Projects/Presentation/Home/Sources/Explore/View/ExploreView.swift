@@ -89,12 +89,30 @@ private extension ExploreView {
 
   @ViewBuilder
   func searchBar() -> some View {
-    HStack {
-      Text("\(store.userSession.travelStationName)역")
+    HStack(spacing: 8) {
+      Image(systemName: "magnifyingglass")
+        .font(.system(size: 16, weight: .medium))
+        .foregroundStyle(.gray600)
+
+      ZStack(alignment: .leading) {
+        if store.searchText.isEmpty {
+          Text("\(store.userSession.travelStationName)역")
+            .pretendardFont(family: .Regular, size: 18)
+            .foregroundStyle(.gray600)
+        }
+
+        TextField(
+          "",
+          text: Binding(
+            get: { store.searchText },
+            set: { store.send(.view(.searchTextChanged($0))) }
+          )
+        )
         .pretendardFont(family: .Regular, size: 18)
         .foregroundStyle(.staticBlack)
-
-      Spacer()
+        .textInputAutocapitalization(.never)
+        .autocorrectionDisabled()
+      }
     }
     .padding(.horizontal, 24)
     .frame(height: 56)
@@ -109,9 +127,7 @@ private extension ExploreView {
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(spacing: 8) {
           ForEach(ExploreCategory.allCases, id: \.self) { category in
-            categoryChip(category) {
-              scrollToCategory(category, with: proxy)
-            }
+            categoryChip(category)
             .id(category)
           }
         }
@@ -121,21 +137,19 @@ private extension ExploreView {
         scrollToCategory(store.selectedCategory, with: proxy, animated: false)
       }
       .onChange(of: store.selectedCategory) { _, category in
-        scrollToCategory(category, with: proxy)
+        DispatchQueue.main.async {
+          scrollToCategory(category, with: proxy)
+        }
       }
     }
   }
 
   @ViewBuilder
-  func categoryChip(
-    _ category: ExploreCategory,
-    onTap: @escaping () -> Void
-  ) -> some View {
+  func categoryChip(_ category: ExploreCategory) -> some View {
     let isSelected = store.selectedCategory == category
 
     Button {
       store.send(.view(.categoryTapped(category)))
-      onTap()
     } label: {
       HStack(spacing: 4) {
         categoryIcon(for: category, isSelected: isSelected)
@@ -183,8 +197,22 @@ private extension ExploreView {
     with proxy: ScrollViewProxy,
     animated: Bool = true
   ) {
+    let targetCategory: ExploreCategory
+    switch category {
+    case .all, .cafe:
+      targetCategory = .all
+    case .restaurant:
+      targetCategory = .cafe
+    case .activity:
+      targetCategory = .restaurant
+    case .etc:
+      targetCategory = .activity
+    @unknown default:
+      targetCategory = .all
+    }
+
     let action = {
-      proxy.scrollTo(category == .all ? ExploreCategory.all : category, anchor: .leading)
+      proxy.scrollTo(targetCategory, anchor: .leading)
     }
 
     if animated {
@@ -208,17 +236,10 @@ private extension ExploreView {
         .scaledToFit()
         .frame(width: 16, height: 16)
     case .cafe:
-      if isSelected {
-        Image(asset: .tapCaffee)
+        Image(asset: isSelected ? .tapCaffe  : .cafe)
           .resizable()
           .scaledToFit()
           .frame(width: 16, height: 16)
-      } else {
-        Image(systemName: "cup.and.saucer.fill")
-          .font(.system(size: 13, weight: .semibold))
-          .foregroundStyle(.gray600)
-          .frame(width: 16, height: 16)
-      }
     case .restaurant:
       Image(asset: isSelected ? .tapFood : .food)
         .resizable()
