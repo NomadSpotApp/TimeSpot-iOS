@@ -129,7 +129,15 @@ extension TrainStationFeature {
     case .favoriteButtonTapped(let row):
       guard state.shouldShowFavoriteSection else { return .none }
       if row.isFavorite {
-        return .send(.async(.deleteFavoriteStation(row.favoriteID ?? row.stationID)))
+        let resolvedFavoriteID = row.favoriteID ?? state.favoriteItems.first(where: {
+          normalizedStationName($0.stationName) == normalizedStationName(row.stationName)
+        })?.favoriteID
+
+        guard let favoriteID = resolvedFavoriteID else {
+          return .none
+        }
+
+        return .send(.async(.deleteFavoriteStation(favoriteID)))
       } else {
         return .send(.async(.addFavoriteStation(row.stationID)))
       }
@@ -216,7 +224,8 @@ extension TrainStationFeature {
     switch action {
     case .accessTokenChecked(let shouldShowFavoriteSection):
       state.shouldShowFavoriteSection = shouldShowFavoriteSection
-      return .none
+      guard shouldShowFavoriteSection else { return .none }
+      return .send(.async(.fetchFavoriteStations))
     case .fetchStationsResponse(let entity):
       state.nearbyRows = makeNearbyRows(entity.nearbyStations)
       state.majorRows = makeMajorRows(entity.stations.content)
@@ -235,17 +244,24 @@ extension TrainStationFeature {
       applyFavoriteState(state: &state)
       return .none
     case .fetchFavoriteStationsFailed(let message):
-      if state.favoriteRows.isEmpty {
+      // favorites API가 실패해도 allStation.favoriteStations로 이미 렌더 가능하면 화면은 유지
+      if state.favoriteRows.isEmpty && state.favoriteItems.isEmpty {
         state.errorMessage = message
       }
       return .none
     case .addFavoriteStationResponse:
-      return .send(.async(.fetchFavoriteStations))
+      return .merge(
+        .send(.async(.fetchFavoriteStations)),
+        .send(.async(.fetchStations))
+      )
     case .addFavoriteStationFailed(let message):
       state.errorMessage = message
       return .none
     case .deleteFavoriteStationResponse:
-      return .send(.async(.fetchFavoriteStations))
+      return .merge(
+        .send(.async(.fetchFavoriteStations)),
+        .send(.async(.fetchStations))
+      )
     case .deleteFavoriteStationFailed(let message):
       state.errorMessage = message
       return .none
@@ -314,9 +330,10 @@ private extension TrainStationFeature {
   func makeFavoriteSummaryRows(_ stations: [StationSummaryEntity]) -> [StationRowModel] {
     Array(
       Dictionary(
-        uniqueKeysWithValues: stations.map { station in
+        stations.map { station in
           (normalizedStationName(station.name), station)
-        }
+        },
+        uniquingKeysWith: { first, _ in first }
       ).values
     )
     .sorted { $0.name < $1.name }

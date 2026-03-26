@@ -18,11 +18,11 @@ public enum StationAPI {
       case .allStation:
         return ""
       case .favoriteStation:
-        return ""
+        return "/favorites"
       case .addFavoriteStation:
-        return ""
+        return "/favorites"
       case .deleteFavoriteStation(let deleteStationId):
-        return "/\(deleteStationId)"
+        return "/favorites/\(deleteStationId)"
     }
   }
 }

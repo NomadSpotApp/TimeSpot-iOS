@@ -28,6 +28,7 @@ public extension FavoriteStationItemResponseDTO {
       stationID: stationID,
       stationName: stationName,
       visitCount: visitCount,
+      totalVisitMinutes: totalVisitMinutes,
       createdAt: createdAt
     )
   }

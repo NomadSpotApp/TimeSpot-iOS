@@ -24,12 +24,7 @@ extension StationService: BaseTargetType {
   public typealias Domain = TimeSpotDomain
 
   public var domain: TimeSpotDomain {
-    switch self {
-    case .allStation:
-      return .station
-    case .favoriteStation, .addFavoriteStation, .deleteFavoriteStation:
-      return .favorite
-    }
+    return .station
   }
 
   public var urlPath: String {

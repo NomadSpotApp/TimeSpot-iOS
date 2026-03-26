@@ -50,6 +50,7 @@ public struct FavoriteStationItemEntity: Equatable, Hashable, Identifiable {
   public let stationID: Int
   public let stationName: String
   public let visitCount: Int
+  public let totalVisitMinutes: Int
   public let createdAt: String
 
   public var id: Int { favoriteID }
@@ -59,12 +60,14 @@ public struct FavoriteStationItemEntity: Equatable, Hashable, Identifiable {
     stationID: Int,
     stationName: String,
     visitCount: Int,
+    totalVisitMinutes: Int,
     createdAt: String
   ) {
     self.favoriteID = favoriteID
     self.stationID = stationID
     self.stationName = stationName
     self.visitCount = visitCount
+    self.totalVisitMinutes = totalVisitMinutes
     self.createdAt = createdAt
   }
 }

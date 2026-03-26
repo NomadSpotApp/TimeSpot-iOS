@@ -14,6 +14,12 @@ public struct StationListResponseDTO: Decodable, Equatable {
   public let nearbyStations: [StationSummaryResponseDTO]
   public let stations: StationPageResponseDTO
 
+  enum CodingKeys: String, CodingKey {
+    case favoriteStations
+    case nearbyStations
+    case stations
+  }
+
   public init(
     favoriteStations: [StationSummaryResponseDTO],
     nearbyStations: [StationSummaryResponseDTO],
@@ -22,6 +28,13 @@ public struct StationListResponseDTO: Decodable, Equatable {
     self.favoriteStations = favoriteStations
     self.nearbyStations = nearbyStations
     self.stations = stations
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.favoriteStations = (try? container.decode([StationSummaryResponseDTO].self, forKey: .favoriteStations)) ?? []
+    self.nearbyStations = (try? container.decode([StationSummaryResponseDTO].self, forKey: .nearbyStations)) ?? []
+    self.stations = try container.decode(StationPageResponseDTO.self, forKey: .stations)
   }
 }
 
@@ -58,6 +71,19 @@ public struct StationPageResponseDTO: Decodable, Equatable {
   public let number: Int
   public let empty: Bool
 
+  enum CodingKeys: String, CodingKey {
+    case content
+    case totalElements
+    case totalPages
+    case last
+    case first
+    case numberOfElements
+    case size
+    case number
+    case empty
+    case hasNext
+  }
+
   public init(
     content: [StationSummaryResponseDTO],
     totalElements: Int,
@@ -78,5 +104,32 @@ public struct StationPageResponseDTO: Decodable, Equatable {
     self.size = size
     self.number = number
     self.empty = empty
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    let content = try container.decode([StationSummaryResponseDTO].self, forKey: .content)
+    let totalElements = try container.decode(Int.self, forKey: .totalElements)
+    let totalPages = try container.decode(Int.self, forKey: .totalPages)
+    let size = try container.decode(Int.self, forKey: .size)
+    let number = try container.decode(Int.self, forKey: .number)
+
+    let hasNext = try container.decodeIfPresent(Bool.self, forKey: .hasNext) ?? false
+    let first = try container.decodeIfPresent(Bool.self, forKey: .first) ?? (number == 0)
+    let last = try container.decodeIfPresent(Bool.self, forKey: .last) ?? !hasNext
+    let numberOfElements = try container.decodeIfPresent(Int.self, forKey: .numberOfElements) ?? content.count
+    let empty = try container.decodeIfPresent(Bool.self, forKey: .empty) ?? content.isEmpty
+
+    self.init(
+      content: content,
+      totalElements: totalElements,
+      totalPages: totalPages,
+      last: last,
+      first: first,
+      numberOfElements: numberOfElements,
+      size: size,
+      number: number,
+      empty: empty
+    )
   }
 }
