@@ -22,6 +22,17 @@ public struct HomeFeature {
 
   public init() {}
 
+  // MARK: - Constants
+  public enum Strings {
+    public static let currentTime = "현재 시간"
+    public static let departureTime = "출발 시간"
+    public static let hours = "HOURS"
+    public static let minutes = "MINUTES"
+    public static let exploreNearby = "주변 탐색 시작하기"
+    public static let departureTimeSelection = "출발 시간 선택"
+    public static let insufficientWaitTime = "대기 시간이 부족합니다 (최소 20분 필요)"
+  }
+
   @ObservableState
   public struct State: Equatable {
     public init() {

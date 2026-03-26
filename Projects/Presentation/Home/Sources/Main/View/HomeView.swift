@@ -16,27 +16,29 @@ public struct HomeView: View {
   @Bindable var store: StoreOf<HomeFeature>
 
   // MARK: - Layout Constants
-  private enum LayoutConstants {
-    static let heroHeight: CGFloat = 524
-    static let pickerWidth: CGFloat = 176
-    static let pickerHeight: CGFloat = 180
-    static let pickerOffset = UIOffset(horizontal: -184, vertical: 492)
-    static let timeCapsuleHeight: CGFloat = 77
-    static let cornerRadius: CGFloat = 28
-    static let heroCornerRadius: CGFloat = 40
-    static let timeLeftCornerRadius: CGFloat = 36
+  private enum Layout {
+    enum Hero {
+      static let height: CGFloat = 524
+      static let cornerRadius: CGFloat = 40
+    }
+
+    enum TimePicker {
+      static let width: CGFloat = 176
+      static let height: CGFloat = 180
+      static let offset = UIOffset(horizontal: -184, vertical: 492)
+      static let cornerRadius: CGFloat = 28
+    }
+
+    enum TimeCapsule {
+      static let height: CGFloat = 77
+      static let cornerRadius: CGFloat = 28
+    }
+
+    enum TimeDisplay {
+      static let cornerRadius: CGFloat = 36
+    }
   }
 
-  // MARK: - String Constants (준비: 향후 국제화용)
-  private enum Strings {
-    static let currentTime = "현재 시간"
-    static let departureTime = "출발 시간"
-    static let hours = "HOURS"
-    static let minutes = "MINUTES"
-    static let exploreNearby = "주변 탐색 시작하기"
-    static let departureTimeSelection = "출발 시간 선택"
-    static let insufficientWaitTime = "대기 시간이 부족합니다 (최소 20분 필요)"
-  }
 
   public init(store: StoreOf<HomeFeature>) {
     self.store = store
@@ -79,7 +81,7 @@ public struct HomeView: View {
     }
     .onChange(of: store.shouldShowDepartureWarningToast) { _, shouldShow in
       guard shouldShow else { return }
-      ToastManager.shared.showWarning(Strings.insufficientWaitTime)
+      ToastManager.shared.showWarning(HomeFeature.Strings.insufficientWaitTime)
     }
   }
 }
@@ -96,7 +98,7 @@ extension HomeView {
           Image(asset: .homeLogo)
             .resizable()
             .scaledToFill()
-            .frame(width: geometry.size.width, height: LayoutConstants.heroHeight, alignment: .top)
+            .frame(width: geometry.size.width, height: Layout.Hero.height, alignment: .top)
             .scaleEffect(1.06, anchor: .top)
             .ignoresSafeArea(edges: .top)
 
@@ -115,25 +117,25 @@ extension HomeView {
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
           .padding(.bottom, 28)
         }
-        .frame(width: geometry.size.width, height: LayoutConstants.heroHeight)
+        .frame(width: geometry.size.width, height: Layout.Hero.height)
         .background(.clear)
         .clipShape(
           UnevenRoundedRectangle(
             cornerRadii: .init(
-              bottomLeading: LayoutConstants.heroCornerRadius,
-              bottomTrailing: LayoutConstants.heroCornerRadius
+              bottomLeading: Layout.Hero.cornerRadius,
+              bottomTrailing: Layout.Hero.cornerRadius
             )
           )
         )
 
         if store.departureTimePickerVisible {
           departureTimePickerView()
-            .offset(x: geometry.size.width + LayoutConstants.pickerOffset.horizontal, y: LayoutConstants.pickerOffset.vertical)
+            .offset(x: geometry.size.width + Layout.TimePicker.offset.horizontal, y: Layout.TimePicker.offset.vertical)
             .zIndex(2)
         }
       }
     }
-    .frame(height: LayoutConstants.heroHeight)
+    .frame(height: Layout.Hero.height)
   }
 
   @ViewBuilder
@@ -182,7 +184,7 @@ extension HomeView {
   fileprivate func selectTrainTimeView() -> some View {
     HStack(alignment: .top, spacing: 10) {
       timeCapsuleView(
-        title: Strings.currentTime,
+        title: HomeFeature.Strings.currentTime,
         time: store.currentTime.formattedKoreanTime(),
         timeColor: .gray900,
         backgroundColor: .gray100
@@ -192,7 +194,7 @@ extension HomeView {
         store.send(.view(.departureTimeButtonTapped))
       } label: {
         timeCapsuleView(
-          title: Strings.departureTime,
+          title: HomeFeature.Strings.departureTime,
           time: store.isDepartureTimeSet
             ? store.departureTime.formattedKoreanTime()
             : store.currentTime.formattedKoreanTime(),
@@ -210,7 +212,7 @@ extension HomeView {
   @ViewBuilder
   fileprivate func departureTimePickerView() -> some View {
     DatePicker(
-      Strings.departureTimeSelection,
+      HomeFeature.Strings.departureTimeSelection,
       selection: $store.departureTime,
       in: store.currentTime...,
       displayedComponents: [.hourAndMinute]
@@ -221,11 +223,11 @@ extension HomeView {
     .onChange(of: store.departureTime) { _, newValue in
       store.send(.view(.departureTimeChanged(newValue)))
     }
-    .frame(height: LayoutConstants.pickerHeight)
+    .frame(height: Layout.TimePicker.height)
     .clipped()
-    .frame(width: LayoutConstants.pickerWidth)
+    .frame(width: Layout.TimePicker.width)
     .background(.gray300)
-    .clipShape(RoundedRectangle(cornerRadius: LayoutConstants.cornerRadius))
+    .clipShape(RoundedRectangle(cornerRadius: Layout.TimePicker.cornerRadius))
   }
 
   @ViewBuilder
@@ -245,9 +247,9 @@ extension HomeView {
         .foregroundStyle(timeColor)
     }
     .frame(maxWidth: .infinity)
-    .frame(height: LayoutConstants.timeCapsuleHeight)
+    .frame(height: Layout.TimeCapsule.height)
     .background(backgroundColor)
-    .cornerRadius(LayoutConstants.cornerRadius)
+    .cornerRadius(Layout.TimeCapsule.cornerRadius)
   }
 
 
@@ -262,7 +264,7 @@ extension HomeView {
           .foregroundStyle(store.hasRemainingTimeResult ? .gray900 : .enableColor)
           .frame(height: 69)
 
-        Text(Strings.hours)
+        Text(HomeFeature.Strings.hours)
           .pretendardCustomFont(textStyle: .caption)
           .foregroundStyle(store.hasRemainingTimeResult ? .gray900 : .enableColor)
 
@@ -285,7 +287,7 @@ extension HomeView {
           .foregroundStyle(store.hasRemainingTimeResult ? .gray900 : .enableColor)
           .frame(height: 69)
 
-        Text(Strings.minutes)
+        Text(HomeFeature.Strings.minutes)
           .pretendardCustomFont(textStyle: .caption)
           .foregroundStyle(store.hasRemainingTimeResult ? .gray900 : .enableColor)
 
@@ -296,7 +298,7 @@ extension HomeView {
     }
     .padding(.vertical, 21)
     .background(
-      RoundedRectangle(cornerRadius: LayoutConstants.timeLeftCornerRadius)
+      RoundedRectangle(cornerRadius: Layout.TimeDisplay.cornerRadius)
         .fill(.white)
     )
     .padding(.horizontal, 24)
@@ -308,7 +310,7 @@ extension HomeView {
       action: {
         store.send(.view(.exploreNearbyButtonTapped))
       },
-      title: Strings.exploreNearby,
+      title: HomeFeature.Strings.exploreNearby,
       config: CustomButtonConfig.create(),
       isEnable: store.isExploreNearbyEnabled
     )
