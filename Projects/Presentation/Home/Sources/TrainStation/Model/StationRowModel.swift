@@ -8,10 +8,33 @@
 import Foundation
 import Entity
 
-public struct StationRowModel: Identifiable, Equatable {
+public struct StationRowModel: Identifiable, Equatable, Hashable {
   public let id: String
-  let station: Station
-  let badges: [String]
-  let distanceText: String?
-  let isFavorite: Bool
+  public let favoriteID: Int?
+  public let station: Station?
+  public let stationID: Int
+  public let stationName: String
+  public let badges: [String]
+  public let distanceText: String?
+  public let isFavorite: Bool
+
+  public init(
+    id: String,
+    favoriteID: Int? = nil,
+    station: Station?,
+    stationID: Int,
+    stationName: String,
+    badges: [String],
+    distanceText: String?,
+    isFavorite: Bool
+  ) {
+    self.id = id
+    self.favoriteID = favoriteID
+    self.station = station
+    self.stationID = stationID
+    self.stationName = stationName
+    self.badges = badges
+    self.distanceText = distanceText
+    self.isFavorite = isFavorite
+  }
 }

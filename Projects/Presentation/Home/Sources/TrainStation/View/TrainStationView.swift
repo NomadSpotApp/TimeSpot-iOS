@@ -24,40 +24,44 @@ public struct TrainStationView: View {
 
   public var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      headerView()
-      searchFieldView()
+      if store.isLoading {
+        stationSkeletonView()
+      } else {
+        headerView()
+        searchFieldView()
 
-      ScrollView {
-        LazyVStack(alignment: .leading, spacing: 0) {
-          if store.shouldShowFavoriteSection {
+        ScrollView {
+          LazyVStack(alignment: .leading, spacing: 0) {
+            if store.shouldShowFavoriteSection {
+              stationSectionView(
+                title: "즐겨찾기",
+                systemIcon: "star.fill",
+                assetIcon: nil,
+                iconColor: .gray550,
+                stations: filteredFavoriteStations
+              )
+            }
+
             stationSectionView(
-              title: "즐겨찾기",
-              systemIcon: "star.fill",
-              assetIcon: nil,
+              title: "가까운 역",
+              systemIcon: nil,
+              assetIcon: .mapSharp,
               iconColor: .gray550,
-              stations: filteredFavoriteStations
+              stations: filteredNearbyStations
+            )
+
+            stationSectionView(
+              title: "주요 역",
+              systemIcon: nil,
+              assetIcon: .subway,
+              iconColor: .gray550,
+              stations: filteredMajorStations
             )
           }
-
-          stationSectionView(
-            title: "가까운 역",
-            systemIcon: nil,
-            assetIcon: .mapSharp,
-            iconColor: .gray550,
-            stations: filteredNearbyStations
-          )
-
-          stationSectionView(
-            title: "주요 역",
-            systemIcon: nil,
-            assetIcon: .subway,
-            iconColor: .gray550,
-            stations: filteredMajorStations
-          )
+          .padding(.bottom, 16)
         }
-        .padding(.bottom, 16)
+        .scrollIndicators(.hidden)
       }
-      .scrollIndicators(.hidden)
     }
     .background(.staticWhite)
     .onAppear {
@@ -68,15 +72,15 @@ public struct TrainStationView: View {
 
 extension TrainStationView {
   private var filteredFavoriteStations: [StationRowModel] {
-    filterRows(favoriteStations)
+    filterRows(store.favoriteRows)
   }
 
   private var filteredNearbyStations: [StationRowModel] {
-    filterRows(nearbyStations)
+    filterRows(store.nearbyRows)
   }
 
   private var filteredMajorStations: [StationRowModel] {
-    filterRows(majorStations)
+    filterRows(store.majorRows)
   }
 
   private func filterRows(_ rows: [StationRowModel]) -> [StationRowModel] {
@@ -85,7 +89,7 @@ extension TrainStationView {
     }
 
     return rows.filter {
-      $0.station.displayName.localizedCaseInsensitiveContains(store.searchText)
+      $0.stationName.localizedCaseInsensitiveContains(store.searchText)
       || $0.badges.joined(separator: " ").localizedCaseInsensitiveContains(store.searchText)
     }
   }
@@ -185,13 +189,15 @@ extension TrainStationView {
 
   @ViewBuilder
   private func stationRowView(_ row: StationRowModel) -> some View {
-    Button {
-      store.send(.view(.stationTapped(row.station)))
-      modalDismiss()
-    } label: {
-      HStack(spacing: 12) {
+    HStack(spacing: 12) {
+      Button {
+        if let station = row.station {
+          store.send(.view(.stationTapped(station)))
+          modalDismiss()
+        }
+      } label: {
         HStack(spacing: 8) {
-          Text(row.station.displayName)
+          Text(row.stationName)
             .pretendardCustomFont(textStyle: .titleRegular)
             .foregroundStyle(.staticBlack)
 
@@ -209,18 +215,22 @@ extension TrainStationView {
             .pretendardCustomFont(textStyle: .caption)
             .foregroundStyle(.gray500)
         }
+      }
+      .buttonStyle(.plain)
 
+      Button {
+        store.send(.view(.favoriteButtonTapped(row)))
+      } label: {
         Image(systemName: row.isFavorite ? "star.fill" : "star")
           .font(.system(size: 18, weight: .semibold))
           .foregroundStyle(row.isFavorite ? .orange700 : .gray550)
           .frame(width: 20, height: 20)
       }
-      .padding(.leading, 20)
-      .padding(.trailing, 24)
-      .padding(.vertical, 18)
-      .contentShape(Rectangle())
+      .buttonStyle(.plain)
     }
-    .buttonStyle(.plain)
+    .padding(.leading, 20)
+    .padding(.trailing, 24)
+    .padding(.vertical, 18)
   }
 
   @ViewBuilder
@@ -233,36 +243,163 @@ extension TrainStationView {
       .background(.gray200)
       .clipShape(Capsule())
   }
+
+  @ViewBuilder
+  private func stationSkeletonView() -> some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 0) {
+        RoundedRectangle(cornerRadius: 4)
+          .fill(.gray200)
+          .frame(width: 44, height: 15)
+          .skeletonShimmer()
+          .padding(.top, 20)
+          .padding(.horizontal, 20)
+          .padding(.bottom, 12)
+
+        RoundedRectangle(cornerRadius: 18)
+          .fill(.gray200)
+          .frame(height: 60)
+          .skeletonShimmer()
+          .padding(.horizontal, 20)
+          .padding(.bottom, 18)
+
+        skeletonSectionHeader()
+          .padding(.top, 10)
+        skeletonRow(showDistance: false)
+        skeletonDivider()
+        skeletonRow(showDistance: true)
+        skeletonDivider()
+
+        skeletonSectionHeader()
+          .padding(.top, 10)
+        skeletonRow(showDistance: false, badgeCount: 3)
+        skeletonDivider()
+        skeletonRow(showDistance: false, badgeCount: 3)
+        skeletonDivider()
+        skeletonRow(showDistance: false)
+        skeletonDivider()
+        skeletonRow(showDistance: false)
+        skeletonDivider()
+        skeletonRow(showDistance: false)
+        skeletonDivider()
+        skeletonRow(showDistance: false)
+        skeletonDivider()
+        skeletonRow(showDistance: false)
+        skeletonDivider()
+        skeletonRow(showDistance: false)
+        skeletonDivider()
+        skeletonRow(showDistance: false)
+      }
+      .padding(.bottom, 20)
+    }
+    .scrollIndicators(.hidden)
+  }
+
+  @ViewBuilder
+  private func skeletonSectionHeader() -> some View {
+    HStack(spacing: 8) {
+      Circle()
+        .fill(.gray200)
+        .frame(width: 16, height: 16)
+        .skeletonShimmer()
+
+      RoundedRectangle(cornerRadius: 4)
+        .fill(.gray200)
+        .frame(width: 56, height: 14)
+        .skeletonShimmer()
+    }
+    .padding(.horizontal, 20)
+    .padding(.top, 24)
+    .padding(.bottom, 16)
+  }
+
+  @ViewBuilder
+  private func skeletonRow(
+    showDistance: Bool,
+    badgeCount: Int = 2
+  ) -> some View {
+    HStack(spacing: 12) {
+      HStack(spacing: 8) {
+        RoundedRectangle(cornerRadius: 4)
+          .fill(.gray200)
+          .frame(width: 40, height: 18)
+          .skeletonShimmer()
+
+        HStack(spacing: 8) {
+          ForEach(0..<badgeCount, id: \.self) { _ in
+            Capsule()
+              .fill(.gray200)
+              .frame(width: 48, height: 21)
+              .skeletonShimmer()
+          }
+        }
+      }
+
+      Spacer()
+
+      if showDistance {
+        RoundedRectangle(cornerRadius: 4)
+          .fill(.gray200)
+          .frame(width: 34, height: 14)
+          .skeletonShimmer()
+      }
+
+      Circle()
+        .fill(.gray200)
+        .frame(width: 20, height: 20)
+        .skeletonShimmer()
+    }
+    .padding(.leading, 20)
+    .padding(.trailing, 24)
+    .padding(.vertical, 18)
+  }
+
+  @ViewBuilder
+  private func skeletonDivider() -> some View {
+    Rectangle()
+      .fill(.gray200)
+      .frame(height: 1)
+      .padding(.leading, 20)
+      .padding(.trailing, 24)
+  }
 }
 
-private extension TrainStationView {
-  var favoriteStations: [StationRowModel] {
-    [
-      .init(id: "favorite-dongdaegu-1", station: Station.dongdaegu, badges: ["경부선"], distanceText: nil, isFavorite: true),
-      .init(id: "favorite-dongdaegu-2", station: Station.dongdaegu, badges: ["경부선"], distanceText: nil, isFavorite: true)
-    ]
+private extension View {
+  func skeletonShimmer() -> some View {
+    modifier(TrainStationSkeletonShimmerModifier())
   }
+}
 
-  var nearbyStations: [StationRowModel] {
-    [
-      .init(id: "nearby-dongdaegu-1", station: Station.dongdaegu, badges: ["경부선"], distanceText: "2.3km", isFavorite: false),
-      .init(id: "nearby-dongdaegu-2", station: Station.dongdaegu, badges: ["경부선"], distanceText: "2.3km", isFavorite: false)
-    ]
-  }
+private struct TrainStationSkeletonShimmerModifier: ViewModifier {
+  @State private var isAnimating = false
 
-  var majorStations: [StationRowModel] {
-    [
-      .init(id: "major-dongdaegu-1", station: Station.dongdaegu, badges: ["경부선"], distanceText: nil, isFavorite: false),
-      .init(id: "major-dongdaegu-2", station: Station.dongdaegu, badges: ["경부선", "경전선"], distanceText: nil, isFavorite: false),
-      .init(id: "major-dongdaegu-3", station: Station.dongdaegu, badges: ["경부선", "강릉선"], distanceText: nil, isFavorite: false),
-      .init(id: "major-dongdaegu-4", station: Station.dongdaegu, badges: ["경부선"], distanceText: nil, isFavorite: false),
-      .init(id: "major-dongdaegu-5", station: Station.dongdaegu, badges: ["경부선"], distanceText: nil, isFavorite: false),
-      .init(id: "major-dongdaegu-6", station: Station.dongdaegu, badges: ["경부선"], distanceText: nil, isFavorite: false),
-      .init(id: "major-dongdaegu-7", station: Station.dongdaegu, badges: ["경부선"], distanceText: nil, isFavorite: false),
-      .init(id: "major-dongdaegu-8", station: Station.dongdaegu, badges: ["경부선"], distanceText: nil, isFavorite: false),
-      .init(id: "major-dongdaegu-9", station: Station.dongdaegu, badges: ["경부선"], distanceText: nil, isFavorite: false),
-      .init(id: "major-dongdaegu-10", station: Station.dongdaegu, badges: ["경부선"], distanceText: nil, isFavorite: false),
-      .init(id: "major-dongdaegu-11", station: Station.dongdaegu, badges: ["경부선"], distanceText: nil, isFavorite: false)
-    ]
+  func body(content: Content) -> some View {
+    content
+      .overlay {
+        GeometryReader { geometry in
+          LinearGradient(
+            colors: [
+              .white.opacity(0),
+              .white.opacity(0.28),
+              .white.opacity(0)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          )
+          .frame(width: geometry.size.width * 0.55)
+          .offset(x: isAnimating ? geometry.size.width * 1.25 : -geometry.size.width * 0.8)
+        }
+        .clipped()
+      }
+      .mask(content)
+      .onAppear {
+        guard !isAnimating else { return }
+        withAnimation(
+          .easeInOut(duration: 1.0)
+            .repeatForever(autoreverses: false)
+        ) {
+          isAnimating = true
+        }
+      }
   }
 }
