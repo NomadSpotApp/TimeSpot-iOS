@@ -44,6 +44,7 @@ public struct HomeFeature {
     var customAlertMode: CustomAlertMode? = nil
     var hasAppearedOnce: Bool = false
     var shouldResetAfterExplore: Bool = false
+    @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
   }
 
   enum CustomAlertMode: Equatable, Hashable {
@@ -182,6 +183,10 @@ extension HomeFeature {
       state.isSelected = false
       state.hasSelectedStation = true
       state.trainStation = nil
+      state.$userSession.withLock {
+        $0.travelID = station.id
+        $0.travelStationName = station.displayName
+      }
       guard state.shouldShowDepartureWarningToast else {
         return .none
       }
@@ -216,6 +221,10 @@ extension HomeFeature {
       return .none
 
     case .departureTimeButtonTapped:
+      state.currentTime = now
+      if state.departureTime < state.currentTime {
+        state.departureTime = state.currentTime
+      }
       state.departureTimePickerVisible.toggle()
       return .none
 
@@ -346,6 +355,10 @@ extension HomeFeature {
       state.isDepartureTimeSet = false
       state.selectedStation = .seoul
       state.hasSelectedStation = false
+      state.$userSession.withLock {
+        $0.travelID = ""
+        $0.travelStationName = ""
+      }
       return .none
     }
   }
@@ -408,5 +421,6 @@ extension HomeFeature.State: Hashable {
     hasher.combine(customAlertMode)
     hasher.combine(hasAppearedOnce)
     hasher.combine(shouldResetAfterExplore)
+    hasher.combine(userSession)
   }
 }

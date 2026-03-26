@@ -150,8 +150,10 @@ public final class LocationPermissionManager: NSObject, ObservableObject {
     }
 
     // 위치 서비스 사용 가능 여부
-    public var isLocationServicesEnabled: Bool {
-        CLLocationManager.locationServicesEnabled()
+    public func isLocationServicesEnabled() async -> Bool {
+        await Task.detached {
+            CLLocationManager.locationServicesEnabled()
+        }.value
     }
 
     // 권한 상태 문자열

@@ -191,6 +191,7 @@ extension HomeView {
     DatePicker(
       "출발 시간 선택",
       selection: $store.departureTime,
+      in: store.currentTime...,
       displayedComponents: [.hourAndMinute]
     )
     .datePickerStyle(.wheel)

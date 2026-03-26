@@ -33,6 +33,7 @@ public enum ImageAsset: String {
   case logo
   case loginlogo
 
+
   case warning
   case setting
   case time
@@ -40,6 +41,9 @@ public enum ImageAsset: String {
   case arrowtriangleDown
   case travelLine
   case warningTriangle
+  case mapSharp
+  case subway
+  case empyTravel
 
   case none
 }
