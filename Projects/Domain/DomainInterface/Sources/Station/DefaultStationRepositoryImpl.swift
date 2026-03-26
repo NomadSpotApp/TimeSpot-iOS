@@ -49,40 +49,6 @@ final public class DefaultStationRepositoryImpl: StationInterface {
     )
   }
 
-  public func fetchFavoriteStations(
-    page: Int,
-    size: Int
-  ) async throws -> FavoriteStationEntity {
-    let items: [FavoriteStationItemEntity] = [
-      .init(
-        favoriteID: 1,
-        stationID: 10,
-        stationName: "서울역",
-        visitCount: 5,
-        totalVisitMinutes: 0,
-        createdAt: "2024-03-24T16:00:00"
-      ),
-      .init(
-        favoriteID: 2,
-        stationID: 20,
-        stationName: "강남역",
-        visitCount: 3,
-        totalVisitMinutes: 0,
-        createdAt: "2024-03-23T10:30:00"
-      )
-    ]
-
-    return FavoriteStationEntity(
-      items: items,
-      totalElements: items.count,
-      totalPages: 1,
-      size: size,
-      page: page,
-      isFirstPage: page == 1,
-      isLastPage: true
-    )
-  }
-
   public func addFavoriteStation(
     stationID: Int
   ) async throws -> FavoriteStationMutationEntity {
@@ -93,7 +59,7 @@ final public class DefaultStationRepositoryImpl: StationInterface {
   }
 
   public func deleteFavoriteStation(
-    favoriteID: Int
+    stationID: Int
   ) async throws -> FavoriteStationMutationEntity {
     FavoriteStationMutationEntity(
       code: 200,

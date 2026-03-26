@@ -40,6 +40,8 @@ public struct HomeFeature {
     var isSelected: Bool = false
     var isDepartureTimeSet: Bool = false
     var selectedStation: Station = .seoul
+    var selectedStationID: Int?
+    var selectedStationName: String = ""
     var hasSelectedStation: Bool = false
     var customAlertMode: CustomAlertMode? = nil
     var hasAppearedOnce: Bool = false
@@ -178,19 +180,21 @@ extension HomeFeature {
     action: PresentationAction<TrainStationFeature.Action>
   ) -> Effect<Action> {
     switch action {
-    case .presented(.delegate(.stationSelected(let station))):
+    case .presented(.delegate(.stationSelected(let row))):
+      guard let station = row.station else { return .none }
       state.selectedStation = station
+      state.selectedStationID = row.stationID
+      state.selectedStationName = row.stationName
       state.isSelected = false
       state.hasSelectedStation = true
       state.trainStation = nil
       state.$userSession.withLock {
-        $0.travelID = station.id
-        $0.travelStationName = station.displayName
+        $0.travelID = String(row.stationID)
+        $0.travelStationName = row.stationName
       }
       return .merge(
         .cancel(id: TrainStationFeature.CancelID.checkAccessToken),
         .cancel(id: TrainStationFeature.CancelID.fetchStations),
-        .cancel(id: TrainStationFeature.CancelID.fetchFavoriteStations),
         .cancel(id: TrainStationFeature.CancelID.favoriteMutation),
         state.shouldShowDepartureWarningToast ? .send(.inner(.showDepartureWarningToast)) : .none
       )
@@ -200,7 +204,6 @@ extension HomeFeature {
       return .merge(
         .cancel(id: TrainStationFeature.CancelID.checkAccessToken),
         .cancel(id: TrainStationFeature.CancelID.fetchStations),
-        .cancel(id: TrainStationFeature.CancelID.fetchFavoriteStations),
         .cancel(id: TrainStationFeature.CancelID.favoriteMutation)
       )
 
@@ -225,7 +228,10 @@ extension HomeFeature {
 
     case .selectStationButtonTapped:
       state.isSelected = true
-      state.trainStation = .init(selectedStation: state.selectedStation)
+      state.trainStation = .init(
+        selectedStation: state.selectedStation,
+        selectedStationID: state.selectedStationID
+      )
       return .none
 
     case .departureTimeButtonTapped:
@@ -362,6 +368,8 @@ extension HomeFeature {
       state.isSelected = false
       state.isDepartureTimeSet = false
       state.selectedStation = .seoul
+      state.selectedStationID = nil
+      state.selectedStationName = ""
       state.hasSelectedStation = false
       state.$userSession.withLock {
         $0.travelID = ""

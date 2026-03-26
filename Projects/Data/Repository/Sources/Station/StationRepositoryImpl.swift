@@ -42,19 +42,6 @@ public final class StationRepositoryImpl: StationInterface, @unchecked Sendable 
     return dto.data.toDomain()
   }
 
-  public func fetchFavoriteStations(
-    page: Int,
-    size: Int
-  ) async throws -> FavoriteStationEntity {
-    let body: FavoriteStationRequest = .init(
-      page: page,
-      size: size,
-      sort: "stationName,ASC"
-    )
-    let dto: FavoriteStationDTOModel = try await authorizedProvider.request(.favoriteStation(body: body))
-    return dto.data.toDomain()
-  }
-
   public func addFavoriteStation(
     stationID: Int
   ) async throws -> FavoriteStationMutationEntity {
@@ -64,10 +51,10 @@ public final class StationRepositoryImpl: StationInterface, @unchecked Sendable 
   }
 
   public func deleteFavoriteStation(
-    favoriteID: Int
+    stationID: Int
   ) async throws -> FavoriteStationMutationEntity {
     let dto: FavoriteStationMutationDTOModel = try await authorizedProvider.request(
-      .deleteFavoriteStation(deleteStationId: favoriteID)
+      .deleteFavoriteStation(deleteStationId: stationID)
     )
     return dto.toDomain()
   }

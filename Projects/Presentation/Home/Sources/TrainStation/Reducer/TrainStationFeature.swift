@@ -25,7 +25,6 @@ public struct TrainStationFeature {
   public enum CancelID: Hashable {
     case checkAccessToken
     case fetchStations
-    case fetchFavoriteStations
     case favoriteMutation
   }
 
@@ -34,15 +33,19 @@ public struct TrainStationFeature {
     var searchText: String = ""
     var shouldShowFavoriteSection: Bool = false
     var selectedStation: Station
-    var favoriteItems: [FavoriteStationItemEntity] = []
+    var selectedStationID: Int?
     var favoriteRows: [StationRowModel] = []
     var nearbyRows: [StationRowModel] = []
     var majorRows: [StationRowModel] = []
     var isLoading: Bool = false
     var errorMessage: String?
 
-    public init(selectedStation: Station = .seoul) {
+    public init(
+      selectedStation: Station = .seoul,
+      selectedStationID: Int? = nil
+    ) {
       self.selectedStation = selectedStation
+      self.selectedStationID = selectedStationID
     }
   }
 
@@ -60,7 +63,7 @@ public struct TrainStationFeature {
   @CasePathable
   public enum View {
     case onAppear
-    case stationTapped(Station)
+    case stationTapped(StationRowModel)
     case favoriteButtonTapped(StationRowModel)
   }
 
@@ -70,7 +73,6 @@ public struct TrainStationFeature {
   public enum AsyncAction: Equatable {
     case checkAccessToken
     case fetchStations
-    case fetchFavoriteStations
     case addFavoriteStation(Int)
     case deleteFavoriteStation(Int)
   }
@@ -80,8 +82,6 @@ public struct TrainStationFeature {
     case accessTokenChecked(Bool)
     case fetchStationsResponse(StationListEntity)
     case fetchStationsFailed(String)
-    case fetchFavoriteStationsResponse(FavoriteStationEntity)
-    case fetchFavoriteStationsFailed(String)
     case addFavoriteStationResponse
     case addFavoriteStationFailed(String)
     case deleteFavoriteStationResponse
@@ -90,7 +90,7 @@ public struct TrainStationFeature {
 
   //MARK: - DelegateAction
   public enum DelegateAction: Equatable {
-    case stationSelected(Station)
+    case stationSelected(StationRowModel)
   }
 
 
@@ -130,21 +130,15 @@ extension TrainStationFeature {
         .send(.async(.fetchStations))
       )
 
-    case .stationTapped(let station):
+    case .stationTapped(let row):
+      guard let station = row.station else { return .none }
       state.selectedStation = station
-      return .send(.delegate(.stationSelected(station)))
+      state.selectedStationID = row.stationID
+      return .send(.delegate(.stationSelected(row)))
     case .favoriteButtonTapped(let row):
       guard state.shouldShowFavoriteSection else { return .none }
       if row.isFavorite {
-        let resolvedFavoriteID = row.favoriteID ?? state.favoriteItems.first(where: {
-          normalizedStationName($0.stationName) == normalizedStationName(row.stationName)
-        })?.favoriteID
-
-        guard let favoriteID = resolvedFavoriteID else {
-          return .none
-        }
-
-        return .send(.async(.deleteFavoriteStation(favoriteID)))
+        return .send(.async(.deleteFavoriteStation(row.stationID)))
       } else {
         return .send(.async(.addFavoriteStation(row.stationID)))
       }
@@ -183,19 +177,6 @@ extension TrainStationFeature {
         }
       }
       .cancellable(id: CancelID.fetchStations)
-    case .fetchFavoriteStations:
-      return .run { [stationUseCase] send in
-        do {
-          let entity = try await stationUseCase.fetchFavoriteStations(
-            page: 1,
-            size: 30
-          )
-          await send(.inner(.fetchFavoriteStationsResponse(entity)))
-        } catch {
-          await send(.inner(.fetchFavoriteStationsFailed(error.localizedDescription)))
-        }
-      }
-      .cancellable(id: CancelID.fetchFavoriteStations)
     case .addFavoriteStation(let stationID):
       return .run { [stationUseCase] send in
         do {
@@ -206,10 +187,10 @@ extension TrainStationFeature {
         }
       }
       .cancellable(id: CancelID.favoriteMutation, cancelInFlight: true)
-    case .deleteFavoriteStation(let favoriteID):
+    case .deleteFavoriteStation(let stationID):
       return .run { [stationUseCase] send in
         do {
-          _ = try await stationUseCase.deleteFavoriteStation(favoriteID: favoriteID)
+          _ = try await stationUseCase.deleteFavoriteStation(stationID: stationID)
           await send(.inner(.deleteFavoriteStationResponse))
         } catch {
           await send(.inner(.deleteFavoriteStationFailed(error.localizedDescription)))
@@ -236,14 +217,11 @@ extension TrainStationFeature {
     switch action {
     case .accessTokenChecked(let shouldShowFavoriteSection):
       state.shouldShowFavoriteSection = shouldShowFavoriteSection
-      guard shouldShowFavoriteSection else { return .none }
-      return .send(.async(.fetchFavoriteStations))
+      return .none
     case .fetchStationsResponse(let entity):
+      state.favoriteRows = makeFavoriteRows(entity.favoriteStations)
       state.nearbyRows = makeNearbyRows(entity.nearbyStations)
       state.majorRows = makeMajorRows(entity.stations.content)
-      if state.shouldShowFavoriteSection {
-        state.favoriteRows = makeFavoriteSummaryRows(entity.favoriteStations)
-      }
       applyFavoriteState(state: &state)
       state.isLoading = false
       return .none
@@ -251,29 +229,13 @@ extension TrainStationFeature {
       state.errorMessage = message
       state.isLoading = false
       return .none
-    case .fetchFavoriteStationsResponse(let entity):
-      state.favoriteItems = entity.items
-      applyFavoriteState(state: &state)
-      return .none
-    case .fetchFavoriteStationsFailed(let message):
-      // favorites API가 실패해도 allStation.favoriteStations로 이미 렌더 가능하면 화면은 유지
-      if state.favoriteRows.isEmpty && state.favoriteItems.isEmpty {
-        state.errorMessage = message
-      }
-      return .none
     case .addFavoriteStationResponse:
-      return .merge(
-        .send(.async(.fetchFavoriteStations)),
-        .send(.async(.fetchStations))
-      )
+      return .send(.async(.fetchStations))
     case .addFavoriteStationFailed(let message):
       state.errorMessage = message
       return .none
     case .deleteFavoriteStationResponse:
-      return .merge(
-        .send(.async(.fetchFavoriteStations)),
-        .send(.async(.fetchStations))
-      )
+      return .send(.async(.fetchStations))
     case .deleteFavoriteStationFailed(let message):
       state.errorMessage = message
       return .none
@@ -284,6 +246,31 @@ extension TrainStationFeature {
 extension TrainStationFeature.State: Hashable {}
 
 private extension TrainStationFeature {
+  func makeFavoriteRows(_ stations: [StationSummaryEntity]) -> [StationRowModel] {
+    Array(
+      Dictionary(
+        stations.map { station in
+          (normalizedStationName(station.name), station)
+        },
+        uniquingKeysWith: { first, _ in first }
+      ).values
+    )
+    .sorted { normalizedStationName($0.name) < normalizedStationName($1.name) }
+    .map { station in
+      let normalizedName = normalizedStationName(station.name)
+      return StationRowModel(
+        id: "favorite-\(station.stationID)",
+        favoriteID: station.stationID,
+        station: Station(displayName: normalizedName),
+        stationID: station.stationID,
+        stationName: normalizedName,
+        badges: station.lines,
+        distanceText: nil,
+        isFavorite: true
+      )
+    }
+  }
+
   func makeNearbyRows(_ stations: [StationSummaryEntity]) -> [StationRowModel] {
     Array(stations.sorted { normalizedStationName($0.name) < normalizedStationName($1.name) }.prefix(3)).map { station in
       let normalizedName = normalizedStationName(station.name)
@@ -318,65 +305,12 @@ private extension TrainStationFeature {
     }
   }
 
-  func makeFavoriteRows(
-    _ favorites: [FavoriteStationItemEntity],
-    stationRows: [StationRowModel]
-  ) -> [StationRowModel] {
-    favorites
-      .sorted { normalizedStationName($0.stationName) < normalizedStationName($1.stationName) }
-      .map { favorite in
-      let normalizedName = normalizedStationName(favorite.stationName)
-      let matchedLines = stationRows.first(where: {
-        normalizedStationName($0.stationName) == normalizedName
-      })?.badges ?? []
-
-      return StationRowModel(
-        id: "favorite-\(favorite.favoriteID)",
-        favoriteID: favorite.favoriteID,
-        station: Station(displayName: normalizedName),
-        stationID: favorite.stationID,
-        stationName: normalizedName,
-        badges: matchedLines,
-        distanceText: nil,
-        isFavorite: true
-      )
-    }
-  }
-
-  func makeFavoriteSummaryRows(_ stations: [StationSummaryEntity]) -> [StationRowModel] {
-    Array(
-      Dictionary(
-        stations.map { station in
-          (normalizedStationName(station.name), station)
-        },
-        uniquingKeysWith: { first, _ in first }
-      ).values
-    )
-    .sorted { $0.name < $1.name }
-    .map { station in
-      let normalizedName = normalizedStationName(station.name)
-      return StationRowModel(
-        id: "favorite-summary-\(station.stationID)",
-        favoriteID: nil,
-        station: Station(displayName: normalizedName),
-        stationID: station.stationID,
-        stationName: normalizedName,
-        badges: station.lines,
-        distanceText: nil,
-        isFavorite: true
-      )
-    }
-  }
-
   func applyFavoriteState(state: inout State) {
     let favoriteNameMap = Dictionary(
-      uniqueKeysWithValues: state.favoriteItems.map {
-        (normalizedStationName($0.stationName), $0.favoriteID)
+      uniqueKeysWithValues: state.favoriteRows.map {
+        (normalizedStationName($0.stationName), $0.stationID)
       }
     )
-
-    let stationRows = state.majorRows + state.nearbyRows
-    state.favoriteRows = makeFavoriteRows(state.favoriteItems, stationRows: stationRows)
 
     state.nearbyRows = state.nearbyRows.map { row in
       let favoriteID = favoriteNameMap[normalizedStationName(row.stationName)]

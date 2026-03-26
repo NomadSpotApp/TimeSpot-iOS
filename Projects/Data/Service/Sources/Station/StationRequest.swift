@@ -29,22 +29,6 @@ public struct StationRequest: Encodable, Equatable {
   }
 }
 
-public struct FavoriteStationRequest: Encodable, Equatable {
-  public let page: Int
-  public let size: Int
-  public let sort: String
-
-  public init(
-    page: Int = 1,
-    size: Int = 10,
-    sort: String = "stationName,ASC"
-  ) {
-    self.page = max(page, 1)
-    self.size = max(size, 10)
-    self.sort = sort
-  }
-}
-
 public struct AddFavoriteStationRequest: Encodable, Equatable {
   public let stationID: Int
 

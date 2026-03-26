@@ -24,6 +24,7 @@ public struct ExploreReducer: Sendable {
     public var isLocationPermissionDenied: Bool = false
     public var locationError: String?
     @Presents public var alert: AlertState<Alert>?
+    @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
 
     // 길찾기 관련 상태
     public var selectedDestination: Destination?
@@ -33,6 +34,7 @@ public struct ExploreReducer: Sendable {
 
     // 지도 카메라 제어
     public var shouldReturnToCurrentLocation: Bool = false
+    public var selectedCategory: ExploreCategory = .all
 
     public init() {}
   }
@@ -64,6 +66,7 @@ public struct ExploreReducer: Sendable {
     case retryLocationPermission
     case requestFullAccuracy
     case openSettings
+    case categoryTapped(ExploreCategory)
     // 길찾기 관련 액션
     case searchRouteToGangnam
     case clearRoute
@@ -135,7 +138,6 @@ extension ExploreReducer {
   ) -> Effect<Action> {
     switch action {
       case .onAppear:
-        // 앱이 나타날 때 위치 권한 상태 확인 - UI 블로킹 방지
         return .run { send in
           let locationManager = await LocationPermissionManager.shared
           let currentStatus = await locationManager.authorizationStatus
@@ -146,11 +148,11 @@ extension ExploreReducer {
         return .send(.async(.stopLocationUpdates))
 
       case .requestLocationPermission:
-        return .send(.async(.requestLocationPermission))
+        return .none
 
       case .retryLocationPermission:
         state.isLocationPermissionDenied = false
-        return .send(.async(.requestLocationPermission))
+        return .none
 
       case .requestFullAccuracy:
         return .send(.async(.requestFullAccuracy))
@@ -165,6 +167,10 @@ extension ExploreReducer {
             UIApplication.shared.open(settingsUrl)
           }
         }
+
+      case .categoryTapped(let category):
+        state.selectedCategory = category
+        return .none
 
       // 길찾기 관련 액션
       case .searchRouteToGangnam:
@@ -211,32 +217,11 @@ extension ExploreReducer {
             return .send(.async(.startLocationUpdates))
           case .denied, .restricted:
             state.isLocationPermissionDenied = true
-            state.alert = AlertState {
-              TextState("위치 권한이 거부되었습니다")
-            } actions: {
-              ButtonState(action: Alert.openSettings) {
-                TextState("설정으로 이동")
-              }
-              ButtonState(role: .cancel, action: Alert.dismissAlert) {
-                TextState("나중에")
-              }
-            } message: {
-              TextState("위치 기반 서비스를 사용하려면 설정에서 위치 권한을 허용해주세요.")
-            }
+            state.alert = nil
             return .send(.async(.stopLocationUpdates))
           case .notDetermined:
-            state.alert = AlertState {
-              TextState("위치 권한이 필요합니다")
-            } actions: {
-              ButtonState(action: Alert.confirmLocationPermission) {
-                TextState("허용")
-              }
-              ButtonState(role: .cancel, action: Alert.cancelLocationPermission) {
-                TextState("취소")
-              }
-            } message: {
-              TextState("TimeSpot이 근처 장소를 찾고 지도에 현재 위치를 표시하기 위해 위치 정보가 필요합니다.")
-            }
+            state.isLocationPermissionDenied = false
+            state.alert = nil
             return .none
           @unknown default:
             return .none
@@ -282,29 +267,7 @@ extension ExploreReducer {
   ) -> Effect<Action> {
     switch action {
       case .requestLocationPermission:
-        return .run { send in
-          let locationManager = await LocationPermissionManager.shared
-          let status = await locationManager.requestLocationPermission()
-
-          await send(.inner(.locationPermissionStatusChanged(status)))
-
-          // 권한이 허용되면 현재 위치 가져오기 시작
-          if status == .authorizedWhenInUse || status == .authorizedAlways {
-            await locationManager.startLocationUpdates()
-
-            do {
-              if let location = try await locationManager.requestCurrentLocation() {
-                await send(.inner(.locationUpdated(location)))
-              }
-            } catch {
-              await send(.inner(.locationUpdateFailed(error.localizedDescription)))
-            }
-          }
-
-          if let error = await locationManager.locationError {
-            await send(.inner(.locationUpdateFailed(error)))
-          }
-        }
+        return .none
 
       case .requestFullAccuracy:
         return .run { send in
@@ -397,7 +360,7 @@ extension ExploreReducer {
         switch alertAction {
           case .confirmLocationPermission:
             state.alert = nil
-            return .send(.view(.requestLocationPermission))
+            return .none
 
           case .cancelLocationPermission:
             state.alert = nil
@@ -430,6 +393,7 @@ extension ExploreReducer.State: Hashable {
     hasher.combine(isLoadingRoute)
     hasher.combine(routeError)
     hasher.combine(shouldReturnToCurrentLocation)
+    hasher.combine(userSession)
     // Note: alert, selectedDestination, routeInfo are not hashed as they contain complex types
   }
 }

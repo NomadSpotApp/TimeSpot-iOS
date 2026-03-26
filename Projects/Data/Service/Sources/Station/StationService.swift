@@ -14,7 +14,6 @@ import AsyncMoya
 
 public enum StationService {
   case allStation(body: StationRequest)
-  case favoriteStation(body: FavoriteStationRequest)
   case addFavoriteStation(body: AddFavoriteStationRequest)
   case deleteFavoriteStation(deleteStationId: Int)
 }
@@ -31,8 +30,6 @@ extension StationService: BaseTargetType {
     switch self {
     case .allStation:
       return StationAPI.allStation.description
-    case .favoriteStation:
-      return StationAPI.favoriteStation.description
     case .addFavoriteStation:
       return StationAPI.addFavoriteStation.description
     case .deleteFavoriteStation(let deleteStationId):
@@ -46,7 +43,7 @@ extension StationService: BaseTargetType {
 
   public var method: Moya.Method {
     switch self {
-    case .allStation, .favoriteStation:
+    case .allStation:
       return .get
     case .addFavoriteStation:
       return .post
@@ -59,8 +56,6 @@ extension StationService: BaseTargetType {
     switch self {
     case .allStation(let body):
       return body.toDictionary
-    case .favoriteStation(let body):
-      return body.toDictionary
     case .addFavoriteStation(let body):
       return body.toDictionary
     case .deleteFavoriteStation:
@@ -72,7 +67,7 @@ extension StationService: BaseTargetType {
     switch self {
     case .allStation:
       return APIHeader.notAccessTokenHeader
-    case .favoriteStation, .addFavoriteStation, .deleteFavoriteStation:
+    case .addFavoriteStation, .deleteFavoriteStation:
       return APIHeader.baseHeader
     }
   }

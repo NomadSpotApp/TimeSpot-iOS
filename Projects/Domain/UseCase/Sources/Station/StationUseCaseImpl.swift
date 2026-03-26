@@ -29,16 +29,6 @@ public struct StationUseCaseImpl: StationInterface {
     )
   }
 
-  public func fetchFavoriteStations(
-    page: Int,
-    size: Int
-  ) async throws -> FavoriteStationEntity {
-    try await repository.fetchFavoriteStations(
-      page: page,
-      size: size
-    )
-  }
-
   public func addFavoriteStation(
     stationID: Int
   ) async throws -> FavoriteStationMutationEntity {
@@ -46,9 +36,9 @@ public struct StationUseCaseImpl: StationInterface {
   }
 
   public func deleteFavoriteStation(
-    favoriteID: Int
+    stationID: Int
   ) async throws -> FavoriteStationMutationEntity {
-    try await repository.deleteFavoriteStation(favoriteID: favoriteID)
+    try await repository.deleteFavoriteStation(stationID: stationID)
   }
 }
 

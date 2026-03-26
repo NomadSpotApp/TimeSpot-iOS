@@ -202,8 +202,8 @@ extension TrainStationView {
   private func stationRowView(_ row: StationRowModel) -> some View {
     HStack(spacing: 12) {
       Button {
-        if let station = row.station {
-          store.send(.view(.stationTapped(station)))
+        if row.station != nil {
+          store.send(.view(.stationTapped(row)))
           modalDismiss()
         }
       } label: {
@@ -254,7 +254,7 @@ extension TrainStationView {
       } label: {
         Image(systemName: row.isFavorite ? "star.fill" : "star")
           .font(.system(size: 18, weight: .semibold))
-          .foregroundStyle(row.isFavorite ? .orange700 : .gray550)
+          .foregroundStyle(row.isFavorite ? .orange800 : .gray550)
           .frame(width: 20, height: 20)
       }
       .buttonStyle(.plain)

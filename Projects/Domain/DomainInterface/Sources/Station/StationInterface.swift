@@ -17,17 +17,12 @@ public protocol StationInterface: Sendable {
     size: Int
   ) async throws -> StationListEntity
 
-  func fetchFavoriteStations(
-    page: Int,
-    size: Int
-  ) async throws -> FavoriteStationEntity
-
   func addFavoriteStation(
     stationID: Int
   ) async throws -> FavoriteStationMutationEntity
 
   func deleteFavoriteStation(
-    favoriteID: Int
+    stationID: Int
   ) async throws -> FavoriteStationMutationEntity
 }
 

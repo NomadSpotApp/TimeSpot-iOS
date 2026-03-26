@@ -9,7 +9,6 @@ import Foundation
 
 public enum StationAPI {
   case allStation
-  case favoriteStation
   case addFavoriteStation
   case deleteFavoriteStation(deleteStationId: Int)
 
@@ -17,8 +16,6 @@ public enum StationAPI {
     switch self {
       case .allStation:
         return ""
-      case .favoriteStation:
-        return "/favorites"
       case .addFavoriteStation:
         return "/favorites"
       case .deleteFavoriteStation(let deleteStationId):

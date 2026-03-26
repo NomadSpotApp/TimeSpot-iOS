@@ -19,6 +19,19 @@ public enum ImageAsset: String {
   case arrowRight
   case leftArrow
   case lineHeight
+  case all
+  case game
+  case shopping
+  case etc
+  case food
+  case tapAll
+  case tapCaffee
+  case tapGame
+  case tapShopping
+  case tapEtc
+  case tapFood
+  case location
+
 
 
   // MARK: - 지도
