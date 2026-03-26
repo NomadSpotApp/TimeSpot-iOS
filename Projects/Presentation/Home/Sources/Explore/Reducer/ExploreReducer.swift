@@ -38,6 +38,7 @@ public struct ExploreReducer: Sendable {
     // 지도 카메라 제어
     public var shouldReturnToCurrentLocation: Bool = false
     public var selectedCategory: ExploreCategory = .all
+    public var isSpotCardVisible: Bool = false
 
     public init() {}
   }
@@ -71,6 +72,8 @@ public struct ExploreReducer: Sendable {
     case openSettings
     case searchTextChanged(String)
     case categoryTapped(ExploreCategory)
+    case spotTapped(String)
+    case spotCardChanged(String?)
     // 길찾기 관련 액션
     case searchRouteToGangnam
     case clearRoute
@@ -136,6 +139,38 @@ public struct ExploreReducer: Sendable {
 }
 
 extension ExploreReducer {
+  private func filteredSpots(state: State) -> [ExploreMapSpot] {
+    let query = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    return state.spots.filter { spot in
+      let matchesCategory = state.selectedCategory == .all || spot.category == state.selectedCategory
+      let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
+      return matchesCategory && matchesQuery
+    }
+  }
+
+  private func syncSelectedSpot(state: inout State) {
+    let currentFilteredSpots = filteredSpots(state: state)
+
+    guard !currentFilteredSpots.isEmpty else {
+      state.$userSession.withLock {
+        $0.selectedExploreSpotID = ""
+      }
+      return
+    }
+
+    guard let selectedSpotID = state.userSession.selectedExploreSpotID.nilIfEmpty else {
+      return
+    }
+
+    guard currentFilteredSpots.contains(where: { $0.id == selectedSpotID }) else {
+      state.$userSession.withLock {
+        $0.selectedExploreSpotID = ""
+      }
+      return
+    }
+  }
+
   private func handleViewAction(
     state: inout State,
     action: View
@@ -145,6 +180,8 @@ extension ExploreReducer {
         if state.spots.isEmpty {
           state.spots = ExploreMapSpot.mockSpots
         }
+        state.isSpotCardVisible = false
+        syncSelectedSpot(state: &state)
         return .run { send in
           let locationManager = await LocationPermissionManager.shared
           let currentStatus = await locationManager.authorizationStatus
@@ -177,10 +214,36 @@ extension ExploreReducer {
 
       case .searchTextChanged(let text):
         state.searchText = text
+        syncSelectedSpot(state: &state)
+        if state.userSession.selectedExploreSpotID.isEmpty {
+          state.isSpotCardVisible = false
+        }
         return .none
 
       case .categoryTapped(let category):
         state.selectedCategory = category
+        syncSelectedSpot(state: &state)
+        if state.userSession.selectedExploreSpotID.isEmpty {
+          state.isSpotCardVisible = false
+        }
+        return .none
+
+      case .spotTapped(let spotID):
+        state.$userSession.withLock {
+          $0.selectedExploreSpotID = spotID
+        }
+        state.isSpotCardVisible = true
+        return .none
+
+      case .spotCardChanged(let spotID):
+        if let spotID {
+          state.$userSession.withLock {
+            $0.selectedExploreSpotID = spotID
+          }
+          state.isSpotCardVisible = true
+        } else {
+          state.isSpotCardVisible = false
+        }
         return .none
 
       // 길찾기 관련 액션
@@ -410,92 +473,8 @@ extension ExploreReducer.State: Hashable {
   }
 }
 
-public struct ExploreMapSpot: Identifiable {
-  public let id: String
-  public let name: String
-  public let category: ExploreCategory
-  public let coordinate: CLLocationCoordinate2D
-
-  public init(
-    id: String,
-    name: String,
-    category: ExploreCategory,
-    coordinate: CLLocationCoordinate2D
-  ) {
-    self.id = id
-    self.name = name
-    self.category = category
-    self.coordinate = coordinate
-  }
-
-  public static let mockSpots: [ExploreMapSpot] = [
-    .init(
-      id: "cityhall-cafe-1",
-      name: "시청 브루잉",
-      category: .cafe,
-      coordinate: CLLocationCoordinate2D(latitude: 37.5669, longitude: 126.9789)
-    ),
-    .init(
-      id: "cityhall-cafe-2",
-      name: "덕수궁 카페",
-      category: .cafe,
-      coordinate: CLLocationCoordinate2D(latitude: 37.5658, longitude: 126.9758)
-    ),
-    .init(
-      id: "cityhall-food-1",
-      name: "시청역 한식당",
-      category: .restaurant,
-      coordinate: CLLocationCoordinate2D(latitude: 37.5652, longitude: 126.9797)
-    ),
-    .init(
-      id: "cityhall-food-2",
-      name: "정동길 다이닝",
-      category: .restaurant,
-      coordinate: CLLocationCoordinate2D(latitude: 37.5674, longitude: 126.9739)
-    ),
-    .init(
-      id: "cityhall-activity-1",
-      name: "덕수궁 산책",
-      category: .activity,
-      coordinate: CLLocationCoordinate2D(latitude: 37.5659, longitude: 126.9751)
-    ),
-    .init(
-      id: "cityhall-activity-2",
-      name: "서울광장 이벤트",
-      category: .activity,
-      coordinate: CLLocationCoordinate2D(latitude: 37.5663, longitude: 126.9779)
-    ),
-    .init(
-      id: "cityhall-etc-1",
-      name: "시청 소품샵",
-      category: .etc,
-      coordinate: CLLocationCoordinate2D(latitude: 37.5677, longitude: 126.9808)
-    ),
-    .init(
-      id: "cityhall-etc-2",
-      name: "서울 굿즈 스토어",
-      category: .etc,
-      coordinate: CLLocationCoordinate2D(latitude: 37.5648, longitude: 126.9770)
-    )
-  ]
-}
-
-extension ExploreMapSpot: Equatable {
-  public static func == (lhs: ExploreMapSpot, rhs: ExploreMapSpot) -> Bool {
-    lhs.id == rhs.id
-    && lhs.name == rhs.name
-    && lhs.category == rhs.category
-    && lhs.coordinate.latitude == rhs.coordinate.latitude
-    && lhs.coordinate.longitude == rhs.coordinate.longitude
-  }
-}
-
-extension ExploreMapSpot: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(id)
-    hasher.combine(name)
-    hasher.combine(category)
-    hasher.combine(coordinate.latitude)
-    hasher.combine(coordinate.longitude)
+private extension String {
+  var nilIfEmpty: String? {
+    isEmpty ? nil : self
   }
 }
