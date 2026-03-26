@@ -187,14 +187,22 @@ extension HomeFeature {
         $0.travelID = station.id
         $0.travelStationName = station.displayName
       }
-      guard state.shouldShowDepartureWarningToast else {
-        return .none
-      }
-      return .send(.inner(.showDepartureWarningToast))
+      return .merge(
+        .cancel(id: TrainStationFeature.CancelID.checkAccessToken),
+        .cancel(id: TrainStationFeature.CancelID.fetchStations),
+        .cancel(id: TrainStationFeature.CancelID.fetchFavoriteStations),
+        .cancel(id: TrainStationFeature.CancelID.favoriteMutation),
+        state.shouldShowDepartureWarningToast ? .send(.inner(.showDepartureWarningToast)) : .none
+      )
 
     case .dismiss:
       state.isSelected = false
-      return .none
+      return .merge(
+        .cancel(id: TrainStationFeature.CancelID.checkAccessToken),
+        .cancel(id: TrainStationFeature.CancelID.fetchStations),
+        .cancel(id: TrainStationFeature.CancelID.fetchFavoriteStations),
+        .cancel(id: TrainStationFeature.CancelID.favoriteMutation)
+      )
 
     default:
       return .none

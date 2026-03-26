@@ -59,6 +59,7 @@ final public class DefaultStationRepositoryImpl: StationInterface {
         stationID: 10,
         stationName: "서울역",
         visitCount: 5,
+        totalVisitMinutes: 0,
         createdAt: "2024-03-24T16:00:00"
       ),
       .init(
@@ -66,6 +67,7 @@ final public class DefaultStationRepositoryImpl: StationInterface {
         stationID: 20,
         stationName: "강남역",
         visitCount: 3,
+        totalVisitMinutes: 0,
         createdAt: "2024-03-23T10:30:00"
       )
     ]

@@ -60,10 +60,13 @@ public struct TrainStationView: View {
           }
           .padding(.bottom, 16)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .scrollIndicators(.hidden)
       }
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     .background(.staticWhite)
+    .ignoresSafeArea(.keyboard, edges: .bottom)
     .onAppear {
       store.send(.view(.onAppear))
     }
@@ -84,14 +87,22 @@ extension TrainStationView {
   }
 
   private func filterRows(_ rows: [StationRowModel]) -> [StationRowModel] {
-    guard !store.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+    let query = normalizedSearchText(store.searchText)
+
+    guard !query.isEmpty else {
       return rows
     }
 
     return rows.filter {
-      $0.stationName.localizedCaseInsensitiveContains(store.searchText)
-      || $0.badges.joined(separator: " ").localizedCaseInsensitiveContains(store.searchText)
+      normalizedSearchText($0.stationName).localizedCaseInsensitiveContains(query)
+      || $0.badges.joined(separator: " ").localizedCaseInsensitiveContains(query)
     }
+  }
+
+  private func normalizedSearchText(_ text: String) -> String {
+    text
+      .replacingOccurrences(of: "역", with: "")
+      .trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
   @ViewBuilder
@@ -196,14 +207,33 @@ extension TrainStationView {
           modalDismiss()
         }
       } label: {
-        HStack(spacing: 8) {
-          Text(row.stationName)
-            .pretendardCustomFont(textStyle: .titleRegular)
-            .foregroundStyle(.staticBlack)
+        ViewThatFits(in: .horizontal) {
+          HStack(alignment: .center, spacing: 8) {
+            Text(row.stationName)
+              .pretendardCustomFont(textStyle: .titleRegular)
+              .foregroundStyle(.staticBlack)
+              .lineLimit(1)
+              .fixedSize(horizontal: true, vertical: false)
+              .layoutPriority(2)
 
-          HStack(spacing: 8) {
-            ForEach(row.badges, id: \.self) { badge in
-              badgeView(badge)
+            HStack(spacing: 8) {
+              ForEach(row.badges, id: \.self) { badge in
+                badgeView(badge)
+              }
+            }
+            .layoutPriority(1)
+          }
+
+          VStack(alignment: .leading, spacing: 8) {
+            Text(row.stationName)
+              .pretendardCustomFont(textStyle: .titleRegular)
+              .foregroundStyle(.staticBlack)
+              .lineLimit(1)
+
+            HStack(spacing: 8) {
+              ForEach(row.badges, id: \.self) { badge in
+                badgeView(badge)
+              }
             }
           }
         }
@@ -214,6 +244,7 @@ extension TrainStationView {
           Text(distance)
             .pretendardCustomFont(textStyle: .caption)
             .foregroundStyle(.gray500)
+            .lineLimit(1)
         }
       }
       .buttonStyle(.plain)

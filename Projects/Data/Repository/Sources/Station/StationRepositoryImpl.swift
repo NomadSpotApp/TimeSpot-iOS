@@ -14,12 +14,15 @@ import Service
 import AsyncMoya
 
 public final class StationRepositoryImpl: StationInterface, @unchecked Sendable {
-  private let provider: MoyaProvider<StationService>
+  private let authorizedProvider: MoyaProvider<StationService>
+  private let publicProvider: MoyaProvider<StationService>
 
   public init(
-    provider: MoyaProvider<StationService> = MoyaProvider<StationService>.authorized
+    authorizedProvider: MoyaProvider<StationService> = MoyaProvider<StationService>.authorized,
+    publicProvider: MoyaProvider<StationService> = MoyaProvider<StationService>()
   ) {
-    self.provider = provider
+    self.authorizedProvider = authorizedProvider
+    self.publicProvider = publicProvider
   }
 
   public func fetchStations(
@@ -35,7 +38,7 @@ public final class StationRepositoryImpl: StationInterface, @unchecked Sendable 
       size: size,
       sort: "stationName,ASC"
     )
-    let dto: StationDTOModel = try await provider.request(.allStation(body: body))
+    let dto: StationDTOModel = try await publicProvider.request(.allStation(body: body))
     return dto.data.toDomain()
   }
 
@@ -48,7 +51,7 @@ public final class StationRepositoryImpl: StationInterface, @unchecked Sendable 
       size: size,
       sort: "stationName,ASC"
     )
-    let dto: FavoriteStationDTOModel = try await provider.request(.favoriteStation(body: body))
+    let dto: FavoriteStationDTOModel = try await authorizedProvider.request(.favoriteStation(body: body))
     return dto.data.toDomain()
   }
 
@@ -56,14 +59,14 @@ public final class StationRepositoryImpl: StationInterface, @unchecked Sendable 
     stationID: Int
   ) async throws -> FavoriteStationMutationEntity {
     let body: AddFavoriteStationRequest = .init(stationID: stationID)
-    let dto: FavoriteStationMutationDTOModel = try await provider.request(.addFavoriteStation(body: body))
+    let dto: FavoriteStationMutationDTOModel = try await authorizedProvider.request(.addFavoriteStation(body: body))
     return dto.toDomain()
   }
 
   public func deleteFavoriteStation(
     favoriteID: Int
   ) async throws -> FavoriteStationMutationEntity {
-    let dto: FavoriteStationMutationDTOModel = try await provider.request(
+    let dto: FavoriteStationMutationDTOModel = try await authorizedProvider.request(
       .deleteFavoriteStation(deleteStationId: favoriteID)
     )
     return dto.toDomain()

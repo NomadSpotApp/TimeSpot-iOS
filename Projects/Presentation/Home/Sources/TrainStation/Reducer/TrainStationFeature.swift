@@ -22,6 +22,13 @@ public struct TrainStationFeature {
 
   public init() {}
 
+  public enum CancelID: Hashable {
+    case checkAccessToken
+    case fetchStations
+    case fetchFavoriteStations
+    case favoriteMutation
+  }
+
   @ObservableState
   public struct State: Equatable {
     var searchText: String = ""
@@ -155,6 +162,7 @@ extension TrainStationFeature {
         let hasAccessToken = !(accessToken?.isEmpty ?? true)
         await send(.inner(.accessTokenChecked(hasAccessToken)))
       }
+      .cancellable(id: CancelID.checkAccessToken)
     case .fetchStations:
       return .run { [stationUseCase] send in
         let locationManager = await LocationPermissionManager.shared
@@ -174,6 +182,7 @@ extension TrainStationFeature {
           await send(.inner(.fetchStationsFailed(error.localizedDescription)))
         }
       }
+      .cancellable(id: CancelID.fetchStations)
     case .fetchFavoriteStations:
       return .run { [stationUseCase] send in
         do {
@@ -186,6 +195,7 @@ extension TrainStationFeature {
           await send(.inner(.fetchFavoriteStationsFailed(error.localizedDescription)))
         }
       }
+      .cancellable(id: CancelID.fetchFavoriteStations)
     case .addFavoriteStation(let stationID):
       return .run { [stationUseCase] send in
         do {
@@ -195,6 +205,7 @@ extension TrainStationFeature {
           await send(.inner(.addFavoriteStationFailed(error.localizedDescription)))
         }
       }
+      .cancellable(id: CancelID.favoriteMutation, cancelInFlight: true)
     case .deleteFavoriteStation(let favoriteID):
       return .run { [stationUseCase] send in
         do {
@@ -204,6 +215,7 @@ extension TrainStationFeature {
           await send(.inner(.deleteFavoriteStationFailed(error.localizedDescription)))
         }
       }
+      .cancellable(id: CancelID.favoriteMutation, cancelInFlight: true)
     }
   }
 
@@ -273,7 +285,7 @@ extension TrainStationFeature.State: Hashable {}
 
 private extension TrainStationFeature {
   func makeNearbyRows(_ stations: [StationSummaryEntity]) -> [StationRowModel] {
-    stations.map { station in
+    Array(stations.sorted { normalizedStationName($0.name) < normalizedStationName($1.name) }.prefix(3)).map { station in
       let normalizedName = normalizedStationName(station.name)
       return StationRowModel(
         id: "nearby-\(station.stationID)",
@@ -289,7 +301,9 @@ private extension TrainStationFeature {
   }
 
   func makeMajorRows(_ stations: [StationSummaryEntity]) -> [StationRowModel] {
-    stations.map { station in
+    stations
+      .sorted { normalizedStationName($0.name) < normalizedStationName($1.name) }
+      .map { station in
       let normalizedName = normalizedStationName(station.name)
       return StationRowModel(
         id: "station-\(station.stationID)",
@@ -308,7 +322,9 @@ private extension TrainStationFeature {
     _ favorites: [FavoriteStationItemEntity],
     stationRows: [StationRowModel]
   ) -> [StationRowModel] {
-    favorites.map { favorite in
+    favorites
+      .sorted { normalizedStationName($0.stationName) < normalizedStationName($1.stationName) }
+      .map { favorite in
       let normalizedName = normalizedStationName(favorite.stationName)
       let matchedLines = stationRows.first(where: {
         normalizedStationName($0.stationName) == normalizedName

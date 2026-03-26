@@ -18,6 +18,17 @@ public struct HistoryPageResponseDTO: Decodable, Equatable {
   public let first: Bool
   public let last: Bool
 
+  enum CodingKeys: String, CodingKey {
+    case content
+    case totalElements
+    case totalPages
+    case size
+    case number
+    case first
+    case last
+    case hasNext
+  }
+
   public init(
     content: [HistoryItemResponseDTO],
     totalElements: Int,
@@ -34,6 +45,29 @@ public struct HistoryPageResponseDTO: Decodable, Equatable {
     self.number = number
     self.first = first
     self.last = last
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    let content = try container.decode([HistoryItemResponseDTO].self, forKey: .content)
+    let totalElements = try container.decode(Int.self, forKey: .totalElements)
+    let totalPages = try container.decode(Int.self, forKey: .totalPages)
+    let size = try container.decode(Int.self, forKey: .size)
+    let number = try container.decode(Int.self, forKey: .number)
+
+    let hasNext = try container.decodeIfPresent(Bool.self, forKey: .hasNext) ?? false
+    let first = try container.decodeIfPresent(Bool.self, forKey: .first) ?? (number == 0)
+    let last = try container.decodeIfPresent(Bool.self, forKey: .last) ?? !hasNext
+
+    self.init(
+      content: content,
+      totalElements: totalElements,
+      totalPages: totalPages,
+      size: size,
+      number: number,
+      first: first,
+      last: last
+    )
   }
 }
 

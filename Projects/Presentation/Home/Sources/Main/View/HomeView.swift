@@ -182,8 +182,8 @@ extension HomeView {
       .buttonStyle(.plain)
       .frame(maxWidth: .infinity)
     }
-    .padding(.horizontal, 8)
-    .padding(.top, 4)
+    .padding(.horizontal, 24)
+    .padding(.top, 8)
   }
 
   @ViewBuilder
@@ -226,7 +226,7 @@ extension HomeView {
     .frame(maxWidth: .infinity)
     .frame(height: 77)
     .background(backgroundColor)
-    .cornerRadius(32)
+    .cornerRadius(28)
   }
 
 

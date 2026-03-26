@@ -15,7 +15,6 @@ public enum TimeSpotDomain {
   case profile
   case history
   case station
-  case favorite
 }
 
 extension TimeSpotDomain: DomainType {
@@ -35,8 +34,6 @@ extension TimeSpotDomain: DomainType {
         return "api/v1/histories"
       case .station:
         return "api/v1/stations"
-      case .favorite:
-        return "api/v1/favorites"
     }
   }
 }

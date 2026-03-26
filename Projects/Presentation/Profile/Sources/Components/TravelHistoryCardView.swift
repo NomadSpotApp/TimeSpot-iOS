@@ -54,12 +54,15 @@ public struct TravelHistoryCardView: View {
           Text(item.departureName)
             .pretendardCustomFont(textStyle: .titleRegular)
             .foregroundStyle(.staticBlack)
+            .lineLimit(1)
+            .minimumScaleFactor(0.9)
 
           Text("출발역")
             .pretendardCustomFont(textStyle: .body2Medium)
             .foregroundStyle(.gray800)
+            .lineLimit(1)
         }
-        .frame(width: 52, alignment: .trailing)
+        .frame(width: 72, alignment: .trailing)
       }
 
       Spacer()
