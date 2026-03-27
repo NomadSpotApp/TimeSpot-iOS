@@ -9,11 +9,14 @@ import Foundation
 
 public enum PlaceAPI: String, CaseIterable {
   case fetchPlace
+  case searchPlace
 
   public var description: String {
     switch self {
       case .fetchPlace:
         return ""
+      case .searchPlace:
+        return "/search"
     }
   }
 }

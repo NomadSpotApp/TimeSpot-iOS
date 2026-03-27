@@ -12,14 +12,30 @@ import Entity
 
 public extension PlaceResponseDTOModel {
   func toDomain() -> PlaceEntity {
-    PlaceEntity(
-      stationId: googlePlaceID,
-      name: name,
-      address: address,
+    return PlaceEntity(
+      placeId: placeID,
+      name: name ?? "",
+      category: mapCategory(category),
+      lat: lat,
+      lon: lon,
+      address: address ?? "",
+      stayableMinutes: stayableMinutes ?? 0,
+      isOpen: isOpen ?? false,
+      closingTime: closingTime
+    )
+  }
+
+  func toDomainForFetchPlaces() -> PlaceEntity {
+    return PlaceEntity(
+      placeId: placeID,
+      name: name ?? "",
       category: mapCategory(category),
       lat: lon,
       lon: lat,
-      stayableMinutes: stayableMinutes
+      address: address ?? "",
+      stayableMinutes: stayableMinutes ?? 0,
+      isOpen: isOpen ?? false,
+      closingTime: closingTime
     )
   }
 
@@ -36,5 +52,44 @@ public extension PlaceResponseDTOModel {
     default:
       return .etc
     }
+  }
+}
+
+public extension PlaceSearchPageResponseDTO {
+  func toDomain() -> PlaceSearchPageEntity {
+    PlaceSearchPageEntity(
+      pageable: pageable.toDomain(),
+      isLastPage: last,
+      numberOfElements: numberOfElements,
+      isFirstPage: first,
+      size: size,
+      content: content.map { $0.toDomain() },
+      page: number,
+      sort: sort.toDomain(),
+      isEmpty: empty
+    )
+  }
+}
+
+public extension PlacePageableResponseDTO {
+  func toDomain() -> PlacePageableEntity {
+    PlacePageableEntity(
+      isUnpaged: unpaged,
+      isPaged: paged,
+      pageNumber: pageNumber,
+      pageSize: pageSize,
+      offset: offset,
+      sort: sort.toDomain()
+    )
+  }
+}
+
+public extension PlaceSortResponseDTO {
+  func toDomain() -> PlaceSortEntity {
+    PlaceSortEntity(
+      isUnsorted: unsorted,
+      isSorted: sorted,
+      isEmpty: empty
+    )
   }
 }

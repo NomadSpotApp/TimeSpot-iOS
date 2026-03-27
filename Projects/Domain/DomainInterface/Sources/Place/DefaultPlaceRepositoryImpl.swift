@@ -18,4 +18,12 @@ public final class DefaultPlaceRepositoryImpl: PlaceInterface {
       userInfo: [NSLocalizedDescriptionKey: "PlaceRepository is not configured."]
     )
   }
+
+  public func searchPlaces(_ input: PlaceSearchInput) async throws -> PlaceSearchPageEntity {
+    throw NSError(
+      domain: "PlaceRepository",
+      code: -1,
+      userInfo: [NSLocalizedDescriptionKey: "PlaceRepository is not configured."]
+    )
+  }
 }

@@ -37,6 +37,25 @@ public final class PlaceRepositoryImpl: PlaceInterface, @unchecked Sendable {
       remainingMinutes: input.remainingMinutes
     )
     let dto: PlaceDTOModel = try await provider.request(.fetchPlaces(body: body))
-    return dto.data.map { $0.toDomain() }
+
+    return dto.data.map { $0.toDomainForFetchPlaces() }
+  }
+
+  public func searchPlaces(
+    _ input: PlaceSearchInput
+  ) async throws -> PlaceSearchPageEntity {
+    let body: PlaceSearchRequest = .init(
+      userLat: input.userLat,
+      userLon: input.userLon,
+      stationId: input.stationId,
+      remainingMinutes: input.remainingMinutes,
+      keyword: input.keyword,
+      category: input.category,
+      markerLat: input.markerLat,
+      markerLon: input.markerLon,
+      pageable: .init(page: input.page, size: input.size)
+    )
+    let dto: PlaceSearchDTOModel = try await provider.request(.searchPlaces(body: body))
+    return dto.data.toDomain()
   }
 }

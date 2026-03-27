@@ -13,6 +13,7 @@ public struct ExploreMapSpot: Identifiable {
   public let name: String
   public let category: ExploreCategory
   public let coordinate: CLLocationCoordinate2D
+  public let hasDetail: Bool
   public let badgeText: String
   public let subtitle: String
   public let statusText: String
@@ -25,6 +26,7 @@ public struct ExploreMapSpot: Identifiable {
     name: String,
     category: ExploreCategory,
     coordinate: CLLocationCoordinate2D,
+    hasDetail: Bool = false,
     badgeText: String,
     subtitle: String,
     statusText: String,
@@ -36,6 +38,7 @@ public struct ExploreMapSpot: Identifiable {
     self.name = name
     self.category = category
     self.coordinate = coordinate
+    self.hasDetail = hasDetail
     self.badgeText = badgeText
     self.subtitle = subtitle
     self.statusText = statusText
@@ -52,6 +55,7 @@ extension ExploreMapSpot: Equatable {
     && lhs.category == rhs.category
     && lhs.coordinate.latitude == rhs.coordinate.latitude
     && lhs.coordinate.longitude == rhs.coordinate.longitude
+    && lhs.hasDetail == rhs.hasDetail
     && lhs.badgeText == rhs.badgeText
     && lhs.subtitle == rhs.subtitle
     && lhs.statusText == rhs.statusText
@@ -68,11 +72,28 @@ extension ExploreMapSpot: Hashable {
     hasher.combine(category)
     hasher.combine(coordinate.latitude)
     hasher.combine(coordinate.longitude)
+    hasher.combine(hasDetail)
     hasher.combine(badgeText)
     hasher.combine(subtitle)
     hasher.combine(statusText)
     hasher.combine(closingText)
     hasher.combine(distanceText)
     hasher.combine(walkTimeText)
+  }
+}
+
+public struct ExploreSpotPageEntity: Equatable {
+  public let spots: [ExploreMapSpot]
+  public let currentPage: Int
+  public let hasNextPage: Bool
+
+  public init(
+    spots: [ExploreMapSpot],
+    currentPage: Int,
+    hasNextPage: Bool
+  ) {
+    self.spots = spots
+    self.currentPage = currentPage
+    self.hasNextPage = hasNextPage
   }
 }
