@@ -54,6 +54,9 @@ public struct ExploreReducer: Sendable {
     public var shouldReturnToCurrentLocation: Bool = false
     public var selectedCategory: ExploreCategory = .all
     public var isSpotCardVisible: Bool = false
+    public var cardDragOffset: CGFloat = 0
+    public var cardBaseOffset: CGFloat = 0
+    public var isCardTransitioning: Bool = false
 
     public init() {}
   }
@@ -63,6 +66,7 @@ public struct ExploreReducer: Sendable {
     case inner(InnerAction)
     case async(AsyncAction)
     case scope(ScopeAction)
+    case delegate(DelegateAction)
   }
 
   @CasePathable
@@ -89,6 +93,8 @@ public struct ExploreReducer: Sendable {
     case categoryTapped(ExploreCategory)
     case spotTapped(String)
     case spotCardChanged(String?)
+    case cardDragChanged(CGFloat)
+    case cardDragEnded(CGFloat)
     case loadNextSpotPage
     // 길찾기 관련 액션
     case searchRouteToGangnam
@@ -118,6 +124,8 @@ public struct ExploreReducer: Sendable {
     case routeSearchResponse(Result<RouteInfo, DirectionError>)
     // 지도 카메라 제어
     case resetCameraFlag
+    case completeCardSwipe(next: Bool)
+    case finishCardTransition
   }
 
   public enum AsyncAction: Equatable {
@@ -130,6 +138,11 @@ public struct ExploreReducer: Sendable {
     case searchPlaces(page: Int, append: Bool)
     // 길찾기 관련 액션
     case searchRoute(from: CLLocationCoordinate2D, to: Destination)
+  }
+
+
+  public enum DelegateAction: Equatable {
+    case presentExploreList
   }
 
   @Dependency(\.getRouteUseCase) var getRouteUseCase
@@ -149,6 +162,9 @@ public struct ExploreReducer: Sendable {
 
         case .scope(let scopeAction):
           return handleScopeAction(state: &state, action: scopeAction)
+
+        case .delegate(let delegateAction):
+          return handleDelegateAction(state: &state, action: delegateAction)
       }
     }
     .ifLet(\.$alert, action: \.scope.alert)
@@ -156,8 +172,50 @@ public struct ExploreReducer: Sendable {
 }
 
 extension ExploreReducer {
+  private var cardTravelDistance: CGFloat {
+    UIScreen.main.bounds.width - 8
+  }
+
+  private var cardSwipeThreshold: CGFloat {
+    (UIScreen.main.bounds.width - 32) / 2
+  }
+
+  private func resetPagination(state: inout State) {
+    state.currentPage = 1
+    state.hasNextPage = true
+    state.pendingSelectFirstSpotFromNextPage = false
+  }
+
+  private func resetSearchContext(state: inout State, clearMarker: Bool = true) {
+    state.isLoadingPlaces = false
+    state.hasRequestedPlaces = false
+    resetPagination(state: &state)
+    if clearMarker {
+      state.searchMarkerLat = nil
+      state.searchMarkerLon = nil
+    }
+  }
+
+  private func clearSelectedSpot(state: inout State) {
+    state.isSpotCardVisible = false
+    state.$userSession.withLock {
+      $0.selectedExploreSpotID = ""
+    }
+    state.cardDragOffset = 0
+    state.cardBaseOffset = 0
+    state.isCardTransitioning = false
+  }
+
+  private func currentKeyword(state: State) -> String {
+    state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+  }
+
+  private func currentCategory(state: State) -> ExploreCategory? {
+    state.selectedCategory == .all ? nil : state.selectedCategory
+  }
+
   private func filteredSpots(state: State) -> [ExploreMapSpot] {
-    let query = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    let query = currentKeyword(state: state)
 
     let filtered = state.spots.filter { spot in
       let hasDetail = spot.hasDetail
@@ -194,12 +252,60 @@ extension ExploreReducer {
     }
 
     guard state.spots.contains(where: { $0.id == selectedSpotID }) else {
-      state.$userSession.withLock {
-        $0.selectedExploreSpotID = ""
-      }
-      state.isSpotCardVisible = false
+      clearSelectedSpot(state: &state)
       return
     }
+  }
+
+  private func filteredCardSpots(state: State) -> [ExploreMapSpot] {
+    let query = currentKeyword(state: state)
+
+    let filtered = state.spots.filter { spot in
+      let hasDetail = spot.hasDetail
+      let matchesCategory = state.selectedCategory == .all || spot.category == state.selectedCategory
+      let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
+      return hasDetail && matchesCategory && matchesQuery
+    }
+
+    guard let currentLocation = state.currentLocation else {
+      return filtered
+    }
+
+    return filtered.sorted { lhs, rhs in
+      let lhsDistance = currentLocation.distance(
+        from: CLLocation(
+          latitude: lhs.coordinate.latitude,
+          longitude: lhs.coordinate.longitude
+        )
+      )
+      let rhsDistance = currentLocation.distance(
+        from: CLLocation(
+          latitude: rhs.coordinate.latitude,
+          longitude: rhs.coordinate.longitude
+        )
+      )
+
+      return lhsDistance < rhsDistance
+    }
+  }
+
+  private func currentCardSpots(state: State) -> [ExploreMapSpot] {
+    let filteredSpots = filteredCardSpots(state: state)
+    let selectedSpotID = state.userSession.selectedExploreSpotID
+
+    guard !selectedSpotID.isEmpty else {
+      return filteredSpots
+    }
+
+    if filteredSpots.contains(where: { $0.id == selectedSpotID }) {
+      return filteredSpots
+    }
+
+    if let selectedSearchSpot = state.spots.first(where: { $0.id == selectedSpotID && $0.hasDetail }) {
+      return [selectedSearchSpot] + filteredSpots
+    }
+
+    return filteredSpots
   }
 
   private func handleViewAction(
@@ -209,14 +315,8 @@ extension ExploreReducer {
     switch action {
       case .onAppear:
         state.isSpotCardVisible = false
-        state.isLoadingPlaces = false
-        state.hasRequestedPlaces = false
         state.hasFetchedPlacesWithCurrentLocation = false
-        state.currentPage = 1
-        state.hasNextPage = true
-        state.pendingSelectFirstSpotFromNextPage = false
-        state.searchMarkerLat = nil
-        state.searchMarkerLon = nil
+        resetSearchContext(state: &state)
         state.spots = []
         if let lat = state.userSession.travelStationLat,
            let lng = state.userSession.travelStationLng {
@@ -236,14 +336,8 @@ extension ExploreReducer {
         )
 
       case .onDisappear:
-        state.isLoadingPlaces = false
-        state.hasRequestedPlaces = false
         state.hasFetchedPlacesWithCurrentLocation = false
-        state.currentPage = 1
-        state.hasNextPage = true
-        state.pendingSelectFirstSpotFromNextPage = false
-        state.searchMarkerLat = nil
-        state.searchMarkerLon = nil
+        resetSearchContext(state: &state)
         state.spots = []
         state.isSpotCardVisible = false
         state.selectedDestination = nil
@@ -278,13 +372,7 @@ extension ExploreReducer {
 
       case .searchTextChanged(let text):
         state.searchText = text
-        state.isLoadingPlaces = false
-        state.hasRequestedPlaces = false
-        state.currentPage = 1
-        state.hasNextPage = true
-        state.pendingSelectFirstSpotFromNextPage = false
-        state.searchMarkerLat = nil
-        state.searchMarkerLon = nil
+        resetSearchContext(state: &state)
         return .merge(
           .cancel(id: CancelID.searchPlaces),
           .send(.async(.searchPlaces(page: 1, append: false)))
@@ -292,19 +380,21 @@ extension ExploreReducer {
 
       case .categoryTapped(let category):
         state.selectedCategory = category
-        state.isLoadingPlaces = false
-        state.hasRequestedPlaces = false
-        state.currentPage = 1
-        state.hasNextPage = true
-        state.pendingSelectFirstSpotFromNextPage = false
-        state.searchMarkerLat = nil
-        state.searchMarkerLon = nil
+        resetSearchContext(state: &state)
         return .merge(
           .cancel(id: CancelID.searchPlaces),
           .send(.async(.searchPlaces(page: 1, append: false)))
         )
 
       case .spotTapped(let spotID):
+        if state.userSession.selectedExploreSpotID == spotID, state.isSpotCardVisible {
+          clearSelectedSpot(state: &state)
+          state.searchMarkerLat = nil
+          state.searchMarkerLon = nil
+          state.pendingSelectFirstSpotFromNextPage = false
+          return .cancel(id: CancelID.searchPlaces)
+        }
+
         state.$userSession.withLock {
           $0.selectedExploreSpotID = spotID
         }
@@ -316,11 +406,7 @@ extension ExploreReducer {
 
         state.searchMarkerLat = markerSpot.coordinate.latitude
         state.searchMarkerLon = markerSpot.coordinate.longitude
-        state.currentPage = 1
-        state.hasNextPage = true
-        state.pendingSelectFirstSpotFromNextPage = false
-        state.isLoadingPlaces = false
-        state.hasRequestedPlaces = false
+        resetSearchContext(state: &state, clearMarker: false)
 
         return .merge(
           .cancel(id: CancelID.searchPlaces),
@@ -336,6 +422,30 @@ extension ExploreReducer {
         } else {
           state.isSpotCardVisible = false
         }
+        return .none
+
+      case .cardDragChanged(let offset):
+        guard !state.isCardTransitioning else {
+          return .none
+        }
+        let limitedOffset = max(min(offset, cardTravelDistance), -cardTravelDistance)
+        state.cardDragOffset = limitedOffset
+        return .none
+
+      case .cardDragEnded(let translationWidth):
+        guard !state.isCardTransitioning else {
+          return .none
+        }
+
+        if translationWidth > cardSwipeThreshold {
+          return .send(.inner(.completeCardSwipe(next: true)))
+        }
+
+        if translationWidth < -cardSwipeThreshold {
+          return .send(.inner(.completeCardSwipe(next: false)))
+        }
+
+        state.cardDragOffset = 0
         return .none
 
       case .loadNextSpotPage:
@@ -411,9 +521,7 @@ extension ExploreReducer {
         }
         if !state.hasFetchedPlacesWithCurrentLocation,
            !state.isLoadingPlaces {
-          state.currentPage = 1
-          state.hasNextPage = true
-          state.pendingSelectFirstSpotFromNextPage = false
+          resetSearchContext(state: &state, clearMarker: false)
           return .merge(
             .cancel(id: CancelID.fetchPlaces),
             .cancel(id: CancelID.searchPlaces),
@@ -440,17 +548,13 @@ extension ExploreReducer {
         return .none
 
       case .fetchPlacesFailed(let message, let usedCurrentLocation):
-        state.isLoadingPlaces = false
-        state.hasRequestedPlaces = false
+        resetSearchContext(state: &state, clearMarker: false)
         if usedCurrentLocation {
           state.hasFetchedPlacesWithCurrentLocation = false
         }
         #logDebug(" [ExploreReducer] 장소 조회 실패: \(message)")
         state.spots = []
-        state.isSpotCardVisible = false
-        state.$userSession.withLock {
-          $0.selectedExploreSpotID = ""
-        }
+        clearSelectedSpot(state: &state)
         return .none
 
       case .searchPlacesResponse(
@@ -465,8 +569,8 @@ extension ExploreReducer {
       ):
         state.isLoadingPlaces = false
         state.hasRequestedPlaces = false
-        let currentKeyword = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let currentCategory: ExploreCategory? = state.selectedCategory == .all ? nil : state.selectedCategory
+        let currentKeyword = currentKeyword(state: state)
+        let currentCategory = currentCategory(state: state)
         let currentMarkerLat = state.searchMarkerLat
         let currentMarkerLon = state.searchMarkerLon
 
@@ -495,10 +599,7 @@ extension ExploreReducer {
         } else if state.searchMarkerLat != nil {
           state.isSpotCardVisible = false
         } else {
-          state.isSpotCardVisible = false
-          state.$userSession.withLock {
-            $0.selectedExploreSpotID = ""
-          }
+          clearSelectedSpot(state: &state)
         }
 
         if state.pendingSelectFirstSpotFromNextPage, let firstNewSpotID {
@@ -522,10 +623,7 @@ extension ExploreReducer {
            state.searchMarkerLat != nil,
            !state.spots.contains(where: { $0.id == selectedSpotID }),
            !state.hasNextPage {
-          state.isSpotCardVisible = false
-          state.$userSession.withLock {
-            $0.selectedExploreSpotID = ""
-          }
+          clearSelectedSpot(state: &state)
         }
 
         return .none
@@ -559,6 +657,61 @@ extension ExploreReducer {
 
       case .resetCameraFlag:
         state.shouldReturnToCurrentLocation = false
+        return .none
+
+      case .completeCardSwipe(let next):
+        let cardSpots = state.cardSpots
+        guard !cardSpots.isEmpty else {
+          return .none
+        }
+
+        let currentSelectedID = state.selectedSpot?.id ?? state.userSession.selectedExploreSpotID
+        let currentIndex = cardSpots.firstIndex(where: { $0.id == currentSelectedID }) ?? 0
+        let entryOffset: CGFloat = next ? -cardTravelDistance : cardTravelDistance
+        let isAtEnd = next && currentIndex == cardSpots.count - 1
+        let isAtStart = !next && currentIndex == 0
+
+        state.isCardTransitioning = true
+        state.cardDragOffset = next ? cardTravelDistance : -cardTravelDistance
+
+        if isAtEnd {
+          if state.hasNextPage {
+            return .concatenate(
+              .send(.view(.loadNextSpotPage)),
+              .run { send in
+                try await Task.sleep(for: .milliseconds(200))
+                await send(.inner(.finishCardTransition))
+              }
+            )
+          }
+
+          state.$userSession.withLock {
+            $0.selectedExploreSpotID = cardSpots[0].id
+          }
+        } else if isAtStart {
+          state.$userSession.withLock {
+            $0.selectedExploreSpotID = cardSpots[cardSpots.count - 1].id
+          }
+        } else {
+          let newIndex = next ? currentIndex + 1 : currentIndex - 1
+          state.$userSession.withLock {
+            $0.selectedExploreSpotID = cardSpots[newIndex].id
+          }
+        }
+
+        state.isSpotCardVisible = true
+        state.cardBaseOffset = entryOffset
+        state.cardDragOffset = 0
+
+        return .run { send in
+          try await Task.sleep(for: .milliseconds(240))
+          await send(.inner(.finishCardTransition))
+        }
+
+      case .finishCardTransition:
+        state.cardBaseOffset = 0
+        state.cardDragOffset = 0
+        state.isCardTransitioning = false
         return .none
     }
   }
@@ -709,6 +862,7 @@ extension ExploreReducer {
               userLon: userLon,
               keyword: keyword,
               category: category,
+              sortBy: "MARKER_NEAREST",
               markerLat: markerLat,
               markerLon: markerLon,
               page: page
@@ -768,6 +922,16 @@ extension ExploreReducer {
     }
   }
 
+  private func handleDelegateAction(
+    state: inout State,
+    action: DelegateAction
+  ) -> Effect<Action> {
+    switch action {
+      case .presentExploreList:
+        return .none
+    }
+  }
+
   private func handleAlertAction(
     state: inout State,
     action: PresentationAction<Alert>
@@ -799,6 +963,94 @@ extension ExploreReducer {
   }
 }
 
+extension ExploreReducer.State {
+  var trimmedSearchText: String {
+    searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+  }
+
+  func matchesCurrentFilters(_ spot: ExploreMapSpot) -> Bool {
+    let matchesCategory = selectedCategory == .all || spot.category == selectedCategory
+    let matchesQuery = trimmedSearchText.isEmpty || spot.name.localizedCaseInsensitiveContains(trimmedSearchText)
+    return matchesCategory && matchesQuery
+  }
+
+  var filteredMapSpots: [ExploreMapSpot] {
+    spots.filter { spot in
+      selectedCategory == .all || spot.category == selectedCategory
+    }
+  }
+
+  var filteredSpots: [ExploreMapSpot] {
+    spots.filter { spot in
+      spot.hasDetail && matchesCurrentFilters(spot)
+    }
+  }
+
+  func mergedSpot(for spotID: String) -> ExploreMapSpot? {
+    spots.first(where: { $0.id == spotID && $0.hasDetail })
+  }
+
+  var cardSpots: [ExploreMapSpot] {
+    let selectedSpotID = userSession.selectedExploreSpotID
+
+    guard !selectedSpotID.isEmpty else {
+      return filteredSpots
+    }
+
+    if filteredSpots.contains(where: { $0.id == selectedSpotID }) {
+      return filteredSpots
+    }
+
+    if let selectedSearchSpot = mergedSpot(for: selectedSpotID) {
+      return [selectedSearchSpot] + filteredSpots
+    }
+
+    return filteredSpots
+  }
+
+  var selectedSpot: ExploreMapSpot? {
+    guard isSpotCardVisible else { return nil }
+
+    let selectedSpotID = userSession.selectedExploreSpotID
+
+    if !selectedSpotID.isEmpty,
+       let selectedSpot = mergedSpot(for: selectedSpotID) {
+      return selectedSpot
+    }
+
+    return nil
+  }
+
+  func adjacentSpot(cardTravelDistance: CGFloat) -> ExploreMapSpot? {
+    let currentSelectedID = selectedSpot?.id ?? userSession.selectedExploreSpotID
+    guard let currentIndex = cardSpots.firstIndex(where: { $0.id == currentSelectedID }) else {
+      return nil
+    }
+    guard abs(cardDragOffset) > 0 else {
+      return nil
+    }
+
+    let adjacentIndex: Int
+    if cardDragOffset >= 0 {
+      adjacentIndex = (currentIndex + 1) % cardSpots.count
+    } else {
+      adjacentIndex = (currentIndex - 1 + cardSpots.count) % cardSpots.count
+    }
+    return cardSpots[adjacentIndex]
+  }
+
+  func adjacentCardOffset(cardTravelDistance: CGFloat) -> CGFloat? {
+    guard adjacentSpot(cardTravelDistance: cardTravelDistance) != nil else { return nil }
+    let baseOffset = cardDragOffset >= 0 ? -cardTravelDistance : cardTravelDistance
+    return baseOffset + cardDragOffset
+  }
+
+  func cardOpacity(cardTravelDistance: CGFloat) -> Double {
+    let progress = min(abs(cardBaseOffset + cardDragOffset) / cardTravelDistance, 1)
+    return 1 - (progress * 0.02)
+  }
+}
+
 // MARK: - ExploreReducer.State + Hashable
 extension ExploreReducer.State: Hashable {
   public func hash(into hasher: inout Hasher) {
@@ -812,9 +1064,9 @@ extension ExploreReducer.State: Hashable {
     hasher.combine(routeError)
     hasher.combine(shouldReturnToCurrentLocation)
     hasher.combine(userSession)
-    // Note: alert, selectedDestination, routeInfo are not hashed as they contain complex types
   }
 }
+
 
 private extension String {
   var nilIfEmpty: String? {

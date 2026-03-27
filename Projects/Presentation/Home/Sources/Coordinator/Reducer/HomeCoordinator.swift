@@ -49,6 +49,7 @@ public struct HomeCoordinator {
     case presentProfile
     case presentProfileWithAnimation
     case presentExplore
+    case presentExploreList
   }
 
   // MARK: - NavigationAction
@@ -97,6 +98,10 @@ extension HomeCoordinator {
 
       case .routeAction(id: _, action: .home(.delegate(.presentAuth))):
         return .send(.navigation(.presentAuth))
+
+      case let .routeAction(id: id, action: .explore(.delegate(.presentExploreList))):
+        return .send(.inner(.presentExploreList))
+
 
       case .routeAction(id: _, action: .profile(.navigation(.presentRoot))):
         return .send(.view(.backAction))
@@ -161,6 +166,10 @@ extension HomeCoordinator {
     case .presentExplore:
       state.routes.push(.explore(.init()))
       return .none
+
+    case .presentExploreList:
+        state.routes.push(.exploreList(.init()))
+      return .none
     }
   }
 
@@ -171,6 +180,7 @@ extension HomeCoordinator {
   public enum HomeScreen {
     case home(HomeFeature)
     case explore(ExploreReducer)
+    case exploreList(ExploreListFeature)
     case profile(ProfileCoordinator)
   }
 }

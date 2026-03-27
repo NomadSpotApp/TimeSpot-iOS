@@ -39,6 +39,7 @@ public struct PlaceSearchInput: Equatable {
   public let remainingMinutes: Int
   public let keyword: String?
   public let category: String?
+  public let sortBy: String
   public let markerLat: Double?
   public let markerLon: Double?
   public let page: Int
@@ -51,6 +52,7 @@ public struct PlaceSearchInput: Equatable {
     remainingMinutes: Int,
     keyword: String? = nil,
     category: String? = nil,
+    sortBy: String = "MARKER_NEAREST",
     markerLat: Double? = nil,
     markerLon: Double? = nil,
     page: Int = 1,
@@ -62,6 +64,7 @@ public struct PlaceSearchInput: Equatable {
     self.remainingMinutes = remainingMinutes
     self.keyword = keyword
     self.category = category
+    self.sortBy = sortBy
     self.markerLat = markerLat
     self.markerLon = markerLon
     self.page = page

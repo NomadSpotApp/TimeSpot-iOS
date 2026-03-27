@@ -51,6 +51,7 @@ public final class PlaceRepositoryImpl: PlaceInterface, @unchecked Sendable {
       remainingMinutes: input.remainingMinutes,
       keyword: input.keyword,
       category: input.category,
+      sortBy: input.sortBy,
       markerLat: input.markerLat,
       markerLon: input.markerLon,
       pageable: .init(page: input.page, size: input.size)
