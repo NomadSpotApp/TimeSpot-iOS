@@ -41,14 +41,16 @@ struct ExploreSelectedSpotCardView: View {
     VStack(alignment: .leading, spacing: 0) {
       HStack(alignment: .top, spacing: 12) {
         VStack(alignment: .leading, spacing: 0) {
-          Text(spot.badgeText)
-            .pretendardCustomFont(textStyle: .caption)
-            .foregroundStyle(.orange800)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .background(.orange200)
-            .clipShape(Capsule())
-            .padding(.bottom, 8)
+          if !spot.badgeText.isEmpty {
+            Text(spot.badgeText)
+              .pretendardCustomFont(textStyle: .caption)
+              .foregroundStyle(.orange800)
+              .padding(.horizontal, 8)
+              .padding(.vertical, 2)
+              .background(.orange200)
+              .clipShape(Capsule())
+              .padding(.bottom, 8)
+          }
 
           HStack(alignment: .lastTextBaseline, spacing: 6) {
             Text(spot.name)
@@ -63,27 +65,39 @@ struct ExploreSelectedSpotCardView: View {
           }
           .padding(.bottom, 10)
 
-          HStack(spacing: 12) {
-            Text(spot.statusText)
-              .pretendardCustomFont(textStyle: .body2Medium)
-              .foregroundStyle(.gray700)
+          if !spot.statusText.isEmpty || !spot.closingText.isEmpty {
+            HStack(spacing: 12) {
+              if !spot.statusText.isEmpty {
+                Text(spot.statusText)
+                  .pretendardCustomFont(textStyle: .body2Medium)
+                  .foregroundStyle(.gray700)
+              }
 
-            Text(spot.closingText)
-              .pretendardCustomFont(textStyle: .body2Regular)
-              .foregroundStyle(.gray500)
-              .lineLimit(1)
+              if !spot.closingText.isEmpty {
+                Text(spot.closingText)
+                  .pretendardCustomFont(textStyle: .body2Regular)
+                  .foregroundStyle(.gray500)
+                  .lineLimit(1)
+              }
+            }
+            .padding(.bottom, 10)
           }
-          .padding(.bottom, 10)
 
-          HStack(spacing: 8) {
-            Text(spot.distanceText)
-              .pretendardCustomFont(textStyle: .bodyBold)
-              .foregroundStyle(.gray650)
+          if !spot.distanceText.isEmpty || !spot.walkTimeText.isEmpty {
+            HStack(spacing: 8) {
+              if !spot.distanceText.isEmpty {
+                Text(spot.distanceText)
+                  .pretendardCustomFont(textStyle: .bodyBold)
+                  .foregroundStyle(.gray650)
+              }
 
-            Text(spot.walkTimeText)
-              .pretendardCustomFont(textStyle: .bodyRegular)
-              .foregroundStyle(.gray650)
-              .lineLimit(1)
+              if !spot.walkTimeText.isEmpty {
+                Text(spot.walkTimeText)
+                  .pretendardCustomFont(textStyle: .bodyRegular)
+                  .foregroundStyle(.gray650)
+                  .lineLimit(1)
+              }
+            }
           }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

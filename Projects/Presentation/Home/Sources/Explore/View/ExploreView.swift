@@ -67,7 +67,7 @@ private extension ExploreView {
       currentLocation: store.currentLocation,
       routeInfo: store.routeInfo,
       destination: store.selectedDestination,
-      spots: filteredSpots,
+      spots: store.spots,
       selectedSpotID: store.userSession.selectedExploreSpotID.isEmpty
         ? nil
         : store.userSession.selectedExploreSpotID,
@@ -86,10 +86,37 @@ private extension ExploreView {
     let query = store.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
 
     return store.spots.filter { spot in
+      let hasDetail = spot.hasDetail
       let matchesCategory = store.selectedCategory == .all || spot.category == store.selectedCategory
       let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
-      return matchesCategory && matchesQuery
+      return hasDetail && matchesCategory && matchesQuery
     }
+  }
+
+  func mergedSpot(for spotID: String) -> ExploreMapSpot? {
+    if let placeIDMatchedSpot = store.spots.first(where: { $0.id == spotID && $0.hasDetail }) {
+      return placeIDMatchedSpot
+    }
+
+    return nil
+  }
+
+  var cardSpots: [ExploreMapSpot] {
+    let selectedSpotID = store.userSession.selectedExploreSpotID
+
+    guard !selectedSpotID.isEmpty else {
+      return filteredSpots
+    }
+
+    if filteredSpots.contains(where: { $0.id == selectedSpotID }) {
+      return filteredSpots
+    }
+
+    if let selectedSearchSpot = mergedSpot(for: selectedSpotID) {
+      return [selectedSearchSpot] + filteredSpots
+    }
+
+    return filteredSpots
   }
 
   var selectedSpot: ExploreMapSpot? {
@@ -98,7 +125,7 @@ private extension ExploreView {
     let selectedSpotID = store.userSession.selectedExploreSpotID
 
     if !selectedSpotID.isEmpty,
-       let selectedSpot = filteredSpots.first(where: { $0.id == selectedSpotID }) {
+       let selectedSpot = mergedSpot(for: selectedSpotID) {
       return selectedSpot
     }
 
@@ -235,18 +262,14 @@ private extension ExploreView {
   }
 
   func moveSelectedSpot(next: Bool) {
-    guard !filteredSpots.isEmpty else { return }
+    guard !cardSpots.isEmpty else { return }
     guard !isCardTransitioning else { return }
 
-    let currentIndex = filteredSpots.firstIndex(where: { $0.id == store.userSession.selectedExploreSpotID }) ?? 0
-    let newIndex: Int
+    let currentSelectedID = selectedSpot?.id ?? store.userSession.selectedExploreSpotID
+    let currentIndex = cardSpots.firstIndex(where: { $0.id == currentSelectedID }) ?? 0
     let entryOffset: CGFloat = next ? -cardTravelDistance : cardTravelDistance
-
-    if next {
-      newIndex = (currentIndex + 1) % filteredSpots.count
-    } else {
-      newIndex = (currentIndex - 1 + filteredSpots.count) % filteredSpots.count
-    }
+    let isAtEnd = next && currentIndex == cardSpots.count - 1
+    let isAtStart = !next && currentIndex == 0
 
     isCardTransitioning = true
 
@@ -255,7 +278,19 @@ private extension ExploreView {
     }
 
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-      _ = store.send(.view(.spotCardChanged(filteredSpots[newIndex].id)))
+      if isAtEnd {
+        if store.hasNextPage {
+          _ = store.send(.view(.loadNextSpotPage))
+        } else {
+          _ = store.send(.view(.spotCardChanged(cardSpots[0].id)))
+        }
+      } else if isAtStart {
+        _ = store.send(.view(.spotCardChanged(cardSpots[cardSpots.count - 1].id)))
+      } else {
+        let newIndex = next ? currentIndex + 1 : currentIndex - 1
+        _ = store.send(.view(.spotCardChanged(cardSpots[newIndex].id)))
+      }
+
       cardBaseOffset = entryOffset
       cardDragOffset = 0
 
@@ -294,7 +329,8 @@ private extension ExploreView {
   }
 
   var adjacentSpot: ExploreMapSpot? {
-    guard let currentIndex = filteredSpots.firstIndex(where: { $0.id == store.userSession.selectedExploreSpotID }) else {
+    let currentSelectedID = selectedSpot?.id ?? store.userSession.selectedExploreSpotID
+    guard let currentIndex = cardSpots.firstIndex(where: { $0.id == currentSelectedID }) else {
       return nil
     }
     guard abs(cardDragOffset) > 0 else {
@@ -303,11 +339,11 @@ private extension ExploreView {
 
     let adjacentIndex: Int
     if cardDragOffset >= 0 {
-      adjacentIndex = (currentIndex + 1) % filteredSpots.count
+      adjacentIndex = (currentIndex + 1) % cardSpots.count
     } else {
-      adjacentIndex = (currentIndex - 1 + filteredSpots.count) % filteredSpots.count
+      adjacentIndex = (currentIndex - 1 + cardSpots.count) % cardSpots.count
     }
-    return filteredSpots[adjacentIndex]
+    return cardSpots[adjacentIndex]
   }
 
   var adjacentCardOffset: CGFloat? {

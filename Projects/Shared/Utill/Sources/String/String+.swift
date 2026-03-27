@@ -138,4 +138,12 @@ public extension String {
       return iso.date(from: fixed)
     }()
   }
+
+  func formattedClosingTimeText() -> String {
+    if let time = self.split(separator: " ").last {
+      let hhmm = String(time.prefix(5))
+      return "\(hhmm)에 영업종료"
+    }
+    return self
+  }
 }
