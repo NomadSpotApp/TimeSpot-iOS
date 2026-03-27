@@ -50,18 +50,6 @@ public struct ExploreListFeature {
     @Shared(.inMemory("UserSession")) public var userSession: UserSession = .empty
 
     public init() {}
-
-    public init(exploreState: ExploreReducer.State) {
-      self.searchText = exploreState.searchText
-      self.selectedCategory = exploreState.selectedCategory
-      self.currentLocation = exploreState.currentLocation?.coordinate
-      self.requestSortBy = "STATION_NEAREST"
-      self.markerLat = exploreState.searchMarkerLat ?? exploreState.userSession.travelStationLat
-      self.markerLon = exploreState.searchMarkerLon ?? exploreState.userSession.travelStationLng
-      self.spots = exploreState.spots
-      self.currentPage = exploreState.currentPage
-      self.hasNextPage = exploreState.hasNextPage
-    }
   }
 
   public enum Action: ViewAction, BindableAction {
@@ -101,7 +89,7 @@ public struct ExploreListFeature {
   }
 
   public enum DelegateAction: Equatable {
-    case presentExploreMap
+    case presentExploreMapAtCurrentLocation
   }
 
   @Dependency(\.placeUseCase) var placeUseCase
@@ -230,7 +218,7 @@ extension ExploreListFeature {
     action: DelegateAction
   ) -> Effect<Action> {
     switch action {
-      case .presentExploreMap:
+      case .presentExploreMapAtCurrentLocation:
         return .none
     }
   }
@@ -242,7 +230,19 @@ extension ExploreListFeature {
     switch action {
       case let .searchPlacesResponse(pageEntity, append):
         state.isLoading = false
-        state.spots = pageEntity.spots
+
+        if append {
+          // 무한 스크롤: 기존 데이터에 새 데이터 추가 (중복 제거)
+          let existingSpotIDs = Set(state.spots.map { $0.id })
+          let uniqueNewSpots = pageEntity.spots.filter { !existingSpotIDs.contains($0.id) }
+          state.spots.append(contentsOf: uniqueNewSpots)
+          print("🔄 [무한스크롤] 기존: \(state.spots.count - uniqueNewSpots.count)개 + 신규: \(uniqueNewSpots.count)개 = 총: \(state.spots.count)개")
+        } else {
+          // 첫 로딩/새로운 검색: 데이터 교체
+          state.spots = pageEntity.spots
+          print("🆕 [새로고침] 총: \(state.spots.count)개 로딩")
+        }
+
         state.currentPage = pageEntity.currentPage
         state.hasNextPage = pageEntity.hasNextPage
         return .none
