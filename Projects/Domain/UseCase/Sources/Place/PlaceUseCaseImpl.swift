@@ -93,10 +93,10 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       remainingMinutes: 250,
       keyword: nil,
       category: nil,
-      sortBy: "MARKER_NEAREST",
+      sortBy: "STATION_NEAREST",
       markerLat: userSession.travelStationLat,
       markerLon: userSession.travelStationLng,
-      page: 1,
+      page: 0,
       size: 10
     )
 
@@ -127,7 +127,7 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
     userLon: Double,
     keyword: String?,
     category: ExploreCategory?,
-    sortBy: String = "MARKER_NEAREST",
+    sortBy: String = "STATION_NEAREST",
     markerLat: Double?,
     markerLon: Double?,
     page: Int
@@ -156,7 +156,7 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
     userLon: Double,
     keyword: String?,
     category: ExploreCategory?,
-    sortBy: String = "MARKER_NEAREST",
+    sortBy: String = "STATION_NEAREST",
     markerLat: Double?,
     markerLon: Double?,
     page: Int

@@ -52,7 +52,7 @@ public struct PlaceSearchRequest: Encodable {
     remainingMinutes: Int,
     keyword: String? = nil,
     category: String? = nil,
-    sortBy: String = "MARKER_NEAREST",
+    sortBy: String = "STATION_NEAREST",
     markerLat: Double? = nil,
     markerLon: Double? = nil,
     pageable: PageableRequest = .init()
@@ -75,7 +75,7 @@ public struct PageableRequest: Encodable, Equatable {
   public let size: Int
 
   public init(
-    page: Int = 1,
+    page: Int = 0,
     size: Int = 10
   ) {
     self.page = page

@@ -192,6 +192,7 @@ public struct NaverMapComponent: UIViewRepresentable {
         isSelected: spot.id == Self.selectedSpotID
       )
       marker.touchHandler = { _ in
+        context.coordinator.markMarkerTap()
         Self.selectedSpotID = spot.id
         Self.updateSpotMarkerSelection()
         onSpotTapped?(spot.id)
@@ -268,12 +269,21 @@ public struct NaverMapComponent: UIViewRepresentable {
 
   public final class Coordinator: NSObject, NMFMapViewTouchDelegate {
     var parent: NaverMapComponent
+    private var shouldIgnoreNextMapTap = false
 
     init(parent: NaverMapComponent) {
       self.parent = parent
     }
 
+    func markMarkerTap() {
+      shouldIgnoreNextMapTap = true
+    }
+
     public func mapView(_ mapView: NMFMapView, didTapMap latlng: NMGLatLng, point: CGPoint) {
+      if shouldIgnoreNextMapTap {
+        shouldIgnoreNextMapTap = false
+        return
+      }
       parent.onMapTapped?()
     }
   }

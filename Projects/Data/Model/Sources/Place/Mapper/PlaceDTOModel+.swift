@@ -60,15 +60,19 @@ public extension PlaceResponseDTOModel {
 public extension PlaceSearchPageResponseDTO {
   func toDomain() -> PlaceSearchPageEntity {
     PlaceSearchPageEntity(
-      pageable: pageable.toDomain(),
-      isLastPage: last,
-      numberOfElements: numberOfElements,
-      isFirstPage: first,
+      pageable: PlacePageableResponseDTO(
+        pageNumber: number,
+        pageSize: size,
+        offset: number * size
+      ).toDomain(),
+      isLastPage: !hasNext,
+      numberOfElements: content.count,
+      isFirstPage: number == 0,
       size: size,
       content: content.map { $0.toDomain() },
       page: number,
-      sort: sort.toDomain(),
-      isEmpty: empty
+      sort: PlaceSortResponseDTO().toDomain(),
+      isEmpty: content.isEmpty
     )
   }
 }

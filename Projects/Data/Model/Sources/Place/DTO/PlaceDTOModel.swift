@@ -31,31 +31,21 @@ public struct PlaceResponseDTOModel: Decodable, Equatable {
 }
 
 public struct PlaceSearchPageResponseDTO: Decodable, Equatable {
-  public let pageable: PlacePageableResponseDTO
-  public let last: Bool
-  public let numberOfElements: Int
-  public let first: Bool
-  public let size: Int
   public let content: [PlaceResponseDTOModel]
   public let number: Int
-  public let sort: PlaceSortResponseDTO
-  public let empty: Bool
+  public let size: Int
+  public let hasNext: Bool
 
   enum CodingKeys: String, CodingKey {
-    case pageable, last, numberOfElements, first, size, content, number, sort, empty
+    case content, number, size, hasNext
   }
 
   public init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    self.pageable = try container.decodeIfPresent(PlacePageableResponseDTO.self, forKey: .pageable) ?? .init()
-    self.last = try container.decodeIfPresent(Bool.self, forKey: .last) ?? false
-    self.numberOfElements = try container.decodeIfPresent(Int.self, forKey: .numberOfElements) ?? 0
-    self.first = try container.decodeIfPresent(Bool.self, forKey: .first) ?? true
-    self.size = try container.decodeIfPresent(Int.self, forKey: .size) ?? 0
     self.content = try container.decodeIfPresent([PlaceResponseDTOModel].self, forKey: .content) ?? []
     self.number = try container.decodeIfPresent(Int.self, forKey: .number) ?? 0
-    self.sort = try container.decodeIfPresent(PlaceSortResponseDTO.self, forKey: .sort) ?? .init()
-    self.empty = try container.decodeIfPresent(Bool.self, forKey: .empty) ?? self.content.isEmpty
+    self.size = try container.decodeIfPresent(Int.self, forKey: .size) ?? 10
+    self.hasNext = try container.decodeIfPresent(Bool.self, forKey: .hasNext) ?? false
   }
 }
 

@@ -36,7 +36,7 @@ public struct ExploreReducer: Sendable {
     public var isLoadingPlaces: Bool = false
     public var hasRequestedPlaces: Bool = false
     public var hasFetchedPlacesWithCurrentLocation: Bool = false
-    public var currentPage: Int = 1
+    public var currentPage: Int = 0
     public var hasNextPage: Bool = true
     public var pendingSelectFirstSpotFromNextPage: Bool = false
     public var searchMarkerLat: Double?
@@ -181,7 +181,7 @@ extension ExploreReducer {
   }
 
   private func resetPagination(state: inout State) {
-    state.currentPage = 1
+    state.currentPage = 0
     state.hasNextPage = true
     state.pendingSelectFirstSpotFromNextPage = false
   }
@@ -212,6 +212,27 @@ extension ExploreReducer {
 
   private func currentCategory(state: State) -> ExploreCategory? {
     state.selectedCategory == .all ? nil : state.selectedCategory
+  }
+
+  private func isSameCoordinate(_ lhs: Double?, _ rhs: Double?, tolerance: Double = 0.000001) -> Bool {
+    switch (lhs, rhs) {
+    case (nil, nil):
+      return true
+    case let (lhs?, rhs?):
+      return abs(lhs - rhs) < tolerance
+    default:
+      return false
+    }
+  }
+
+  private func isResolvingSelectedMarkerDetail(state: State) -> Bool {
+    guard state.searchMarkerLat != nil,
+          state.searchMarkerLon != nil,
+          let selectedSpotID = state.userSession.selectedExploreSpotID.nilIfEmpty else {
+      return false
+    }
+
+    return !state.spots.contains(where: { $0.id == selectedSpotID && $0.hasDetail })
   }
 
   private func filteredSpots(state: State) -> [ExploreMapSpot] {
@@ -314,10 +335,8 @@ extension ExploreReducer {
   ) -> Effect<Action> {
     switch action {
       case .onAppear:
-        state.isSpotCardVisible = false
-        state.hasFetchedPlacesWithCurrentLocation = false
-        resetSearchContext(state: &state)
-        state.spots = []
+        let shouldBootstrap = state.spots.isEmpty && !state.hasRequestedPlaces
+
         if let lat = state.userSession.travelStationLat,
            let lng = state.userSession.travelStationLng {
           state.selectedDestination = Destination(
@@ -325,6 +344,20 @@ extension ExploreReducer {
             coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng)
           )
         }
+
+        guard shouldBootstrap else {
+          syncSelectedSpot(state: &state)
+          return .run { send in
+            let locationManager = await LocationPermissionManager.shared
+            let currentStatus = await locationManager.authorizationStatus
+            await send(.inner(.locationPermissionStatusChanged(currentStatus)))
+          }
+        }
+
+        state.isSpotCardVisible = false
+        state.hasFetchedPlacesWithCurrentLocation = false
+        resetSearchContext(state: &state)
+        state.spots = []
         syncSelectedSpot(state: &state)
         return .merge(
           .run { send in
@@ -336,18 +369,7 @@ extension ExploreReducer {
         )
 
       case .onDisappear:
-        state.hasFetchedPlacesWithCurrentLocation = false
-        resetSearchContext(state: &state)
-        state.spots = []
-        state.isSpotCardVisible = false
-        state.selectedDestination = nil
-        return .merge(
-          .cancel(id: CancelID.startLocationUpdates),
-          .cancel(id: CancelID.fetchPlaces),
-          .cancel(id: CancelID.searchPlaces),
-          .cancel(id: CancelID.searchRoute),
-          .send(.async(.stopLocationUpdates))
-        )
+        return .none
 
       case .requestLocationPermission:
         return .none
@@ -375,7 +397,7 @@ extension ExploreReducer {
         resetSearchContext(state: &state)
         return .merge(
           .cancel(id: CancelID.searchPlaces),
-          .send(.async(.searchPlaces(page: 1, append: false)))
+          .send(.async(.searchPlaces(page: 0, append: false)))
         )
 
       case .categoryTapped(let category):
@@ -383,7 +405,7 @@ extension ExploreReducer {
         resetSearchContext(state: &state)
         return .merge(
           .cancel(id: CancelID.searchPlaces),
-          .send(.async(.searchPlaces(page: 1, append: false)))
+          .send(.async(.searchPlaces(page: 0, append: false)))
         )
 
       case .spotTapped(let spotID):
@@ -410,7 +432,7 @@ extension ExploreReducer {
 
         return .merge(
           .cancel(id: CancelID.searchPlaces),
-          .send(.async(.searchPlaces(page: 1, append: false)))
+          .send(.async(.searchPlaces(page: 0, append: false)))
         )
 
       case .spotCardChanged(let spotID):
@@ -438,11 +460,11 @@ extension ExploreReducer {
         }
 
         if translationWidth > cardSwipeThreshold {
-          return .send(.inner(.completeCardSwipe(next: true)))
+          return .send(.inner(.completeCardSwipe(next: false)))
         }
 
         if translationWidth < -cardSwipeThreshold {
-          return .send(.inner(.completeCardSwipe(next: false)))
+          return .send(.inner(.completeCardSwipe(next: true)))
         }
 
         state.cardDragOffset = 0
@@ -574,15 +596,22 @@ extension ExploreReducer {
         let currentMarkerLat = state.searchMarkerLat
         let currentMarkerLon = state.searchMarkerLon
 
-        guard requestedPage == 1 || append else {
+        guard requestedPage == 0 || append else {
           return .none
         }
 
-        guard requestedKeyword == currentKeyword,
-              requestedCategory == currentCategory,
-              requestedMarkerLat == currentMarkerLat,
-              requestedMarkerLon == currentMarkerLon else {
-          return .none
+        if requestedMarkerLat != nil || requestedMarkerLon != nil {
+          guard isSameCoordinate(requestedMarkerLat, currentMarkerLat),
+                isSameCoordinate(requestedMarkerLon, currentMarkerLon) else {
+            return .none
+          }
+        } else {
+          guard requestedKeyword == currentKeyword,
+                requestedCategory == currentCategory,
+                requestedMarkerLat == currentMarkerLat,
+                requestedMarkerLon == currentMarkerLon else {
+            return .none
+          }
         }
 
         state.hasFetchedPlacesWithCurrentLocation = usedCurrentLocation
@@ -614,14 +643,14 @@ extension ExploreReducer {
 
         if let selectedSpotID,
            state.searchMarkerLat != nil,
-           !state.spots.contains(where: { $0.id == selectedSpotID }),
+           !state.spots.contains(where: { $0.id == selectedSpotID && $0.hasDetail }),
            state.hasNextPage {
           return .send(.async(.searchPlaces(page: state.currentPage, append: true)))
         }
 
         if let selectedSpotID,
            state.searchMarkerLat != nil,
-           !state.spots.contains(where: { $0.id == selectedSpotID }),
+           !state.spots.contains(where: { $0.id == selectedSpotID && $0.hasDetail }),
            !state.hasNextPage {
           clearSelectedSpot(state: &state)
         }
@@ -667,12 +696,12 @@ extension ExploreReducer {
 
         let currentSelectedID = state.selectedSpot?.id ?? state.userSession.selectedExploreSpotID
         let currentIndex = cardSpots.firstIndex(where: { $0.id == currentSelectedID }) ?? 0
-        let entryOffset: CGFloat = next ? -cardTravelDistance : cardTravelDistance
+        let entryOffset: CGFloat = next ? cardTravelDistance : -cardTravelDistance
         let isAtEnd = next && currentIndex == cardSpots.count - 1
         let isAtStart = !next && currentIndex == 0
 
         state.isCardTransitioning = true
-        state.cardDragOffset = next ? cardTravelDistance : -cardTravelDistance
+        state.cardDragOffset = next ? -cardTravelDistance : cardTravelDistance
 
         if isAtEnd {
           if state.hasNextPage {
@@ -848,8 +877,12 @@ extension ExploreReducer {
         let requestedMarkerLat = state.searchMarkerLat
         let requestedMarkerLon = state.searchMarkerLon
         let rawKeyword = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let keyword = rawKeyword.nilIfEmpty
-        let category: ExploreCategory? = state.selectedCategory == .all ? nil : state.selectedCategory
+        let isResolvingSelectedMarkerDetail = isResolvingSelectedMarkerDetail(state: state)
+        let keyword = isResolvingSelectedMarkerDetail ? nil : rawKeyword.nilIfEmpty
+        let category: ExploreCategory? = isResolvingSelectedMarkerDetail
+          ? nil
+          : (state.selectedCategory == .all ? nil : state.selectedCategory)
+        let sortBy = isResolvingSelectedMarkerDetail ? "MARKER_NEAREST" : "STATION_NEAREST"
         let usedCurrentLocation = state.currentLocation != nil
         let baseSpots = state.spots
 
@@ -862,7 +895,7 @@ extension ExploreReducer {
               userLon: userLon,
               keyword: keyword,
               category: category,
-              sortBy: "MARKER_NEAREST",
+              sortBy: sortBy,
               markerLat: markerLat,
               markerLon: markerLon,
               page: page
@@ -968,6 +1001,16 @@ extension ExploreReducer.State {
     searchText.trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
+  func hasVisibleMarkerContent(_ spot: ExploreMapSpot) -> Bool {
+    spot.hasDetail
+      || !spot.name.isEmpty
+      || !spot.badgeText.isEmpty
+      || !spot.statusText.isEmpty
+      || !spot.closingText.isEmpty
+      || !spot.distanceText.isEmpty
+      || !spot.walkTimeText.isEmpty
+  }
+
   func matchesCurrentFilters(_ spot: ExploreMapSpot) -> Bool {
     let matchesCategory = selectedCategory == .all || spot.category == selectedCategory
     let matchesQuery = trimmedSearchText.isEmpty || spot.name.localizedCaseInsensitiveContains(trimmedSearchText)
@@ -976,7 +1019,8 @@ extension ExploreReducer.State {
 
   var filteredMapSpots: [ExploreMapSpot] {
     spots.filter { spot in
-      selectedCategory == .all || spot.category == selectedCategory
+      hasVisibleMarkerContent(spot)
+        && (selectedCategory == .all || spot.category == selectedCategory)
     }
   }
 
@@ -1031,7 +1075,7 @@ extension ExploreReducer.State {
     }
 
     let adjacentIndex: Int
-    if cardDragOffset >= 0 {
+    if cardDragOffset < 0 {
       adjacentIndex = (currentIndex + 1) % cardSpots.count
     } else {
       adjacentIndex = (currentIndex - 1 + cardSpots.count) % cardSpots.count

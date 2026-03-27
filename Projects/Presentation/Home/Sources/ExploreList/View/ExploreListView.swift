@@ -75,9 +75,10 @@ private extension ExploreListView {
   var filteredSpots: [ExploreMapSpot] {
     let query = store.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
     return store.spots.filter { spot in
+      let hasDetail = spot.hasDetail
       let matchesCategory = store.selectedCategory == .all || spot.category == store.selectedCategory
       let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
-      return matchesCategory && matchesQuery
+      return hasDetail && matchesCategory && matchesQuery
     }
   }
 

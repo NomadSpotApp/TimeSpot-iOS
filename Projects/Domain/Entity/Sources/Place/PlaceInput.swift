@@ -52,10 +52,10 @@ public struct PlaceSearchInput: Equatable {
     remainingMinutes: Int,
     keyword: String? = nil,
     category: String? = nil,
-    sortBy: String = "MARKER_NEAREST",
+    sortBy: String = "STATION_NEAREST",
     markerLat: Double? = nil,
     markerLon: Double? = nil,
-    page: Int = 1,
+    page: Int = 0,
     size: Int = 10
   ) {
     self.userLat = userLat
