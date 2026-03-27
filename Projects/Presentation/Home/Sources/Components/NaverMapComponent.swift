@@ -32,6 +32,7 @@ public struct NaverMapComponent: UIViewRepresentable {
   private static var spotMarkers: [String: NMFMarker] = [:]
   private static var selectedSpotID: String?
   private static var lastSyncedSpotID: String?
+  private static var lastDestinationKey: String?
   private static var routePath: NMFPath?
 
   public init(
@@ -79,9 +80,13 @@ public struct NaverMapComponent: UIViewRepresentable {
     mapView.locationOverlay.hidden = false
     mapView.touchDelegate = context.coordinator
 
-    // 현재 위치가 있으면 그 위치로, 없으면 서울로 초기 설정
-    let initialLatitude = currentLocation?.coordinate.latitude ?? 37.5666805
-    let initialLongitude = currentLocation?.coordinate.longitude ?? 126.9784147
+    // 현재 위치가 있으면 그 위치로, 없으면 선택한 역 위치, 그것도 없으면 서울
+    let initialLatitude = currentLocation?.coordinate.latitude
+      ?? destination?.coordinate.latitude
+      ?? 37.5666805
+    let initialLongitude = currentLocation?.coordinate.longitude
+      ?? destination?.coordinate.longitude
+      ?? 126.9784147
 
     let cameraPosition = NMFCameraPosition(
       NMGLatLng(lat: initialLatitude, lng: initialLongitude),
@@ -95,6 +100,7 @@ public struct NaverMapComponent: UIViewRepresentable {
 
   public func updateUIView(_ uiView: NMFMapView, context: Context) {
     context.coordinator.parent = self
+    let shouldPrioritizeCurrentLocation = returnToLocation && currentLocation != nil
     // 기존 마커들과 경로 제거
     Self.currentMarker?.mapView = nil
     Self.destinationMarker?.mapView = nil
@@ -136,6 +142,7 @@ public struct NaverMapComponent: UIViewRepresentable {
 
     // 목적지 마커 추가 (네이버 3D 기본 마커 - 초록색)
     if let destination = destination {
+      let destinationKey = "\(destination.coordinate.latitude),\(destination.coordinate.longitude),\(destination.name)"
       let destinationMarker = NMFMarker()
       destinationMarker.position = NMGLatLng(
         lat: destination.coordinate.latitude,
@@ -148,6 +155,20 @@ public struct NaverMapComponent: UIViewRepresentable {
       Self.destinationMarker = destinationMarker
 
       #logDebug(" [NaverMapComponent] 목적지 마커 추가: \(destination.name)")
+
+      if !shouldPrioritizeCurrentLocation && Self.lastDestinationKey != destinationKey {
+        Self.lastDestinationKey = destinationKey
+        moveCamera(
+          on: uiView,
+          to: NMGLatLng(
+            lat: destination.coordinate.latitude,
+            lng: destination.coordinate.longitude
+          ),
+          zoom: 15
+        )
+      }
+    } else {
+      Self.lastDestinationKey = nil
     }
 
     let previousSpotID = Self.lastSyncedSpotID
@@ -166,9 +187,6 @@ public struct NaverMapComponent: UIViewRepresentable {
       )
       marker.iconImage = NMFOverlayImage(image: markerImage(for: spot.category))
       marker.anchor = CGPoint(x: 0.5, y: 1.0)
-      marker.captionText = spot.name
-      marker.captionColor = .black
-      marker.captionHaloColor = .white
       Self.applySpotMarkerStyle(
         marker,
         isSelected: spot.id == Self.selectedSpotID
@@ -191,16 +209,24 @@ public struct NaverMapComponent: UIViewRepresentable {
       Self.spotMarkers[spot.id] = marker
     }
 
-    if let selectedSpotID = Self.selectedSpotID,
-       selectedSpotID != previousSpotID,
+    if !shouldPrioritizeCurrentLocation,
+       let selectedSpotID = Self.selectedSpotID,
        let selectedSpot = spots.first(where: { $0.id == selectedSpotID }) {
-      moveCamera(
-        on: uiView,
-        to: NMGLatLng(
-          lat: selectedSpot.coordinate.latitude,
-          lng: selectedSpot.coordinate.longitude
-        ),
-        zoom: 17
+      if selectedSpotID != previousSpotID {
+        moveCamera(
+          on: uiView,
+          to: NMGLatLng(
+            lat: selectedSpot.coordinate.latitude,
+            lng: selectedSpot.coordinate.longitude
+          ),
+          zoom: 17
+        )
+      }
+    } else if !shouldPrioritizeCurrentLocation, routeInfo == nil, !spots.isEmpty {
+      adjustCameraToFitSpots(
+        mapView: uiView,
+        spots: spots,
+        destination: destination
       )
     }
 
@@ -393,6 +419,55 @@ public struct NaverMapComponent: UIViewRepresentable {
     mapView.moveCamera(cameraUpdate)
 
     #logDebug(" [NaverMapComponent] 경로 전체가 보이도록 카메라 조정 완료")
+  }
+
+  private func adjustCameraToFitSpots(
+    mapView: NMFMapView,
+    spots: [ExploreMapSpot],
+    destination: Destination?
+  ) {
+    var allCoords = spots.map {
+      NMGLatLng(lat: $0.coordinate.latitude, lng: $0.coordinate.longitude)
+    }
+
+    if let destination {
+      allCoords.append(
+        NMGLatLng(
+          lat: destination.coordinate.latitude,
+          lng: destination.coordinate.longitude
+        )
+      )
+    }
+
+    guard let first = allCoords.first else { return }
+
+    var minLat = first.lat
+    var maxLat = first.lat
+    var minLng = first.lng
+    var maxLng = first.lng
+
+    for coord in allCoords {
+      minLat = min(minLat, coord.lat)
+      maxLat = max(maxLat, coord.lat)
+      minLng = min(minLng, coord.lng)
+      maxLng = max(maxLng, coord.lng)
+    }
+
+    let latPadding = max((maxLat - minLat) * 0.25, 0.0015)
+    let lngPadding = max((maxLng - minLng) * 0.25, 0.0015)
+
+    let bounds = NMGLatLngBounds(
+      southWest: NMGLatLng(lat: minLat - latPadding, lng: minLng - lngPadding),
+      northEast: NMGLatLng(lat: maxLat + latPadding, lng: maxLng + lngPadding)
+    )
+
+    let cameraUpdate = NMFCameraUpdate(
+      fit: bounds,
+      paddingInsets: UIEdgeInsets(top: 180, left: 48, bottom: 220, right: 48)
+    )
+    cameraUpdate.animation = .easeOut
+    cameraUpdate.animationDuration = 0.45
+    mapView.moveCamera(cameraUpdate)
   }
 
   private func createCircleMarkerImage(color: UIColor, size: CGSize) -> UIImage {
