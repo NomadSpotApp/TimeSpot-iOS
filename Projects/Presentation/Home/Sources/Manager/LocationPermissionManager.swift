@@ -44,6 +44,7 @@ public final class LocationPermissionManager: NSObject, ObservableObject {
     private let locationManager = CLLocationManager()
     private var authorizationContinuation: CheckedContinuation<CLAuthorizationStatus, Never>?
     private var locationContinuation: CheckedContinuation<CLLocation?, Error>?
+    private var locationTimeoutTask: Task<Void, Never>?
 
     // 지속적인 위치 업데이트 콜백 (MainActor 격리)
     @MainActor
@@ -121,8 +122,19 @@ public final class LocationPermissionManager: NSObject, ObservableObject {
             throw LocationError.permissionDenied
         }
 
+        if locationContinuation != nil {
+            resumeLocationContinuation(with: .failure(LocationError.locationUnavailable))
+        }
+
         return try await withCheckedThrowingContinuation { continuation in
             self.locationContinuation = continuation
+            self.locationTimeoutTask?.cancel()
+            self.locationTimeoutTask = Task { [weak self] in
+                guard let self else { return }
+                try? await Task.sleep(for: .seconds(5))
+                guard !Task.isCancelled else { return }
+                self.resumeLocationContinuation(with: .failure(LocationError.timeout))
+            }
 
             if #available(iOS 14.0, *) {
                 locationManager.requestLocation()
@@ -173,6 +185,21 @@ public final class LocationPermissionManager: NSObject, ObservableObject {
             return "알 수 없음"
         }
     }
+
+    private func resumeLocationContinuation(with result: Result<CLLocation?, Error>) {
+        locationTimeoutTask?.cancel()
+        locationTimeoutTask = nil
+
+        guard let continuation = locationContinuation else { return }
+        locationContinuation = nil
+
+        switch result {
+        case .success(let location):
+            continuation.resume(returning: location)
+        case .failure(let error):
+            continuation.resume(throwing: error)
+        }
+    }
 }
 
 // MARK: - CLLocationManagerDelegate
@@ -189,10 +216,7 @@ extension LocationPermissionManager: CLLocationManagerDelegate {
             await self.onLocationUpdate?(location)
 
             // continuation이 있으면 결과 반환 (일회성 요청용)
-            if let continuation = self.locationContinuation {
-                self.locationContinuation = nil
-                continuation.resume(returning: location)
-            }
+            self.resumeLocationContinuation(with: .success(location))
         }
     }
 
@@ -204,10 +228,7 @@ extension LocationPermissionManager: CLLocationManagerDelegate {
             await self.onLocationError?(error)
 
             // continuation이 있으면 에러 반환 (일회성 요청용)
-            if let continuation = self.locationContinuation {
-                self.locationContinuation = nil
-                continuation.resume(throwing: error)
-            }
+            self.resumeLocationContinuation(with: .failure(error))
         }
     }
 

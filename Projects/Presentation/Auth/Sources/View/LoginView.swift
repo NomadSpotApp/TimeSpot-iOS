@@ -51,20 +51,12 @@ extension LoginView {
   private func loginLogo() -> some View {
     VStack{
       Spacer()
-        .frame(height: 180)
 
       Image(asset: .logo)
         .resizable()
         .scaledToFit()
         .frame(width: 212, height: 38)
 
-      Spacer()
-        .frame(height: 30)
-
-      Image(asset: .loginlogo)
-        .resizable()
-        .scaledToFit()
-        .frame(height: 200)
 
 
 
@@ -77,8 +69,6 @@ extension LoginView {
     VStack(alignment: .center, spacing: 8) {
       ForEach(SocialType.allCases) { type in
         SocialLoginButton(store: store, type: type) {
-          // 애플 로그인은 SignInWithAppleButton 자체 처리 사용
-          // 구글 로그인만 여기서 처리
           store.send(.view(.signInWithSocial(social: type)))
         }
       }

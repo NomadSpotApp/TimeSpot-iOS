@@ -52,6 +52,7 @@ public enum ImageAsset: String {
   case homeLogo
   case logo
   case loginlogo
+  case appLogo
 
 
   case warning
