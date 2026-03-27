@@ -19,3 +19,17 @@ public struct FavoriteStationMutationEntity: Equatable, Hashable {
     self.message = message
   }
 }
+
+public struct StationFavoriteError: Error, Equatable, LocalizedError {
+  public let code: Int
+  public let message: String
+
+  public init(code: Int, message: String) {
+    self.code = code
+    self.message = message
+  }
+
+  public var errorDescription: String? {
+    message
+  }
+}

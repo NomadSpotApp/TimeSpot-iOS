@@ -22,7 +22,7 @@ public protocol StationInterface: Sendable {
   ) async throws -> FavoriteStationMutationEntity
 
   func deleteFavoriteStation(
-    stationID: Int
+    favoriteID: Int
   ) async throws -> FavoriteStationMutationEntity
 }
 
