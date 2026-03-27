@@ -7,6 +7,7 @@ import SwiftUI
 
 import DesignSystem
 import Entity
+import Kingfisher
 
 struct ExploreSelectedSpotCardView: View {
   let currentSpot: ExploreMapSpot
@@ -88,7 +89,7 @@ struct ExploreSelectedSpotCardView: View {
               if !spot.distanceText.isEmpty {
                 Text(spot.distanceText)
                   .pretendardCustomFont(textStyle: .bodyBold)
-                  .foregroundStyle(.gray650)
+                  .foregroundStyle(.staticBlack)
               }
 
               if !spot.walkTimeText.isEmpty {
@@ -102,9 +103,7 @@ struct ExploreSelectedSpotCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
 
-        RoundedRectangle(cornerRadius: 18)
-          .fill(.gray200)
-          .frame(width: 88, height: 88)
+        spotImage(for: spot)
       }
       .padding(.horizontal, 16)
       .padding(.top, 16)
@@ -129,5 +128,49 @@ struct ExploreSelectedSpotCardView: View {
     .transaction { transaction in
       transaction.animation = nil
     }
+  }
+
+  @ViewBuilder
+  private func spotImage(for spot: ExploreMapSpot) -> some View {
+    if let url = imageURL(for: spot) {
+      KFImage(url)
+        .placeholder {
+          imagePlaceholder()
+        }
+        .cancelOnDisappear(true)
+        .fade(duration: 0.2)
+        .resizable()
+        .scaledToFill()
+        .frame(width: 92, height: 112)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    } else {
+      imagePlaceholder()
+    }
+  }
+
+  private func imageURL(for spot: ExploreMapSpot) -> URL? {
+    guard let imageURL = spot.imageURL?.trimmingCharacters(in: .whitespacesAndNewlines),
+          !imageURL.isEmpty else {
+      return nil
+    }
+
+    if let url = URL(string: imageURL) {
+      return url
+    }
+
+    let encoded = imageURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+    return encoded.flatMap(URL.init(string:))
+  }
+
+  private func imagePlaceholder() -> some View {
+    ZStack {
+      RoundedRectangle(cornerRadius: 16)
+        .fill(.gray200)
+
+      Image(systemName: "photo")
+        .font(.system(size: 24, weight: .medium))
+        .foregroundStyle(.gray500)
+    }
+    .frame(width: 92, height: 112)
   }
 }

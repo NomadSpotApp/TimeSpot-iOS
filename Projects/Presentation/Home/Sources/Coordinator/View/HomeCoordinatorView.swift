@@ -36,6 +36,14 @@ public struct HomeCoordinatorView: View {
               removal: .move(edge: .top).combined(with: .opacity)
             ))
 
+        case .exploreList(let exploreListStore):
+          ExploreListView(store: exploreListStore)
+            .navigationBarBackButtonHidden()
+            .transition(.asymmetric(
+              insertion: .move(edge: .trailing).combined(with: .opacity),
+              removal: .move(edge: .leading).combined(with: .opacity)
+            ))
+
         case .profile(let profileStore):
           ProfileCoordinatorView(store: profileStore)
             .navigationBarBackButtonHidden()

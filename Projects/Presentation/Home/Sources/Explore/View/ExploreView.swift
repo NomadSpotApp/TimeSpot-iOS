@@ -17,9 +17,6 @@ import Entity
 public struct ExploreView: View {
   @Bindable var store: StoreOf<ExploreReducer>
   @Environment(\.dismiss) private var dismiss
-  @State private var cardDragOffset: CGFloat = 0
-  @State private var cardBaseOffset: CGFloat = 0
-  @State private var isCardTransitioning = false
 
   private var cardTravelDistance: CGFloat {
     UIScreen.main.bounds.width - 8
@@ -67,7 +64,7 @@ private extension ExploreView {
       currentLocation: store.currentLocation,
       routeInfo: store.routeInfo,
       destination: store.selectedDestination,
-      spots: store.spots,
+      spots: filteredMapSpots,
       selectedSpotID: store.userSession.selectedExploreSpotID.isEmpty
         ? nil
         : store.userSession.selectedExploreSpotID,
@@ -82,150 +79,15 @@ private extension ExploreView {
     .ignoresSafeArea(.all)
   }
 
-  var filteredSpots: [ExploreMapSpot] {
-    let query = store.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-
-    return store.spots.filter { spot in
-      let hasDetail = spot.hasDetail
-      let matchesCategory = store.selectedCategory == .all || spot.category == store.selectedCategory
-      let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
-      return hasDetail && matchesCategory && matchesQuery
-    }
-  }
-
-  func mergedSpot(for spotID: String) -> ExploreMapSpot? {
-    if let placeIDMatchedSpot = store.spots.first(where: { $0.id == spotID && $0.hasDetail }) {
-      return placeIDMatchedSpot
-    }
-
-    return nil
-  }
-
-  var cardSpots: [ExploreMapSpot] {
-    let selectedSpotID = store.userSession.selectedExploreSpotID
-
-    guard !selectedSpotID.isEmpty else {
-      return filteredSpots
-    }
-
-    if filteredSpots.contains(where: { $0.id == selectedSpotID }) {
-      return filteredSpots
-    }
-
-    if let selectedSearchSpot = mergedSpot(for: selectedSpotID) {
-      return [selectedSearchSpot] + filteredSpots
-    }
-
-    return filteredSpots
-  }
-
-  var selectedSpot: ExploreMapSpot? {
-    guard store.isSpotCardVisible else { return nil }
-
-    let selectedSpotID = store.userSession.selectedExploreSpotID
-
-    if !selectedSpotID.isEmpty,
-       let selectedSpot = mergedSpot(for: selectedSpotID) {
-      return selectedSpot
-    }
-
-    return nil
-  }
-
   @ViewBuilder
   func headerSection() -> some View {
-    VStack(spacing: 0) {
-      HStack(spacing: 12) {
-        backButton()
-        searchBar()
-      }
-
-      categoryScrollView()
-        .padding(.top, 12)
-    }
-  }
-
-  @ViewBuilder
-  func backButton() -> some View {
-    Button {
-      dismiss()
-    } label: {
-      Image(asset: .leftArrow)
-        .resizable()
-        .scaledToFit()
-        .frame(width: 56, height: 56)
-        .background(.staticWhite)
-        .clipShape(Circle())
-        .shadow(color: .black.opacity(0.08), radius: 12, y: 2)
-    }
-    .buttonStyle(.plain)
-  }
-
-  @ViewBuilder
-  func searchBar() -> some View {
-    HStack(spacing: 8) {
-      Image(systemName: "magnifyingglass")
-        .font(.system(size: 16, weight: .medium))
-        .foregroundStyle(.gray600)
-
-      ZStack(alignment: .leading) {
-        if store.searchText.isEmpty {
-          Text("\(store.userSession.travelStationName)역")
-            .pretendardCustomFont(textStyle: .titleRegular)
-            .foregroundStyle(.gray600)
-        }
-
-        TextField(
-          "",
-          text: Binding(
-            get: { store.searchText },
-            set: { store.send(.view(.searchTextChanged($0))) }
-          )
-        )
-        .pretendardCustomFont(textStyle: .titleRegular)
-        .foregroundStyle(.staticBlack)
-        .textInputAutocapitalization(.never)
-        .autocorrectionDisabled()
-      }
-    }
-    .padding(.horizontal, 24)
-    .frame(height: 56)
-    .background(.staticWhite)
-    .clipShape(RoundedRectangle(cornerRadius: 28))
-    .shadow(color: .black.opacity(0.08), radius: 12, y: 2)
-  }
-
-  @ViewBuilder
-  func categoryScrollView() -> some View {
-    ScrollViewReader { proxy in
-      ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: 8) {
-          ForEach(ExploreCategory.allCases, id: \.self) { category in
-            categoryChip(category)
-            .id(category)
-          }
-        }
-        .padding(.horizontal, 2)
-      }
-      .onAppear {
-        scrollToCategory(store.selectedCategory, with: proxy, animated: false)
-      }
-      .onChange(of: store.selectedCategory) { _, category in
-        DispatchQueue.main.async {
-          scrollToCategory(category, with: proxy)
-        }
-      }
-    }
-  }
-
-  @ViewBuilder
-  func categoryChip(_ category: ExploreCategory) -> some View {
-    ExploreCategoryChipView(
-      category: category,
-      isSelected: store.selectedCategory == category,
-      action: {
-        store.send(.view(.categoryTapped(category)))
-      }
+    ExploreSearchHeaderView(
+      stationName: store.userSession.travelStationName,
+      searchText: store.searchText,
+      selectedCategory: store.selectedCategory,
+      onBackTap: { dismiss() },
+      onSearchTextChanged: { store.send(.view(.searchTextChanged($0))) },
+      onCategoryTap: { store.send(.view(.categoryTapped($0))) }
     )
   }
 
@@ -238,12 +100,16 @@ private extension ExploreView {
         ExploreSelectedSpotCardView(
           currentSpot: selectedSpot,
           adjacentSpot: adjacentSpot,
-          currentOffset: cardBaseOffset + cardDragOffset,
+          currentOffset: store.cardBaseOffset + store.cardDragOffset,
           adjacentOffset: adjacentCardOffset,
           cardOpacity: cardOpacity,
           onRouteTap: {},
-          onDragChanged: handleCardDragChanged,
-          onDragEnded: handleCardDragEnded
+          onDragChanged: { value in
+            store.send(.view(.cardDragChanged(value.translation.width)))
+          },
+          onDragEnded: { value in
+            store.send(.view(.cardDragEnded(value.translation.width)))
+          }
         )
           .padding(.horizontal, 16)
           .frame(height: cardHeight)
@@ -252,7 +118,9 @@ private extension ExploreView {
       ExploreFloatingControlsView(
         showsListButton: hasSelectedSpotCard,
         controlsBottomPadding: hasSelectedSpotCard ? cardHeight + 20 : 0,
-        onListTap: {},
+        onListTap: {
+          store.send(.delegate(.presentExploreList))
+        },
         onCurrentLocationTap: {
           store.send(.view(.returnToCurrentLocation))
         }
@@ -261,132 +129,23 @@ private extension ExploreView {
     .padding(.bottom, 36)
   }
 
-  func moveSelectedSpot(next: Bool) {
-    guard !cardSpots.isEmpty else { return }
-    guard !isCardTransitioning else { return }
-
-    let currentSelectedID = selectedSpot?.id ?? store.userSession.selectedExploreSpotID
-    let currentIndex = cardSpots.firstIndex(where: { $0.id == currentSelectedID }) ?? 0
-    let entryOffset: CGFloat = next ? -cardTravelDistance : cardTravelDistance
-    let isAtEnd = next && currentIndex == cardSpots.count - 1
-    let isAtStart = !next && currentIndex == 0
-
-    isCardTransitioning = true
-
-    withAnimation(.interactiveSpring(response: 0.28, dampingFraction: 0.9)) {
-      cardDragOffset = next ? cardTravelDistance : -cardTravelDistance
-    }
-
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-      if isAtEnd {
-        if store.hasNextPage {
-          _ = store.send(.view(.loadNextSpotPage))
-        } else {
-          _ = store.send(.view(.spotCardChanged(cardSpots[0].id)))
-        }
-      } else if isAtStart {
-        _ = store.send(.view(.spotCardChanged(cardSpots[cardSpots.count - 1].id)))
-      } else {
-        let newIndex = next ? currentIndex + 1 : currentIndex - 1
-        _ = store.send(.view(.spotCardChanged(cardSpots[newIndex].id)))
-      }
-
-      cardBaseOffset = entryOffset
-      cardDragOffset = 0
-
-      withAnimation(.interactiveSpring(response: 0.36, dampingFraction: 0.88)) {
-        cardBaseOffset = 0
-      }
-
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
-        isCardTransitioning = false
-      }
-    }
+  var filteredMapSpots: [ExploreMapSpot] {
+    store.state.filteredMapSpots
   }
 
-  func handleCardDragChanged(_ value: DragGesture.Value) {
-    guard !isCardTransitioning else { return }
-    let limitedOffset = max(min(value.translation.width, cardTravelDistance), -cardTravelDistance)
-    cardDragOffset = limitedOffset
-  }
-
-  func handleCardDragEnded(_ value: DragGesture.Value) {
-    guard !isCardTransitioning else { return }
-
-    if value.translation.width > cardSwipeThreshold {
-      moveSelectedSpot(next: true)
-      return
-    }
-
-    if value.translation.width < -cardSwipeThreshold {
-      moveSelectedSpot(next: false)
-      return
-    }
-
-    withAnimation(.interactiveSpring(response: 0.3, dampingFraction: 0.88)) {
-      cardDragOffset = 0
-    }
+  var selectedSpot: ExploreMapSpot? {
+    store.state.selectedSpot
   }
 
   var adjacentSpot: ExploreMapSpot? {
-    let currentSelectedID = selectedSpot?.id ?? store.userSession.selectedExploreSpotID
-    guard let currentIndex = cardSpots.firstIndex(where: { $0.id == currentSelectedID }) else {
-      return nil
-    }
-    guard abs(cardDragOffset) > 0 else {
-      return nil
-    }
-
-    let adjacentIndex: Int
-    if cardDragOffset >= 0 {
-      adjacentIndex = (currentIndex + 1) % cardSpots.count
-    } else {
-      adjacentIndex = (currentIndex - 1 + cardSpots.count) % cardSpots.count
-    }
-    return cardSpots[adjacentIndex]
+    store.state.adjacentSpot(cardTravelDistance: cardTravelDistance)
   }
 
   var adjacentCardOffset: CGFloat? {
-    guard adjacentSpot != nil else { return nil }
-    let baseOffset = cardDragOffset >= 0 ? -cardTravelDistance : cardTravelDistance
-    return baseOffset + cardDragOffset
+    store.state.adjacentCardOffset(cardTravelDistance: cardTravelDistance)
   }
 
   var cardOpacity: Double {
-    let progress = min(abs(cardBaseOffset + cardDragOffset) / cardTravelDistance, 1)
-    return 1 - (progress * 0.02)
+    store.state.cardOpacity(cardTravelDistance: cardTravelDistance)
   }
-
-  func scrollToCategory(
-    _ category: ExploreCategory,
-    with proxy: ScrollViewProxy,
-    animated: Bool = true
-  ) {
-    let targetCategory: ExploreCategory
-    switch category {
-    case .all, .cafe:
-      targetCategory = .all
-    case .restaurant:
-      targetCategory = .cafe
-    case .activity:
-      targetCategory = .restaurant
-    case .etc:
-      targetCategory = .activity
-    @unknown default:
-      targetCategory = .all
-    }
-
-    let action = {
-      proxy.scrollTo(targetCategory, anchor: .leading)
-    }
-
-    if animated {
-      withAnimation(.easeInOut(duration: 0.2)) {
-        action()
-      }
-    } else {
-      action()
-    }
-  }
-
 }
