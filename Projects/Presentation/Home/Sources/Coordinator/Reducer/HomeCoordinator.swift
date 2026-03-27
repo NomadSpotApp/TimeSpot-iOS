@@ -111,7 +111,7 @@ extension HomeCoordinator {
           return .none
         }
 
-      case let .routeAction(id: id, action: .exploreList(.delegate(.presentExploreMap))):
+      case let .routeAction(id: id, action: .exploreList(.delegate(.presentExploreMapAtCurrentLocation))):
         guard state.routes.indices.contains(id) else {
           return .none
         }
@@ -204,7 +204,7 @@ extension HomeCoordinator {
       return .none
 
     case let .presentExploreList(exploreState):
-        state.routes.push(.exploreList(.init(exploreState: exploreState)))
+        state.routes.push(.exploreList(.init()))
       return .none
     }
   }

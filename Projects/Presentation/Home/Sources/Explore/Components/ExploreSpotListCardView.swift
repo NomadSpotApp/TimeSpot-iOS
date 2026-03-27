@@ -26,18 +26,17 @@ struct ExploreSpotListCardView: View {
             .padding(.bottom, 12)
         }
 
-        HStack(alignment: .lastTextBaseline, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
           Text(spot.name)
             .pretendardFont(family: .SemiBold, size: 17)
             .foregroundStyle(.staticBlack)
             .lineLimit(2)
-            .layoutPriority(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
           Text(spot.subtitle)
             .pretendardCustomFont(textStyle: .caption)
             .foregroundStyle(.gray500)
             .lineLimit(1)
-            .fixedSize()
         }
         .padding(.bottom, 8)
 
@@ -46,6 +45,7 @@ struct ExploreSpotListCardView: View {
             Text(spot.statusText)
               .pretendardCustomFont(textStyle: .body2Medium)
               .foregroundStyle(.gray700)
+              .fixedSize()
           }
 
           if !spot.closingText.isEmpty {
@@ -53,7 +53,9 @@ struct ExploreSpotListCardView: View {
               .pretendardCustomFont(textStyle: .body2Regular)
               .foregroundStyle(.gray500)
               .lineLimit(1)
-              .minimumScaleFactor(0.9)
+              .minimumScaleFactor(0.8)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .truncationMode(.tail)
           }
         }
         .padding(.bottom, 10)
@@ -63,6 +65,7 @@ struct ExploreSpotListCardView: View {
             Text(spot.distanceText)
               .pretendardFont(family: .SemiBold, size: 15)
               .foregroundStyle(.staticBlack)
+              .fixedSize()
           }
 
           if !spot.walkTimeText.isEmpty {
@@ -70,7 +73,9 @@ struct ExploreSpotListCardView: View {
               .pretendardCustomFont(textStyle: .body2Regular)
               .foregroundStyle(.gray650)
               .lineLimit(1)
-              .minimumScaleFactor(0.9)
+              .minimumScaleFactor(0.8)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .truncationMode(.tail)
           }
         }
 

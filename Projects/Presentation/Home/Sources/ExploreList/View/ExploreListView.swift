@@ -23,53 +23,63 @@ public struct ExploreListView: View {
 
   public var body: some View {
     ZStack {
-      Color.staticWhite
-        .edgesIgnoringSafeArea(.all)
-
       VStack(spacing: 0) {
-        ExploreSearchHeaderView(
-          stationName: store.userSession.travelStationName,
-          searchText: store.searchText,
-          selectedCategory: store.selectedCategory,
-          onBackTap: { dismiss() },
-          onSearchTextChanged: { store.send(.view(.searchTextChanged($0))) },
-          onCategoryTap: { store.send(.view(.categoryTapped($0))) }
-        )
-        .padding(.top, 8)
-        .padding(.horizontal, 16)
-
-        sortSection()
-          .padding(.top, 28)
-          .padding(.horizontal, 20)
-
-        ScrollView(showsIndicators: false) {
-          LazyVStack(spacing: 12) {
-            ForEach(filteredSpots) { spot in
-              ExploreSpotListCardView(spot: spot)
-              .onAppear {
-                guard spot.id == filteredSpots.last?.id else { return }
-                store.send(.view(.loadNextPage))
-              }
-            }
-
-            if store.isLoading {
-              ProgressView()
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-            }
-          }
+        if store.isLoading && store.spots.isEmpty {
+          // 스켈레톤 UI
+          skeletonView()
+        } else {
+          ExploreSearchHeaderView(
+            stationName: store.userSession.travelStationName,
+            searchText: store.searchText,
+            selectedCategory: store.selectedCategory,
+            onBackTap: { dismiss() },
+            onSearchTextChanged: { store.send(.view(.searchTextChanged($0))) },
+            onCategoryTap: { store.send(.view(.categoryTapped($0))) }
+          )
+          .padding(.top, 8)
           .padding(.horizontal, 16)
-          .padding(.top, 12)
-          .padding(.bottom, 28)
+          .background(.staticWhite)
+
+          sortSection()
+            .padding(.top, 28)
+            .padding(.horizontal, 16)
+            .background(.staticWhite)
+
+          ScrollView(showsIndicators: false) {
+            LazyVStack(spacing: 12) {
+              ForEach(filteredSpots) { spot in
+                ExploreSpotListCardView(spot: spot)
+                .onAppear {
+                  guard spot.id == filteredSpots.last?.id else { return }
+                  store.send(.view(.loadNextPage))
+                }
+              }
+
+              if store.isLoading {
+                ProgressView()
+                  .frame(maxWidth: .infinity)
+                  .padding(.vertical, 16)
+              }
+
+              // 플로팅 버튼 공간
+              Spacer(minLength: 80)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+          }
+          .background(.gray100)
         }
-        .background(.gray100)
+      }
+
+      // 플로팅 지도보기 버튼
+      VStack {
+        Spacer()
+        floatingMapButton()
       }
     }
+    .background(.staticWhite)
     .onAppear {
       store.send(.view(.onAppear))
-    }
-    .safeAreaInset(edge: .bottom) {
-      mapButtonSection()
     }
   }
 }
@@ -87,8 +97,8 @@ private extension ExploreListView {
 
   @ViewBuilder
   func sortSection() -> some View {
-    HStack {
-      Spacer()
+    HStack(spacing: 0) {
+      Spacer(minLength: 16)
 
       Menu {
         ForEach(ExploreListSort.allCases, id: \.self) { sort in
@@ -115,6 +125,10 @@ private extension ExploreListView {
           Text(store.selectedSort.title)
             .pretendardCustomFont(textStyle: .bodyMedium)
             .foregroundStyle(.gray700)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .truncationMode(.tail)
+            .frame(maxWidth: 200, alignment: .trailing)
 
           Image(asset: .arrowtriangleDown)
             .resizable()
@@ -122,25 +136,142 @@ private extension ExploreListView {
             .frame(width: 12, height: 12)
         }
         .padding(.vertical, 4)
+        .padding(.horizontal, 8)
       }
     }
   }
 
   @ViewBuilder
-  func mapButtonSection() -> some View {
+  func floatingMapButton() -> some View {
     Button {
-      store.send(.delegate(.presentExploreMap))
+      store.send(.delegate(.presentExploreMapAtCurrentLocation))
     } label: {
       Text("지도보기")
         .pretendardCustomFont(textStyle: .body2Bold)
         .foregroundStyle(.staticWhite)
-        .frame(width: 100, height: 36)
-        .background(.navy900)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.08), radius: 16, y: 8)
+        .frame(width: 120, height: 44)
+        .background(.orange700)
+        .clipShape(RoundedRectangle(cornerRadius: 22))
+        .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 4)
+        .shadow(color: .black.opacity(0.1), radius: 24, x: 0, y: 8)
     }
-    .frame(maxWidth: .infinity, alignment: .center)
-    .padding(.bottom, 42)
-    .background(Color.clear)
+    .padding(.bottom, 40)
+  }
+
+  @ViewBuilder
+  func skeletonView() -> some View {
+    VStack(spacing: 0) {
+      // 검색 헤더 스켈레톤
+      VStack(spacing: 20) {
+        HStack(spacing: 16) {
+          // 뒤로가기 버튼
+          RoundedRectangle(cornerRadius: 8)
+            .fill(.gray200)
+            .frame(width: 40, height: 40)
+
+          // 검색바
+          RoundedRectangle(cornerRadius: 20)
+            .fill(.gray200)
+            .frame(height: 44)
+        }
+
+        // 카테고리 필터 스켈레톤 - 2줄로 배치
+        VStack(spacing: 12) {
+          HStack(spacing: 8) {
+            ForEach(0..<4, id: \.self) { index in
+              Capsule()
+                .fill(.gray200)
+                .frame(width: CGFloat([80, 60, 70, 90][index]), height: 36)
+            }
+            Spacer()
+          }
+
+          HStack {
+            Capsule()
+              .fill(.gray200)
+              .frame(width: 100, height: 36)
+            Spacer()
+          }
+        }
+      }
+      .padding(.horizontal, 16)
+      .padding(.top, 8)
+
+      // 정렬 옵션 스켈레톤
+      HStack {
+        Spacer()
+        RoundedRectangle(cornerRadius: 6)
+          .fill(.gray200)
+          .frame(width: 100, height: 24)
+      }
+      .padding(.top, 24)
+      .padding(.horizontal, 20)
+
+      // 리스트 스켈레톤
+      ScrollView(showsIndicators: false) {
+        LazyVStack(spacing: 16) {
+          ForEach(0..<5, id: \.self) { _ in
+            skeletonListItem()
+          }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+      }
+      .background(.gray100)
+    }
+  }
+
+  @ViewBuilder
+  func skeletonListItem() -> some View {
+    RoundedRectangle(cornerRadius: 12)
+      .fill(.staticWhite)
+      .frame(height: 140)
+      .overlay {
+        HStack(spacing: 16) {
+          VStack(alignment: .leading, spacing: 12) {
+            // 상단 배지
+            RoundedRectangle(cornerRadius: 10)
+              .fill(.gray200)
+              .frame(width: 60, height: 20)
+
+            // 제목
+            RoundedRectangle(cornerRadius: 6)
+              .fill(.gray200)
+              .frame(height: 18)
+              .frame(maxWidth: .infinity, alignment: .leading)
+
+            // 부제목 라인들
+            VStack(alignment: .leading, spacing: 6) {
+              RoundedRectangle(cornerRadius: 4)
+                .fill(.gray200)
+                .frame(width: 140, height: 14)
+
+              RoundedRectangle(cornerRadius: 4)
+                .fill(.gray200)
+                .frame(width: 100, height: 14)
+            }
+
+            Spacer()
+
+            // 하단 정보
+            HStack(spacing: 12) {
+              RoundedRectangle(cornerRadius: 4)
+                .fill(.gray200)
+                .frame(width: 50, height: 12)
+
+              RoundedRectangle(cornerRadius: 4)
+                .fill(.gray200)
+                .frame(width: 80, height: 12)
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+
+          // 이미지 영역
+          RoundedRectangle(cornerRadius: 12)
+            .fill(.gray200)
+            .frame(width: 100, height: 100)
+        }
+        .padding(16)
+      }
   }
 }

@@ -78,14 +78,7 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
     userLat: Double,
     userLon: Double
   ) async throws -> ExploreSpotPageEntity {
-    let placeInput = PlaceInput(
-      userLat: userLat,
-      userLon: userLon,
-      mapLat: userSession.travelStationLat ?? 0,
-      mapLon: userSession.travelStationLng ?? 0,
-      stationId: Int(userSession.travelID) ?? 0,
-      remainingMinutes: 250
-    )
+    // 🚀 단순화: searchPlaces API 하나만 사용
     let searchInput = PlaceSearchInput(
       userLat: userLat,
       userLon: userLon,
@@ -97,27 +90,30 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       markerLat: userSession.travelStationLat,
       markerLon: userSession.travelStationLng,
       page: 0,
-      size: 10
+      size: 30  // 더 많은 데이터 로딩
     )
 
-    async let markerEntities = repository.fetchPlaces(placeInput)
-    async let detailPage = repository.searchPlaces(searchInput)
+    let pageEntity = try await repository.searchPlaces(searchInput)
 
-    let fetchedMarkerEntities = try await markerEntities
-    let fetchedDetailPage = try await detailPage
+    print("🚀 [초기로딩] searchPlaces 응답: \(pageEntity.content.count)개")
 
-    let mergedSpots = mergeSpots(
-      baseSpots: fetchedMarkerEntities.map { makeBaseSpot(from: $0) },
-      detailPage: fetchedDetailPage,
-      stationName: userSession.travelStationName,
-      stationLat: userSession.travelStationLat,
-      stationLon: userSession.travelStationLng
-    )
+    // 직접 마커 생성 (병합 없이)
+    let spots = pageEntity.content.map { entity in
+      makeDetailSpot(
+        from: entity,
+        coordinate: CLLocationCoordinate2D(latitude: entity.lat, longitude: entity.lon),
+        stationName: userSession.travelStationName,
+        stationLat: userSession.travelStationLat,
+        stationLon: userSession.travelStationLng
+      )
+    }
+
+    print("🚀 [초기로딩] 최종 spots: \(spots.count)개")
 
     return ExploreSpotPageEntity(
-      spots: mergedSpots,
-      currentPage: fetchedDetailPage.page + 1,
-      hasNextPage: !fetchedDetailPage.isLastPage
+      spots: spots,
+      currentPage: pageEntity.page + 1,
+      hasNextPage: !pageEntity.isLastPage
     )
   }
 
@@ -161,6 +157,7 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
     markerLon: Double?,
     page: Int
   ) async throws -> ExploreSpotPageEntity {
+    // 🔍 단순화: searchPlaces API 하나만 사용
     let searchInput = PlaceSearchInput(
       userLat: userLat,
       userLon: userLon,
@@ -172,20 +169,32 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       markerLat: markerLat,
       markerLon: markerLon,
       page: page,
-      size: 10
+      size: 30  // 더 많은 데이터 로딩
     )
+
+    print("🔍 [API요청] searchExploreSpots - page: \(page), size: 30")
 
     let pageEntity = try await repository.searchPlaces(searchInput)
-    let mergedSpots = mergeSpots(
-      baseSpots: baseSpots,
-      detailPage: pageEntity,
-      stationName: userSession.travelStationName,
-      stationLat: userSession.travelStationLat,
-      stationLon: userSession.travelStationLng
-    )
+
+    print("🔍 [API응답] searchExploreSpots - 응답 size: \(pageEntity.content.count), hasNext: \(!pageEntity.isLastPage)")
+
+    print("🔍 [필터링] searchPlaces 응답: \(pageEntity.content.count)개")
+
+    // 직접 마커 생성 (병합 없이)
+    let spots = pageEntity.content.map { entity in
+      makeDetailSpot(
+        from: entity,
+        coordinate: CLLocationCoordinate2D(latitude: entity.lat, longitude: entity.lon),
+        stationName: userSession.travelStationName,
+        stationLat: userSession.travelStationLat,
+        stationLon: userSession.travelStationLng
+      )
+    }
+
+    print("🔍 [필터링] 최종 spots: \(spots.count)개")
 
     return ExploreSpotPageEntity(
-      spots: mergedSpots,
+      spots: spots,
       currentPage: pageEntity.page + 1,
       hasNextPage: !pageEntity.isLastPage
     )
