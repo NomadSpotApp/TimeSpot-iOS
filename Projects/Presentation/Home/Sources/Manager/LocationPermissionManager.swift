@@ -122,6 +122,15 @@ public final class LocationPermissionManager: NSObject, ObservableObject {
             throw LocationError.permissionDenied
         }
 
+        if let currentLocation {
+            return currentLocation
+        }
+
+        if let cachedLocation = locationManager.location {
+            self.currentLocation = cachedLocation
+            return cachedLocation
+        }
+
         if locationContinuation != nil {
             resumeLocationContinuation(with: .failure(LocationError.locationUnavailable))
         }

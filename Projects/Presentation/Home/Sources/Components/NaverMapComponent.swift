@@ -136,6 +136,12 @@ public struct NaverMapComponent: UIViewRepresentable {
 
         // 네이버 기본 마커 (빨간색)
         currentMarker.iconTintColor = UIColor.red
+        currentMarker.touchHandler = { _ in
+          Self.selectedSpotID = nil
+          Self.updateSpotMarkerSelection()
+          onMapTapped?()
+          return true
+        }
         currentMarker.mapView = uiView
         Self.currentMarker = currentMarker
 
@@ -156,6 +162,12 @@ public struct NaverMapComponent: UIViewRepresentable {
 
       // 네이버 기본 마커 (초록색)
       destinationMarker.iconTintColor = UIColor.systemGreen
+      destinationMarker.touchHandler = { _ in
+        Self.selectedSpotID = nil
+        Self.updateSpotMarkerSelection()
+        onMapTapped?()
+        return true
+      }
       destinationMarker.mapView = uiView
       Self.destinationMarker = destinationMarker
 

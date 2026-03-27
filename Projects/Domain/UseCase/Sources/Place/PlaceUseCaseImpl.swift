@@ -277,11 +277,13 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
     stationLat: Double?,
     stationLon: Double?
   ) -> [ExploreMapSpot] {
-    var mergedSpots = baseSpots
+    let baseSpotsByID = Dictionary(uniqueKeysWithValues: baseSpots.map { ($0.id, $0) })
+    var mergedSpots: [ExploreMapSpot] = []
+    var resolvedIDs = Set<String>()
 
     for entity in detailPage.content {
       let id = String(entity.placeId)
-      let coordinate = mergedSpots.first(where: { $0.id == id })?.coordinate
+      let coordinate = baseSpotsByID[id]?.coordinate
         ?? CLLocationCoordinate2D(latitude: entity.lat, longitude: entity.lon)
       let detailSpot = makeDetailSpot(
         from: entity,
@@ -291,11 +293,12 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
         stationLon: stationLon
       )
 
-      if let index = mergedSpots.firstIndex(where: { $0.id == id }) {
-        mergedSpots[index] = detailSpot
-      } else {
-        mergedSpots.append(detailSpot)
-      }
+      mergedSpots.append(detailSpot)
+      resolvedIDs.insert(id)
+    }
+
+    for baseSpot in baseSpots where !resolvedIDs.contains(baseSpot.id) {
+      mergedSpots.append(baseSpot)
     }
 
     return mergedSpots

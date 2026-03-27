@@ -426,6 +426,7 @@ extension ExploreReducer {
           $0.selectedExploreSpotID = spotID
         }
         state.isSpotCardVisible = state.spots.contains(where: { $0.id == spotID && $0.hasDetail })
+        #logDebug(" [ExploreReducer] spotTapped id=\(spotID), hasDetail=\(state.isSpotCardVisible)")
         guard !state.spots.contains(where: { $0.id == spotID && $0.hasDetail }),
               let markerSpot = state.spots.first(where: { $0.id == spotID }) else {
           return .none
@@ -502,6 +503,9 @@ extension ExploreReducer {
         return .none
 
       case .returnToCurrentLocation:
+        #logDebug(
+          " [ExploreReducer] returnToCurrentLocation current=\(String(describing: state.currentLocation?.coordinate))"
+        )
         guard state.currentLocation != nil else {
           state.shouldReturnToCurrentLocation = true
           return .send(.async(.requestCurrentLocation))
@@ -560,6 +564,7 @@ extension ExploreReducer {
 
       case .fetchPlacesResponse(let entities, let usedCurrentLocation):
         state.isLoadingPlaces = false
+        state.hasRequestedPlaces = false
         state.spots = entities.spots
         state.currentPage = entities.currentPage
         state.hasNextPage = entities.hasNextPage || hasUnresolvedBaseSpots(entities.spots)
@@ -572,6 +577,7 @@ extension ExploreReducer {
         return .none
 
       case .fetchPlacesFailed(let message, let usedCurrentLocation):
+        state.hasRequestedPlaces = false
         resetSearchContext(state: &state, clearMarker: false)
         if usedCurrentLocation {
           state.hasFetchedPlacesWithCurrentLocation = false
@@ -649,8 +655,15 @@ extension ExploreReducer {
             $0.selectedExploreSpotID = firstNewSpotID
           }
           state.isSpotCardVisible = true
+          state.pendingSelectFirstSpotFromNextPage = false
+          state.cardBaseOffset = 0
+          state.cardDragOffset = 0
+          state.isCardTransitioning = false
+          syncSelectedSpot(state: &state)
+          return .none
         }
 
+        let wasPendingNextPage = state.pendingSelectFirstSpotFromNextPage
         state.pendingSelectFirstSpotFromNextPage = false
         syncSelectedSpot(state: &state)
 
@@ -668,13 +681,21 @@ extension ExploreReducer {
           clearSelectedSpot(state: &state)
         }
 
+        if wasPendingNextPage {
+          return .send(.inner(.finishCardTransition))
+        }
+
         return .none
 
       case .searchPlacesFailed(let message):
         state.isLoadingPlaces = false
         state.hasRequestedPlaces = false
+        let wasPendingNextPage = state.pendingSelectFirstSpotFromNextPage
         state.pendingSelectFirstSpotFromNextPage = false
         #logDebug(" [ExploreReducer] 장소 검색 실패: \(message)")
+        if wasPendingNextPage {
+          return .send(.inner(.finishCardTransition))
+        }
         return .none
 
       // 길찾기 관련 액션
@@ -704,6 +725,7 @@ extension ExploreReducer {
       case .completeCardSwipe(let next):
         let cardSpots = state.cardSpots
         guard !cardSpots.isEmpty else {
+          #logDebug(" [ExploreReducer] completeCardSwipe ignored: cardSpots empty")
           return .none
         }
 
@@ -718,13 +740,11 @@ extension ExploreReducer {
 
         if isAtEnd {
           if state.hasNextPage {
-            return .concatenate(
-              .send(.view(.loadNextSpotPage)),
-              .run { send in
-                try await Task.sleep(for: .milliseconds(200))
-                await send(.inner(.finishCardTransition))
-              }
-            )
+            state.isSpotCardVisible = true
+            state.cardDragOffset = 0
+            state.cardBaseOffset = 0
+            state.isCardTransitioning = true
+            return .send(.view(.loadNextSpotPage))
           }
 
           state.$userSession.withLock {
