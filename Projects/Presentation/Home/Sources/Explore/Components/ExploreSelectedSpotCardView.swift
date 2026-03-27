@@ -45,25 +45,25 @@ struct ExploreSelectedSpotCardView: View {
             .pretendardCustomFont(textStyle: .caption)
             .foregroundStyle(.orange800)
             .padding(.horizontal, 8)
-            .padding(.vertical, 3)
+            .padding(.vertical, 2)
             .background(.orange200)
             .clipShape(Capsule())
             .padding(.bottom, 8)
 
-          HStack(alignment: .lastTextBaseline, spacing: 4) {
+          HStack(alignment: .lastTextBaseline, spacing: 6) {
             Text(spot.name)
-              .pretendardCustomFont(textStyle: .bodyBold)
-              .foregroundStyle(.gray900)
+              .pretendardFont(family: .SemiBold, size: 18)
+              .foregroundStyle(.staticBlack)
               .lineLimit(1)
 
             Text(spot.subtitle)
               .pretendardCustomFont(textStyle: .caption)
-              .foregroundStyle(.gray500)
+              .foregroundStyle(.gray650)
               .lineLimit(1)
           }
           .padding(.bottom, 10)
 
-          HStack(spacing: 8) {
+          HStack(spacing: 12) {
             Text(spot.statusText)
               .pretendardCustomFont(textStyle: .body2Medium)
               .foregroundStyle(.gray700)
@@ -77,12 +77,12 @@ struct ExploreSelectedSpotCardView: View {
 
           HStack(spacing: 8) {
             Text(spot.distanceText)
-              .pretendardCustomFont(textStyle: .bodyMedium)
-              .foregroundStyle(.gray900)
+              .pretendardCustomFont(textStyle: .bodyBold)
+              .foregroundStyle(.gray650)
 
             Text(spot.walkTimeText)
               .pretendardCustomFont(textStyle: .bodyRegular)
-              .foregroundStyle(.gray600)
+              .foregroundStyle(.gray650)
               .lineLimit(1)
           }
         }
