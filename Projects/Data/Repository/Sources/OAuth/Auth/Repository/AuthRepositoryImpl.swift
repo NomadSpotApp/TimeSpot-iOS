@@ -10,6 +10,7 @@ import Model
 import Entity
 
 import Service
+import Foundations
 import WeaveDI
 import Dependencies
 import Moya
@@ -38,7 +39,9 @@ final public class AuthRepositoryImpl: AuthInterface, @unchecked Sendable {
   ) async throws -> LoginEntity {
     let reqeust = OAuthLoginRequest(provider: socialProvider.rawValue, idToken: token)
     let dto: LoginDTOModel = try await provider.request(.login(body: reqeust))
-    return dto.data.toDomain()
+    let entity = dto.data.toDomain()
+    APIHeader.updateAccessToken(entity.token.accessToken)
+    return entity
   }
 
 
