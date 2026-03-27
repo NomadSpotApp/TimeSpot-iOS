@@ -48,6 +48,16 @@ public struct ProfileUseCaseImpl: ProfileInterface {
       throw error
     }
   }
+
+  public func fetchNotificationSettings() async throws -> NotificationEntity {
+    try await repository.fetchNotificationSettings()
+  }
+
+  public func editNotificationSettings(
+    notificationSettings: [NotificationOption]
+  ) async throws -> NotificationEntity {
+    try await repository.editNotificationSettings(notificationSettings: notificationSettings)
+  }
 }
 
 
@@ -63,4 +73,3 @@ public extension DependencyValues {
     set { self[ProfileUseCaseImpl.self] = newValue }
   }
 }
-

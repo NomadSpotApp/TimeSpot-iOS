@@ -30,4 +30,36 @@ public enum NotificationOption: String, CaseIterable, Equatable, Hashable, Ident
       return "출발 15분 전"
     }
   }
+
+  public var apiType: String {
+    switch self {
+    case .none:
+      return "NONE"
+    case .departureTime:
+      return "DEPARTURE_TIME"
+    case .fiveMinutesBefore:
+      return "DEPARTURE_5_MIN_BEFORE"
+    case .tenMinutesBefore:
+      return "DEPARTURE_10_MIN_BEFORE"
+    case .fifteenMinutesBefore:
+      return "DEPARTURE_15_MIN_BEFORE"
+    }
+  }
+
+  public init?(apiType: String) {
+    switch apiType.uppercased() {
+    case "DEPARTURE_TIME":
+      self = .departureTime
+    case "DEPARTURE_5_MIN_BEFORE":
+      self = .fiveMinutesBefore
+    case "DEPARTURE_10_MIN_BEFORE":
+      self = .tenMinutesBefore
+    case "DEPARTURE_15_MIN_BEFORE":
+      self = .fifteenMinutesBefore
+    case "NONE":
+      self = .none
+    default:
+      return nil
+    }
+  }
 }
