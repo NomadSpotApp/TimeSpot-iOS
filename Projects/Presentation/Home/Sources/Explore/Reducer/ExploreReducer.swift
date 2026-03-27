@@ -52,6 +52,7 @@ public struct ExploreReducer: Sendable {
 
     // 지도 카메라 제어
     public var shouldReturnToCurrentLocation: Bool = false
+    public var returnToCurrentLocationTrigger: Int = 0
     public var selectedCategory: ExploreCategory = .all
     public var isSpotCardVisible: Bool = false
     public var cardDragOffset: CGFloat = 0
@@ -233,6 +234,10 @@ extension ExploreReducer {
     }
 
     return !state.spots.contains(where: { $0.id == selectedSpotID && $0.hasDetail })
+  }
+
+  private func hasUnresolvedBaseSpots(_ spots: [ExploreMapSpot]) -> Bool {
+    spots.contains(where: { !$0.hasDetail })
   }
 
   private func filteredSpots(state: State) -> [ExploreMapSpot] {
@@ -498,13 +503,11 @@ extension ExploreReducer {
 
       case .returnToCurrentLocation:
         guard state.currentLocation != nil else {
+          state.shouldReturnToCurrentLocation = true
           return .send(.async(.requestCurrentLocation))
         }
-        state.shouldReturnToCurrentLocation = true
-        return .run { send in
-          try await Task.sleep(for: .milliseconds(100))
-          await send(.inner(.resetCameraFlag))
-        }
+        state.returnToCurrentLocationTrigger += 1
+        return .none
     }
   }
 
@@ -536,10 +539,9 @@ extension ExploreReducer {
       case .locationUpdated(let location):
         state.currentLocation = location
         if state.shouldReturnToCurrentLocation {
-          return .run { send in
-            try await Task.sleep(for: .milliseconds(100))
-            await send(.inner(.resetCameraFlag))
-          }
+          state.shouldReturnToCurrentLocation = false
+          state.returnToCurrentLocationTrigger += 1
+          return .none
         }
         if !state.hasFetchedPlacesWithCurrentLocation,
            !state.isLoadingPlaces {
@@ -560,7 +562,7 @@ extension ExploreReducer {
         state.isLoadingPlaces = false
         state.spots = entities.spots
         state.currentPage = entities.currentPage
-        state.hasNextPage = entities.hasNextPage
+        state.hasNextPage = entities.hasNextPage || hasUnresolvedBaseSpots(entities.spots)
         state.hasFetchedPlacesWithCurrentLocation = usedCurrentLocation
         if state.currentLocation != nil
             && !usedCurrentLocation
@@ -591,6 +593,7 @@ extension ExploreReducer {
       ):
         state.isLoadingPlaces = false
         state.hasRequestedPlaces = false
+        let previousDetailedCount = state.spots.filter(\.hasDetail).count
         let currentKeyword = currentKeyword(state: state)
         let currentCategory = currentCategory(state: state)
         let currentMarkerLat = state.searchMarkerLat
@@ -616,8 +619,18 @@ extension ExploreReducer {
 
         state.hasFetchedPlacesWithCurrentLocation = usedCurrentLocation
         state.currentPage = pageEntity.currentPage
-        state.hasNextPage = pageEntity.hasNextPage
         let newSpots = pageEntity.spots
+        let newDetailedCount = newSpots.filter(\.hasDetail).count
+        let gainedMoreDetail = newDetailedCount > previousDetailedCount
+        let shouldKeepBootstrappingDetails =
+          requestedMarkerLat == nil
+          && requestedMarkerLon == nil
+          && requestedKeyword.isEmpty
+          && requestedCategory == nil
+          && hasUnresolvedBaseSpots(newSpots)
+          && (requestedPage == 0 || gainedMoreDetail)
+
+        state.hasNextPage = pageEntity.hasNextPage || shouldKeepBootstrappingDetails
         let firstNewSpotID = newSpots.first(where: \.hasDetail)?.id
         let selectedSpotID = state.userSession.selectedExploreSpotID.nilIfEmpty
 
@@ -807,7 +820,6 @@ extension ExploreReducer {
         }
 
       case .requestCurrentLocation:
-        state.shouldReturnToCurrentLocation = true
         return .run { send in
           let locationManager = await LocationPermissionManager.shared
 

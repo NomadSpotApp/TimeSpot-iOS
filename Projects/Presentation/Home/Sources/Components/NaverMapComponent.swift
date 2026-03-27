@@ -22,7 +22,7 @@ public struct NaverMapComponent: UIViewRepresentable {
   let destination: Destination?
   let spots: [ExploreMapSpot]
   let selectedSpotID: String?
-  let returnToLocation: Bool // 현재 위치로 돌아가기 트리거
+  let returnToLocationTrigger: Int
   let onSpotTapped: ((String) -> Void)?
   let onMapTapped: (() -> Void)?
 
@@ -33,6 +33,7 @@ public struct NaverMapComponent: UIViewRepresentable {
   private static var selectedSpotID: String?
   private static var lastSyncedSpotID: String?
   private static var lastDestinationKey: String?
+  private static var lastReturnToLocationTrigger: Int?
   private static var routePath: NMFPath?
 
   public init(
@@ -42,7 +43,7 @@ public struct NaverMapComponent: UIViewRepresentable {
     destination: Destination? = nil,
     spots: [ExploreMapSpot] = [],
     selectedSpotID: String? = nil,
-    returnToLocation: Bool = false,
+    returnToLocationTrigger: Int = 0,
     onSpotTapped: ((String) -> Void)? = nil,
     onMapTapped: (() -> Void)? = nil
   ) {
@@ -52,7 +53,7 @@ public struct NaverMapComponent: UIViewRepresentable {
     self.destination = destination
     self.spots = spots
     self.selectedSpotID = selectedSpotID
-    self.returnToLocation = returnToLocation
+    self.returnToLocationTrigger = returnToLocationTrigger
     self.onSpotTapped = onSpotTapped
     self.onMapTapped = onMapTapped
   }
@@ -100,7 +101,10 @@ public struct NaverMapComponent: UIViewRepresentable {
 
   public func updateUIView(_ uiView: NMFMapView, context: Context) {
     context.coordinator.parent = self
-    let shouldPrioritizeCurrentLocation = returnToLocation && currentLocation != nil
+    let shouldReturnToLocation =
+      currentLocation != nil
+      && Self.lastReturnToLocationTrigger != returnToLocationTrigger
+    let shouldPrioritizeCurrentLocation = shouldReturnToLocation
     // 기존 마커들과 경로 제거
     Self.currentMarker?.mapView = nil
     Self.destinationMarker?.mapView = nil
@@ -113,7 +117,8 @@ public struct NaverMapComponent: UIViewRepresentable {
        let location = currentLocation {
 
       // 현재 위치로 돌아가기 버튼이 눌렸을 때만 카메라 이동
-      if returnToLocation {
+      if shouldReturnToLocation {
+        Self.lastReturnToLocationTrigger = returnToLocationTrigger
         moveCamera(
           on: uiView,
           to: NMGLatLng(
@@ -213,7 +218,13 @@ public struct NaverMapComponent: UIViewRepresentable {
     if !shouldPrioritizeCurrentLocation,
        let selectedSpotID = Self.selectedSpotID,
        let selectedSpot = spots.first(where: { $0.id == selectedSpotID }) {
-      if selectedSpotID != previousSpotID {
+      let currentCameraTarget = uiView.cameraPosition.target
+      let shouldMoveToSelectedSpot =
+        selectedSpotID != previousSpotID
+        || abs(currentCameraTarget.lat - selectedSpot.coordinate.latitude) > 0.000001
+        || abs(currentCameraTarget.lng - selectedSpot.coordinate.longitude) > 0.000001
+
+      if shouldMoveToSelectedSpot {
         moveCamera(
           on: uiView,
           to: NMGLatLng(
