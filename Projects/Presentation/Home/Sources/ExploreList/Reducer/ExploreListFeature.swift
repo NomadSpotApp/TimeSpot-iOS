@@ -101,6 +101,7 @@ public struct ExploreListFeature {
   }
 
   public enum DelegateAction: Equatable {
+    case presentExploreMap
   }
 
   @Dependency(\.placeUseCase) var placeUseCase
@@ -229,7 +230,7 @@ extension ExploreListFeature {
     action: DelegateAction
   ) -> Effect<Action> {
     switch action {
-      @unknown default:
+      case .presentExploreMap:
         return .none
     }
   }

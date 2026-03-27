@@ -68,7 +68,7 @@ private extension ExploreView {
       selectedSpotID: store.userSession.selectedExploreSpotID.isEmpty
         ? nil
         : store.userSession.selectedExploreSpotID,
-      returnToLocation: store.shouldReturnToCurrentLocation,
+      returnToLocationTrigger: store.returnToCurrentLocationTrigger,
       onSpotTapped: { spotID in
         store.send(.view(.spotTapped(spotID)))
       },

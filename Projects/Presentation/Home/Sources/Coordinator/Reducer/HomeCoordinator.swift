@@ -111,6 +111,33 @@ extension HomeCoordinator {
           return .none
         }
 
+      case let .routeAction(id: id, action: .exploreList(.delegate(.presentExploreMap))):
+        guard state.routes.indices.contains(id) else {
+          return .none
+        }
+
+        let exploreIndex = id - 1
+        guard exploreIndex >= 0,
+              state.routes.indices.contains(exploreIndex) else {
+          return .send(.view(.backAction))
+        }
+
+        switch state.routes[exploreIndex] {
+        case .push(.explore):
+          state.routes.goBack()
+          return .send(
+            .router(
+              .routeAction(
+                id: exploreIndex,
+                action: .explore(.view(.returnToCurrentLocation))
+              )
+            )
+          )
+
+        default:
+          return .send(.view(.backAction))
+        }
+
 
       case .routeAction(id: _, action: .profile(.navigation(.presentRoot))):
         return .send(.view(.backAction))
