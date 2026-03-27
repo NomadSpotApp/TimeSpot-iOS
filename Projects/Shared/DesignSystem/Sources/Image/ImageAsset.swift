@@ -32,6 +32,7 @@ public enum ImageAsset: String {
   case tapEtc
   case tapFood
   case location
+  case rowCheck
 
 
 

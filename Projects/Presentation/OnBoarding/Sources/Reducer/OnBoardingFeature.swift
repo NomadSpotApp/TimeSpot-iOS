@@ -217,4 +217,3 @@ extension OnBoardingFeature.State {
     hasher.combine(selectedMap)
   }
 }
-

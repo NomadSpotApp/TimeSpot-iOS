@@ -15,6 +15,8 @@ public struct StationRowModel: Identifiable, Equatable, Hashable {
   public let stationID: Int
   public let stationName: String
   public let badges: [String]
+  public let lat: Double?
+  public let lng: Double?
   public let distanceText: String?
   public let isFavorite: Bool
 
@@ -25,6 +27,8 @@ public struct StationRowModel: Identifiable, Equatable, Hashable {
     stationID: Int,
     stationName: String,
     badges: [String],
+    lat: Double? = nil,
+    lng: Double? = nil,
     distanceText: String?,
     isFavorite: Bool
   ) {
@@ -34,6 +38,8 @@ public struct StationRowModel: Identifiable, Equatable, Hashable {
     self.stationID = stationID
     self.stationName = stationName
     self.badges = badges
+    self.lat = lat
+    self.lng = lng
     self.distanceText = distanceText
     self.isFavorite = isFavorite
   }
