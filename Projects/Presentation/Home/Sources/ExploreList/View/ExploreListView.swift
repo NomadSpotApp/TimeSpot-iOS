@@ -68,6 +68,9 @@ public struct ExploreListView: View {
     .onAppear {
       store.send(.view(.onAppear))
     }
+    .safeAreaInset(edge: .bottom) {
+      mapButtonSection()
+    }
   }
 }
 
@@ -121,5 +124,23 @@ private extension ExploreListView {
         .padding(.vertical, 4)
       }
     }
+  }
+
+  @ViewBuilder
+  func mapButtonSection() -> some View {
+    Button {
+      store.send(.delegate(.presentExploreMap))
+    } label: {
+      Text("지도보기")
+        .pretendardCustomFont(textStyle: .body2Bold)
+        .foregroundStyle(.staticWhite)
+        .frame(width: 100, height: 36)
+        .background(.navy900)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.08), radius: 16, y: 8)
+    }
+    .frame(maxWidth: .infinity, alignment: .center)
+    .padding(.bottom, 42)
+    .background(Color.clear)
   }
 }
