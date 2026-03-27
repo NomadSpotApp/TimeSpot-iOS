@@ -30,10 +30,10 @@ extension StationService: BaseTargetType {
     switch self {
     case .allStation:
       return StationAPI.allStation.description
-    case .addFavoriteStation:
-      return StationAPI.addFavoriteStation.description
-    case .deleteFavoriteStation(let favoriteID):
-      return StationAPI.deleteFavoriteStation(favoriteID: favoriteID).description
+    case .addFavoriteStation(let body):
+        return StationAPI.addFavoriteStation(stationID: body.stationID).description
+    case .deleteFavoriteStation(let stationID):
+      return StationAPI.deleteFavoriteStation(stationID: stationID).description
     }
   }
 
