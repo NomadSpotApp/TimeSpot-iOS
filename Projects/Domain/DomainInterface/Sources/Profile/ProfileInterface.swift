@@ -14,6 +14,10 @@ public protocol ProfileInterface: Sendable {
   func editUser(
     mapType: ExternalMapType
   )  async throws -> LoginEntity
+  func fetchNotificationSettings() async throws -> NotificationEntity
+  func editNotificationSettings(
+    notificationSettings: [NotificationOption]
+  ) async throws -> NotificationEntity
 }
 
 

@@ -39,4 +39,30 @@ final public class DefaultProfileRepositoryImpl: ProfileInterface {
       mapURLScheme: nil
     )
   }
+
+  public func fetchNotificationSettings() async throws -> NotificationEntity {
+    NotificationEntity(
+      settings: [
+        .init(option: .departureTime, isEnabled: true, isEditable: false),
+        .init(option: .fiveMinutesBefore, isEnabled: false, isEditable: true),
+        .init(option: .tenMinutesBefore, isEnabled: false, isEditable: true),
+        .init(option: .fifteenMinutesBefore, isEnabled: false, isEditable: true)
+      ],
+      updatedAt: "2024-01-15T10:30:00"
+    )
+  }
+
+  public func editNotificationSettings(
+    notificationSettings: [NotificationOption]
+  ) async throws -> NotificationEntity {
+    NotificationEntity(
+      settings: [
+        .init(option: .departureTime, isEnabled: true, isEditable: false),
+        .init(option: .fiveMinutesBefore, isEnabled: notificationSettings.contains(.fiveMinutesBefore), isEditable: true),
+        .init(option: .tenMinutesBefore, isEnabled: notificationSettings.contains(.tenMinutesBefore), isEditable: true),
+        .init(option: .fifteenMinutesBefore, isEnabled: notificationSettings.contains(.fifteenMinutesBefore), isEditable: true)
+      ],
+      updatedAt: "2024-01-15T10:30:00"
+    )
+  }
 }

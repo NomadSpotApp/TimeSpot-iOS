@@ -15,6 +15,8 @@ public struct UserSession: Equatable, Hashable {
   public var mapType: ExternalMapType
   public var travelID: String
   public var travelStationName: String
+  public var travelStationLat: Double?
+  public var travelStationLng: Double?
   public var remainingMinutes: Int
   public var selectedExploreSpotID: String
 
@@ -26,6 +28,8 @@ public struct UserSession: Equatable, Hashable {
     mapType: ExternalMapType = .appleMap,
     travelID: String = "",
     travelStationName: String = "",
+    travelStationLat: Double? = nil,
+    travelStationLng: Double? = nil,
     remainingMinutes: Int = 0,
     selectedExploreSpotID: String = ""
   ) {
@@ -36,6 +40,8 @@ public struct UserSession: Equatable, Hashable {
     self.mapType = mapType
     self.travelID = travelID
     self.travelStationName = travelStationName
+    self.travelStationLat = travelStationLat
+    self.travelStationLng = travelStationLng
     self.remainingMinutes = remainingMinutes
     self.selectedExploreSpotID = selectedExploreSpotID
   }
