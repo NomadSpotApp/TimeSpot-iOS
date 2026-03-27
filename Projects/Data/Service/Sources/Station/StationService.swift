@@ -15,7 +15,7 @@ import AsyncMoya
 public enum StationService {
   case allStation(body: StationRequest)
   case addFavoriteStation(body: AddFavoriteStationRequest)
-  case deleteFavoriteStation(deleteStationId: Int)
+  case deleteFavoriteStation(favoriteID: Int)
 }
 
 
@@ -32,8 +32,8 @@ extension StationService: BaseTargetType {
       return StationAPI.allStation.description
     case .addFavoriteStation:
       return StationAPI.addFavoriteStation.description
-    case .deleteFavoriteStation(let deleteStationId):
-      return StationAPI.deleteFavoriteStation(deleteStationId: deleteStationId).description
+    case .deleteFavoriteStation(let favoriteID):
+      return StationAPI.deleteFavoriteStation(favoriteID: favoriteID).description
     }
   }
 

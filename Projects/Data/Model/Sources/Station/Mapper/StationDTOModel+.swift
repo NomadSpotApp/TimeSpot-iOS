@@ -20,9 +20,12 @@ public extension StationListResponseDTO {
 public extension StationSummaryResponseDTO {
   func toDomain() -> StationSummaryEntity {
     StationSummaryEntity(
+      favoriteID: favoriteID,
       stationID: stationID,
       name: name,
-      lines: lines
+      lines: lines,
+      lat: lat,
+      lng: lng
     )
   }
 }
