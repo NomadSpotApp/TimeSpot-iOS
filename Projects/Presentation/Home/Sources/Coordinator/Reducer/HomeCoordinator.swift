@@ -49,7 +49,7 @@ public struct HomeCoordinator {
     case presentProfile
     case presentProfileWithAnimation
     case presentExplore
-    case presentExploreList
+    case presentExploreList(ExploreReducer.State)
   }
 
   // MARK: - NavigationAction
@@ -100,7 +100,16 @@ extension HomeCoordinator {
         return .send(.navigation(.presentAuth))
 
       case let .routeAction(id: id, action: .explore(.delegate(.presentExploreList))):
-        return .send(.inner(.presentExploreList))
+        guard state.routes.indices.contains(id) else {
+          return .none
+        }
+
+        switch state.routes[id] {
+        case let .push(.explore(exploreState)):
+          return .send(.inner(.presentExploreList(exploreState)))
+        default:
+          return .none
+        }
 
 
       case .routeAction(id: _, action: .profile(.navigation(.presentRoot))):
@@ -167,8 +176,8 @@ extension HomeCoordinator {
       state.routes.push(.explore(.init()))
       return .none
 
-    case .presentExploreList:
-        state.routes.push(.exploreList(.init()))
+    case let .presentExploreList(exploreState):
+        state.routes.push(.exploreList(.init(exploreState: exploreState)))
       return .none
     }
   }

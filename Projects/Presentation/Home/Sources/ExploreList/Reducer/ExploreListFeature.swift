@@ -39,11 +39,14 @@ public struct ExploreListFeature {
     public var searchText: String = ""
     public var selectedCategory: ExploreCategory = .all
     public var selectedSort: ExploreListSort = .stationNearest
+    public var requestSortBy: String = "STATION_NEAREST"
     public var spots: [ExploreMapSpot] = []
-    public var currentPage: Int = 1
+    public var currentPage: Int = 0
     public var hasNextPage: Bool = true
     public var isLoading: Bool = false
     public var currentLocation: CLLocationCoordinate2D?
+    public var markerLat: Double?
+    public var markerLon: Double?
     @Shared(.inMemory("UserSession")) public var userSession: UserSession = .empty
 
     public init() {}
@@ -52,6 +55,12 @@ public struct ExploreListFeature {
       self.searchText = exploreState.searchText
       self.selectedCategory = exploreState.selectedCategory
       self.currentLocation = exploreState.currentLocation?.coordinate
+      self.requestSortBy = "STATION_NEAREST"
+      self.markerLat = exploreState.searchMarkerLat ?? exploreState.userSession.travelStationLat
+      self.markerLon = exploreState.searchMarkerLon ?? exploreState.userSession.travelStationLng
+      self.spots = exploreState.spots
+      self.currentPage = exploreState.currentPage
+      self.hasNextPage = exploreState.hasNextPage
     }
   }
 
@@ -126,33 +135,34 @@ extension ExploreListFeature {
   ) -> Effect<Action> {
     switch action {
       case .onAppear:
-        return .send(.async(.searchPlaces(page: 1, append: false)))
+        return .send(.async(.searchPlaces(page: 0, append: false)))
 
       case .searchTextChanged(let text):
         state.searchText = text
-        state.currentPage = 1
+        state.currentPage = 0
         state.hasNextPage = true
         return .merge(
           .cancel(id: CancelID.searchPlaces),
-          .send(.async(.searchPlaces(page: 1, append: false)))
+          .send(.async(.searchPlaces(page: 0, append: false)))
         )
 
       case .categoryTapped(let category):
         state.selectedCategory = category
-        state.currentPage = 1
+        state.currentPage = 0
         state.hasNextPage = true
         return .merge(
           .cancel(id: CancelID.searchPlaces),
-          .send(.async(.searchPlaces(page: 1, append: false)))
+          .send(.async(.searchPlaces(page: 0, append: false)))
         )
 
       case .sortTapped(let sort):
         state.selectedSort = sort
-        state.currentPage = 1
+        state.requestSortBy = sort.rawValue
+        state.currentPage = 0
         state.hasNextPage = true
         return .merge(
           .cancel(id: CancelID.searchPlaces),
-          .send(.async(.searchPlaces(page: 1, append: false)))
+          .send(.async(.searchPlaces(page: 0, append: false)))
         )
 
       case .loadNextPage:
@@ -182,8 +192,10 @@ extension ExploreListFeature {
         let trimmedKeyword = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let keyword = trimmedKeyword.isEmpty ? nil : trimmedKeyword
         let category: ExploreCategory? = state.selectedCategory == .all ? nil : state.selectedCategory
-        let baseSpots = append ? state.spots : []
-        let sortBy = state.selectedSort.rawValue
+        let baseSpots = state.spots
+        let sortBy = state.requestSortBy
+        let markerLat = state.markerLat ?? userSession.travelStationLat
+        let markerLon = state.markerLon ?? userSession.travelStationLng
 
         return .run { send in
           let result = await Result {
@@ -195,8 +207,8 @@ extension ExploreListFeature {
               keyword: keyword,
               category: category,
               sortBy: sortBy,
-              markerLat: userSession.travelStationLat,
-              markerLon: userSession.travelStationLng,
+              markerLat: markerLat,
+              markerLon: markerLon,
               page: page
             )
           }
@@ -229,7 +241,7 @@ extension ExploreListFeature {
     switch action {
       case let .searchPlacesResponse(pageEntity, append):
         state.isLoading = false
-        state.spots = append ? pageEntity.spots : pageEntity.spots.filter(\.hasDetail)
+        state.spots = pageEntity.spots
         state.currentPage = pageEntity.currentPage
         state.hasNextPage = pageEntity.hasNextPage
         return .none
