@@ -18,7 +18,7 @@ public struct SplashView: View {
   @State private var symbolScaleY: CGFloat = 1.0
   @State private var symbolRotation: Double = 0
   @State private var symbolOffsetX: CGFloat = 0
-  @State private var symbolOpacity: Double = 0.18
+  @State private var symbolOpacity: Double = 1
   @State private var wordmarkOpacity: Double = 0
   @State private var wordmarkOffsetX: CGFloat = 14
 
@@ -75,39 +75,31 @@ private extension SplashView {
     symbolScaleY = 1.0
     symbolRotation = 0
     symbolOffsetX = 0
-    symbolOpacity = 0.18
+    symbolOpacity = 1
     wordmarkOpacity = 0
     wordmarkOffsetX = 14
 
-    withAnimation(.easeOut(duration: 0.3).delay(0.12)) {
-      symbolOpacity = 1
+    withAnimation(.easeInOut(duration: 0.32).delay(0.28)) {
+      symbolRotation = 24
     }
 
-    withAnimation(.easeInOut(duration: 0.18).delay(0.46)) {
-      symbolRotation = -18
-      symbolScaleX = 1.16
-      symbolScaleY = 0.84
-    }
-
-    withAnimation(.spring(response: 0.22, dampingFraction: 0.86).delay(0.66)) {
+    withAnimation(.spring(response: 0.28, dampingFraction: 0.82).delay(0.82)) {
       symbolRotation = 0
-      symbolScaleX = 1.0
-      symbolScaleY = 1.0
     }
 
-    withAnimation(.easeInOut(duration: 0.26).delay(0.84)) {
+    withAnimation(.easeInOut(duration: 0.26).delay(1.28)) {
       symbolScale = Constants.symbolSmallSize.width / Constants.symbolLargeSize.width
     }
 
-    withAnimation(.easeInOut(duration: 0.26).delay(1.16)) {
+    withAnimation(.easeInOut(duration: 0.26).delay(1.78)) {
       symbolOffsetX = -54
     }
 
-    withAnimation(.easeOut(duration: 0.12).delay(1.34)) {
+    withAnimation(.easeOut(duration: 0.12).delay(1.96)) {
       symbolOpacity = 0
     }
 
-    withAnimation(.easeOut(duration: 0.2).delay(1.42)) {
+    withAnimation(.easeOut(duration: 0.2).delay(2.04)) {
       wordmarkOpacity = 1
       wordmarkOffsetX = 0
     }

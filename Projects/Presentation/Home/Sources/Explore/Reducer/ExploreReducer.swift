@@ -21,6 +21,7 @@ public struct ExploreReducer: Sendable {
   enum CancelID: Hashable {
     case startLocationUpdates
     case fetchPlaces
+    case searchPlaces
     case searchRoute
   }
 
@@ -35,6 +36,11 @@ public struct ExploreReducer: Sendable {
     public var isLoadingPlaces: Bool = false
     public var hasRequestedPlaces: Bool = false
     public var hasFetchedPlacesWithCurrentLocation: Bool = false
+    public var currentPage: Int = 1
+    public var hasNextPage: Bool = true
+    public var pendingSelectFirstSpotFromNextPage: Bool = false
+    public var searchMarkerLat: Double?
+    public var searchMarkerLon: Double?
     @Presents public var alert: AlertState<Alert>?
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
 
@@ -83,6 +89,7 @@ public struct ExploreReducer: Sendable {
     case categoryTapped(ExploreCategory)
     case spotTapped(String)
     case spotCardChanged(String?)
+    case loadNextSpotPage
     // 길찾기 관련 액션
     case searchRouteToGangnam
     case clearRoute
@@ -93,8 +100,19 @@ public struct ExploreReducer: Sendable {
     case locationPermissionStatusChanged(CLAuthorizationStatus)
     case locationUpdated(CLLocation)
     case locationUpdateFailed(String)
-    case fetchPlacesResponse([PlaceEntity], usedCurrentLocation: Bool)
+    case fetchPlacesResponse(ExploreSpotPageEntity, usedCurrentLocation: Bool)
     case fetchPlacesFailed(String, usedCurrentLocation: Bool)
+    case searchPlacesResponse(
+      ExploreSpotPageEntity,
+      append: Bool,
+      requestedPage: Int,
+      requestedKeyword: String,
+      requestedCategory: ExploreCategory?,
+      requestedMarkerLat: Double?,
+      requestedMarkerLon: Double?,
+      usedCurrentLocation: Bool
+    )
+    case searchPlacesFailed(String)
     // 길찾기 관련 액션
     case routeSearchStarted(Destination)
     case routeSearchResponse(Result<RouteInfo, DirectionError>)
@@ -109,26 +127,9 @@ public struct ExploreReducer: Sendable {
     case stopLocationUpdates
     case requestCurrentLocation
     case fetchPlaces
+    case searchPlaces(page: Int, append: Bool)
     // 길찾기 관련 액션
     case searchRoute(from: CLLocationCoordinate2D, to: Destination)
-
-    public static func == (lhs: AsyncAction, rhs: AsyncAction) -> Bool {
-      switch (lhs, rhs) {
-      case (.requestLocationPermission, .requestLocationPermission),
-           (.requestFullAccuracy, .requestFullAccuracy),
-           (.startLocationUpdates, .startLocationUpdates),
-           (.stopLocationUpdates, .stopLocationUpdates),
-           (.requestCurrentLocation, .requestCurrentLocation),
-           (.fetchPlaces, .fetchPlaces):
-        return true
-      case (.searchRoute(let lhsFrom, let lhsTo), .searchRoute(let rhsFrom, let rhsTo)):
-        return lhsFrom.latitude == rhsFrom.latitude &&
-               lhsFrom.longitude == rhsFrom.longitude &&
-               lhsTo == rhsTo
-      default:
-        return false
-      }
-    }
   }
 
   @Dependency(\.getRouteUseCase) var getRouteUseCase
@@ -159,9 +160,10 @@ extension ExploreReducer {
     let query = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
 
     let filtered = state.spots.filter { spot in
+      let hasDetail = spot.hasDetail
       let matchesCategory = state.selectedCategory == .all || spot.category == state.selectedCategory
       let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
-      return matchesCategory && matchesQuery
+      return hasDetail && matchesCategory && matchesQuery
     }
 
     guard let currentLocation = state.currentLocation else {
@@ -187,23 +189,15 @@ extension ExploreReducer {
   }
 
   private func syncSelectedSpot(state: inout State) {
-    let currentFilteredSpots = filteredSpots(state: state)
-
-    guard !currentFilteredSpots.isEmpty else {
-      state.$userSession.withLock {
-        $0.selectedExploreSpotID = ""
-      }
-      return
-    }
-
     guard let selectedSpotID = state.userSession.selectedExploreSpotID.nilIfEmpty else {
       return
     }
 
-    guard currentFilteredSpots.contains(where: { $0.id == selectedSpotID }) else {
+    guard state.spots.contains(where: { $0.id == selectedSpotID }) else {
       state.$userSession.withLock {
         $0.selectedExploreSpotID = ""
       }
+      state.isSpotCardVisible = false
       return
     }
   }
@@ -218,6 +212,11 @@ extension ExploreReducer {
         state.isLoadingPlaces = false
         state.hasRequestedPlaces = false
         state.hasFetchedPlacesWithCurrentLocation = false
+        state.currentPage = 1
+        state.hasNextPage = true
+        state.pendingSelectFirstSpotFromNextPage = false
+        state.searchMarkerLat = nil
+        state.searchMarkerLon = nil
         state.spots = []
         if let lat = state.userSession.travelStationLat,
            let lng = state.userSession.travelStationLng {
@@ -240,12 +239,18 @@ extension ExploreReducer {
         state.isLoadingPlaces = false
         state.hasRequestedPlaces = false
         state.hasFetchedPlacesWithCurrentLocation = false
+        state.currentPage = 1
+        state.hasNextPage = true
+        state.pendingSelectFirstSpotFromNextPage = false
+        state.searchMarkerLat = nil
+        state.searchMarkerLon = nil
         state.spots = []
         state.isSpotCardVisible = false
         state.selectedDestination = nil
         return .merge(
           .cancel(id: CancelID.startLocationUpdates),
           .cancel(id: CancelID.fetchPlaces),
+          .cancel(id: CancelID.searchPlaces),
           .cancel(id: CancelID.searchRoute),
           .send(.async(.stopLocationUpdates))
         )
@@ -273,26 +278,54 @@ extension ExploreReducer {
 
       case .searchTextChanged(let text):
         state.searchText = text
-        syncSelectedSpot(state: &state)
-        if state.userSession.selectedExploreSpotID.isEmpty {
-          state.isSpotCardVisible = false
-        }
-        return .none
+        state.isLoadingPlaces = false
+        state.hasRequestedPlaces = false
+        state.currentPage = 1
+        state.hasNextPage = true
+        state.pendingSelectFirstSpotFromNextPage = false
+        state.searchMarkerLat = nil
+        state.searchMarkerLon = nil
+        return .merge(
+          .cancel(id: CancelID.searchPlaces),
+          .send(.async(.searchPlaces(page: 1, append: false)))
+        )
 
       case .categoryTapped(let category):
         state.selectedCategory = category
-        syncSelectedSpot(state: &state)
-        if state.userSession.selectedExploreSpotID.isEmpty {
-          state.isSpotCardVisible = false
-        }
-        return .none
+        state.isLoadingPlaces = false
+        state.hasRequestedPlaces = false
+        state.currentPage = 1
+        state.hasNextPage = true
+        state.pendingSelectFirstSpotFromNextPage = false
+        state.searchMarkerLat = nil
+        state.searchMarkerLon = nil
+        return .merge(
+          .cancel(id: CancelID.searchPlaces),
+          .send(.async(.searchPlaces(page: 1, append: false)))
+        )
 
       case .spotTapped(let spotID):
         state.$userSession.withLock {
           $0.selectedExploreSpotID = spotID
         }
-        state.isSpotCardVisible = true
-        return .none
+        state.isSpotCardVisible = state.spots.contains(where: { $0.id == spotID && $0.hasDetail })
+        guard !state.spots.contains(where: { $0.id == spotID && $0.hasDetail }),
+              let markerSpot = state.spots.first(where: { $0.id == spotID }) else {
+          return .none
+        }
+
+        state.searchMarkerLat = markerSpot.coordinate.latitude
+        state.searchMarkerLon = markerSpot.coordinate.longitude
+        state.currentPage = 1
+        state.hasNextPage = true
+        state.pendingSelectFirstSpotFromNextPage = false
+        state.isLoadingPlaces = false
+        state.hasRequestedPlaces = false
+
+        return .merge(
+          .cancel(id: CancelID.searchPlaces),
+          .send(.async(.searchPlaces(page: 1, append: false)))
+        )
 
       case .spotCardChanged(let spotID):
         if let spotID {
@@ -304,6 +337,13 @@ extension ExploreReducer {
           state.isSpotCardVisible = false
         }
         return .none
+
+      case .loadNextSpotPage:
+        guard state.hasNextPage, !state.isLoadingPlaces else {
+          return .none
+        }
+        state.pendingSelectFirstSpotFromNextPage = true
+        return .send(.async(.searchPlaces(page: state.currentPage, append: true)))
 
       // 길찾기 관련 액션
       case .searchRouteToGangnam:
@@ -369,27 +409,29 @@ extension ExploreReducer {
             await send(.inner(.resetCameraFlag))
           }
         }
-        if !state.isLoadingPlaces
-            && (
-              (state.spots.isEmpty && !state.hasRequestedPlaces)
-              || !state.hasFetchedPlacesWithCurrentLocation
-            ) {
-          return .send(.async(.fetchPlaces))
+        if !state.hasFetchedPlacesWithCurrentLocation,
+           !state.isLoadingPlaces {
+          state.currentPage = 1
+          state.hasNextPage = true
+          state.pendingSelectFirstSpotFromNextPage = false
+          return .merge(
+            .cancel(id: CancelID.fetchPlaces),
+            .cancel(id: CancelID.searchPlaces),
+            .send(.async(.fetchPlaces))
+          )
         }
         return .none
 
       case .locationUpdateFailed(let error):
         #logDebug(" [ExploreReducer] 위치 업데이트 실패: \(error)")
-        if state.spots.isEmpty && !state.isLoadingPlaces && !state.hasRequestedPlaces {
-          return .send(.async(.fetchPlaces))
-        }
         return .none
 
       case .fetchPlacesResponse(let entities, let usedCurrentLocation):
         state.isLoadingPlaces = false
-        state.spots = entities.map(mapPlaceEntityToSpot)
+        state.spots = entities.spots
+        state.currentPage = entities.currentPage
+        state.hasNextPage = entities.hasNextPage
         state.hasFetchedPlacesWithCurrentLocation = usedCurrentLocation
-        syncSelectedSpot(state: &state)
         if state.currentLocation != nil
             && !usedCurrentLocation
             && !state.hasFetchedPlacesWithCurrentLocation {
@@ -409,6 +451,90 @@ extension ExploreReducer {
         state.$userSession.withLock {
           $0.selectedExploreSpotID = ""
         }
+        return .none
+
+      case .searchPlacesResponse(
+        let pageEntity,
+        let append,
+        let requestedPage,
+        let requestedKeyword,
+        let requestedCategory,
+        let requestedMarkerLat,
+        let requestedMarkerLon,
+        let usedCurrentLocation
+      ):
+        state.isLoadingPlaces = false
+        state.hasRequestedPlaces = false
+        let currentKeyword = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let currentCategory: ExploreCategory? = state.selectedCategory == .all ? nil : state.selectedCategory
+        let currentMarkerLat = state.searchMarkerLat
+        let currentMarkerLon = state.searchMarkerLon
+
+        guard requestedPage == 1 || append else {
+          return .none
+        }
+
+        guard requestedKeyword == currentKeyword,
+              requestedCategory == currentCategory,
+              requestedMarkerLat == currentMarkerLat,
+              requestedMarkerLon == currentMarkerLon else {
+          return .none
+        }
+
+        state.hasFetchedPlacesWithCurrentLocation = usedCurrentLocation
+        state.currentPage = pageEntity.currentPage
+        state.hasNextPage = pageEntity.hasNextPage
+        let newSpots = pageEntity.spots
+        let firstNewSpotID = newSpots.first(where: \.hasDetail)?.id
+        let selectedSpotID = state.userSession.selectedExploreSpotID.nilIfEmpty
+
+        state.spots = newSpots
+        if let selectedSpotID,
+           newSpots.contains(where: { $0.id == selectedSpotID && $0.hasDetail }) {
+          state.isSpotCardVisible = true
+        } else if state.searchMarkerLat != nil {
+          state.isSpotCardVisible = false
+        } else {
+          state.isSpotCardVisible = false
+          state.$userSession.withLock {
+            $0.selectedExploreSpotID = ""
+          }
+        }
+
+        if state.pendingSelectFirstSpotFromNextPage, let firstNewSpotID {
+          state.$userSession.withLock {
+            $0.selectedExploreSpotID = firstNewSpotID
+          }
+          state.isSpotCardVisible = true
+        }
+
+        state.pendingSelectFirstSpotFromNextPage = false
+        syncSelectedSpot(state: &state)
+
+        if let selectedSpotID,
+           state.searchMarkerLat != nil,
+           !state.spots.contains(where: { $0.id == selectedSpotID }),
+           state.hasNextPage {
+          return .send(.async(.searchPlaces(page: state.currentPage, append: true)))
+        }
+
+        if let selectedSpotID,
+           state.searchMarkerLat != nil,
+           !state.spots.contains(where: { $0.id == selectedSpotID }),
+           !state.hasNextPage {
+          state.isSpotCardVisible = false
+          state.$userSession.withLock {
+            $0.selectedExploreSpotID = ""
+          }
+        }
+
+        return .none
+
+      case .searchPlacesFailed(let message):
+        state.isLoadingPlaces = false
+        state.hasRequestedPlaces = false
+        state.pendingSelectFirstSpotFromNextPage = false
+        #logDebug(" [ExploreReducer] 장소 검색 실패: \(message)")
         return .none
 
       // 길찾기 관련 액션
@@ -453,7 +579,7 @@ extension ExploreReducer {
 
             Task {
               try await Task.sleep(for: .seconds(1))
-              await send(.async(.startLocationUpdates))
+               send(.async(.startLocationUpdates))
             }
           }
         }
@@ -466,13 +592,13 @@ extension ExploreReducer {
           await MainActor.run {
             locationManager.onLocationUpdate = { location in
               Task { @MainActor in
-                await send(.inner(.locationUpdated(location)))
+                 send(.inner(.locationUpdated(location)))
               }
             }
 
             locationManager.onLocationError = { error in
               Task { @MainActor in
-                await send(.inner(.locationUpdateFailed(error.localizedDescription)))
+                 send(.inner(.locationUpdateFailed(error.localizedDescription)))
               }
             }
           }
@@ -534,7 +660,7 @@ extension ExploreReducer {
 
         return .run { send in
           let result = await Result {
-            try await placeUseCase.fetchPlaces(
+            try await placeUseCase.fetchInitialExploreSpots(
               userSession: userSession,
               userLat: userLat,
               userLon: userLon
@@ -549,6 +675,67 @@ extension ExploreReducer {
           }
         }
         .cancellable(id: CancelID.fetchPlaces, cancelInFlight: true)
+
+      case .searchPlaces(let page, let append):
+        guard Int(state.userSession.travelID) != nil,
+              !state.isLoadingPlaces,
+              !state.hasRequestedPlaces else {
+          return .none
+        }
+
+        state.isLoadingPlaces = true
+        state.hasRequestedPlaces = true
+        let userSession = state.userSession
+        let fallbackLat = state.userSession.travelStationLat ?? 0
+        let fallbackLng = state.userSession.travelStationLng ?? 0
+        let userLat = state.currentLocation?.coordinate.latitude ?? fallbackLat
+        let userLon = state.currentLocation?.coordinate.longitude ?? fallbackLng
+        let markerLat = state.searchMarkerLat ?? state.userSession.travelStationLat ?? fallbackLat
+        let markerLon = state.searchMarkerLon ?? state.userSession.travelStationLng ?? fallbackLng
+        let requestedMarkerLat = state.searchMarkerLat
+        let requestedMarkerLon = state.searchMarkerLon
+        let rawKeyword = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let keyword = rawKeyword.nilIfEmpty
+        let category: ExploreCategory? = state.selectedCategory == .all ? nil : state.selectedCategory
+        let usedCurrentLocation = state.currentLocation != nil
+        let baseSpots = state.spots
+
+        return .run { send in
+          let result = await Result {
+            try await placeUseCase.searchExploreSpots(
+              baseSpots: baseSpots,
+              userSession: userSession,
+              userLat: userLat,
+              userLon: userLon,
+              keyword: keyword,
+              category: category,
+              markerLat: markerLat,
+              markerLon: markerLon,
+              page: page
+            )
+          }
+
+          switch result {
+          case .success(let entity):
+            await send(
+              .inner(
+                .searchPlacesResponse(
+                  entity,
+                  append: append,
+                  requestedPage: page,
+                  requestedKeyword: rawKeyword,
+                  requestedCategory: category,
+                  requestedMarkerLat: requestedMarkerLat,
+                  requestedMarkerLon: requestedMarkerLon,
+                  usedCurrentLocation: usedCurrentLocation
+                )
+              )
+            )
+          case .failure(let error):
+            await send(.inner(.searchPlacesFailed(error.localizedDescription)))
+          }
+        }
+        .cancellable(id: CancelID.searchPlaces, cancelInFlight: true)
 
       // 길찾기 관련 액션
       case .searchRoute(let from, let destination):
@@ -612,23 +799,6 @@ extension ExploreReducer {
   }
 }
 
-private extension ExploreReducer {
-  func mapPlaceEntityToSpot(_ entity: PlaceEntity) -> ExploreMapSpot {
-    ExploreMapSpot(
-      id: entity.stationId,
-      name: entity.name,
-      category: entity.category,
-      coordinate: CLLocationCoordinate2D(latitude: entity.lat, longitude: entity.lon),
-      badgeText: "\(entity.stayableMinutes)분 체류 가능",
-      subtitle: entity.category.title,
-      statusText: "",
-      closingText: entity.address,
-      distanceText: "",
-      walkTimeText: ""
-    )
-  }
-}
-
 // MARK: - ExploreReducer.State + Hashable
 extension ExploreReducer.State: Hashable {
   public func hash(into hasher: inout Hasher) {
@@ -649,5 +819,27 @@ extension ExploreReducer.State: Hashable {
 private extension String {
   var nilIfEmpty: String? {
     isEmpty ? nil : self
+  }
+}
+
+extension ExploreReducer.AsyncAction {
+  public static func == (lhs: Self, rhs: Self) -> Bool {
+    switch (lhs, rhs) {
+    case (.requestLocationPermission, .requestLocationPermission),
+         (.requestFullAccuracy, .requestFullAccuracy),
+         (.startLocationUpdates, .startLocationUpdates),
+         (.stopLocationUpdates, .stopLocationUpdates),
+         (.requestCurrentLocation, .requestCurrentLocation),
+         (.fetchPlaces, .fetchPlaces):
+      return true
+    case (.searchPlaces(let lhsPage, let lhsAppend), .searchPlaces(let rhsPage, let rhsAppend)):
+      return lhsPage == rhsPage && lhsAppend == rhsAppend
+    case (.searchRoute(let lhsFrom, let lhsTo), .searchRoute(let rhsFrom, let rhsTo)):
+      return lhsFrom.latitude == rhsFrom.latitude
+      && lhsFrom.longitude == rhsFrom.longitude
+      && lhsTo == rhsTo
+    default:
+      return false
+    }
   }
 }
