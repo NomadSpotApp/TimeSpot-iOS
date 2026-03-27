@@ -9,17 +9,17 @@ import Foundation
 
 public enum StationAPI {
   case allStation
-  case addFavoriteStation
-  case deleteFavoriteStation(favoriteID: Int)
+  case addFavoriteStation(stationID: Int)
+  case deleteFavoriteStation(stationID: Int)
 
   public var description: String {
     switch self {
       case .allStation:
         return ""
-      case .addFavoriteStation:
-        return "/favorites"
-      case .deleteFavoriteStation(let favoriteID):
-        return "/favorites/\(favoriteID)"
+      case .addFavoriteStation(let stationID):
+        return "/favorites/\(stationID)"
+      case .deleteFavoriteStation(let stationID):
+        return "/favorites/\(stationID)"
     }
   }
 }
