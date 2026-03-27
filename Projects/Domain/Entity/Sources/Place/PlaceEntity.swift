@@ -13,6 +13,7 @@ public struct PlaceEntity: Equatable {
   public let category: ExploreCategory
   public let address: String
   public let lat, lon: Double
+  public let imageURL: String?
   public let stayableMinutes: Int
   public let isOpen: Bool
   public let closingTime: String?
@@ -24,6 +25,7 @@ public struct PlaceEntity: Equatable {
     lat: Double,
     lon: Double,
     address: String = "",
+    imageURL: String? = nil,
     stayableMinutes: Int = 0,
     isOpen: Bool = false,
     closingTime: String? = nil
@@ -34,6 +36,7 @@ public struct PlaceEntity: Equatable {
     self.lat = lat
     self.lon = lon
     self.address = address
+    self.imageURL = imageURL
     self.stayableMinutes = stayableMinutes
     self.isOpen = isOpen
     self.closingTime = closingTime

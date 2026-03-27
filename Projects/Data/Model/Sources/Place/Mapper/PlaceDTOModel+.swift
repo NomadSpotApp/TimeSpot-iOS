@@ -19,6 +19,7 @@ public extension PlaceResponseDTOModel {
       lat: lat,
       lon: lon,
       address: address ?? "",
+      imageURL: imageURL,
       stayableMinutes: stayableMinutes ?? 0,
       isOpen: isOpen ?? false,
       closingTime: closingTime
@@ -33,6 +34,7 @@ public extension PlaceResponseDTOModel {
       lat: lon,
       lon: lat,
       address: address ?? "",
+      imageURL: imageURL,
       stayableMinutes: stayableMinutes ?? 0,
       isOpen: isOpen ?? false,
       closingTime: closingTime

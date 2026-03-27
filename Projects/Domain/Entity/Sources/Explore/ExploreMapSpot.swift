@@ -14,6 +14,7 @@ public struct ExploreMapSpot: Identifiable {
   public let category: ExploreCategory
   public let coordinate: CLLocationCoordinate2D
   public let hasDetail: Bool
+  public let imageURL: String?
   public let badgeText: String
   public let subtitle: String
   public let statusText: String
@@ -27,6 +28,7 @@ public struct ExploreMapSpot: Identifiable {
     category: ExploreCategory,
     coordinate: CLLocationCoordinate2D,
     hasDetail: Bool = false,
+    imageURL: String? = nil,
     badgeText: String,
     subtitle: String,
     statusText: String,
@@ -39,6 +41,7 @@ public struct ExploreMapSpot: Identifiable {
     self.category = category
     self.coordinate = coordinate
     self.hasDetail = hasDetail
+    self.imageURL = imageURL
     self.badgeText = badgeText
     self.subtitle = subtitle
     self.statusText = statusText
@@ -56,6 +59,7 @@ extension ExploreMapSpot: Equatable {
     && lhs.coordinate.latitude == rhs.coordinate.latitude
     && lhs.coordinate.longitude == rhs.coordinate.longitude
     && lhs.hasDetail == rhs.hasDetail
+    && lhs.imageURL == rhs.imageURL
     && lhs.badgeText == rhs.badgeText
     && lhs.subtitle == rhs.subtitle
     && lhs.statusText == rhs.statusText
@@ -73,6 +77,7 @@ extension ExploreMapSpot: Hashable {
     hasher.combine(coordinate.latitude)
     hasher.combine(coordinate.longitude)
     hasher.combine(hasDetail)
+    hasher.combine(imageURL)
     hasher.combine(badgeText)
     hasher.combine(subtitle)
     hasher.combine(statusText)
