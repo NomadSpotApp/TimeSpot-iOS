@@ -202,6 +202,8 @@ extension HomeFeature {
       state.$userSession.withLock {
         $0.travelID = String(row.stationID)
         $0.travelStationName = row.stationName
+        $0.travelStationLat = row.lat
+        $0.travelStationLng = row.lng
       }
       return .merge(
         .cancel(id: TrainStationFeature.CancelID.checkAccessToken),
@@ -388,6 +390,8 @@ extension HomeFeature {
       state.$userSession.withLock {
         $0.travelID = ""
         $0.travelStationName = ""
+        $0.travelStationLat = nil
+        $0.travelStationLng = nil
         $0.remainingMinutes = 0
       }
       return .none
