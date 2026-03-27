@@ -402,7 +402,7 @@ extension ExploreReducer {
         resetSearchContext(state: &state)
         return .merge(
           .cancel(id: CancelID.searchPlaces),
-          .send(.async(.searchPlaces(page: 0, append: false)))
+          .send(.async(.fetchPlaces))
         )
 
       case .categoryTapped(let category):
@@ -410,7 +410,7 @@ extension ExploreReducer {
         resetSearchContext(state: &state)
         return .merge(
           .cancel(id: CancelID.searchPlaces),
-          .send(.async(.searchPlaces(page: 0, append: false)))
+          .send(.async(.fetchPlaces))
         )
 
       case .spotTapped(let spotID):
@@ -438,7 +438,7 @@ extension ExploreReducer {
 
         return .merge(
           .cancel(id: CancelID.searchPlaces),
-          .send(.async(.searchPlaces(page: 0, append: false)))
+          .send(.async(.fetchPlaces))
         )
 
       case .spotCardChanged(let spotID):
