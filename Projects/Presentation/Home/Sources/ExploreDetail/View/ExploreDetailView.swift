@@ -36,12 +36,11 @@ public struct ExploreDetailView: View {
             dismiss()
           }, title: "")
           .padding(.horizontal, 16)
-          .offset(y: -20)
+          .offset(y: -30)
 
           ScrollView(.vertical) {
             VStack(alignment: .leading) {
               exploreSpotNameTitle()
-                .padding(.top, 24)
 
               imageSection()
                 .padding(.top, 24)
@@ -61,7 +60,6 @@ public struct ExploreDetailView: View {
               routeButtonSection()
                 .padding(.top, 24)
             }
-            .padding(.top, 48)
             .padding(.horizontal, 16)
             .padding(.bottom, 28)
           }
@@ -220,7 +218,7 @@ private extension ExploreDetailView {
   @ViewBuilder
   func locationMapSection() -> some View {
     GeometryReader { proxy in
-      Map(initialPosition: .region(mapRegion), interactionModes: []) {
+      Map(initialPosition: .region(mapRegion), interactionModes: .all) {
         Annotation(store.spot.name, coordinate: store.spot.coordinate) {
           Image(asset: .spotPin)
             .resizable()
