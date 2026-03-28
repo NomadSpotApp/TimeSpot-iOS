@@ -8,6 +8,7 @@
 
 import Foundation
 import ComposableArchitecture
+import Entity
 
 
 @Reducer
@@ -16,8 +17,11 @@ public struct ExploreDetailFeature {
 
   @ObservableState
   public struct State: Equatable {
+    public let spot: ExploreMapSpot
 
-    public init() {}
+    public init(spot: ExploreMapSpot) {
+      self.spot = spot
+    }
   }
 
   public enum Action: ViewAction, BindableAction {

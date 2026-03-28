@@ -52,7 +52,7 @@ public struct HomeCoordinator {
     case presentProfileWithAnimation
     case presentExplore
     case presentExploreList(ExploreReducer.State)
-    case presentExploreDetail
+    case presentExploreDetail(ExploreMapSpot)
   }
 
   // MARK: - NavigationAction
@@ -114,8 +114,20 @@ extension HomeCoordinator {
           return .none
         }
 
-      case .routeAction(id: _, action: .explore(.delegate(.presentExplorerDetail))):
-        return .send(.inner(.presentExploreDetail))
+      case let .routeAction(id: id, action: .explore(.delegate(.presentExplorerDetail))):
+        guard state.routes.indices.contains(id) else {
+          return .none
+        }
+
+        switch state.routes[id] {
+        case let .push(.explore(exploreState)):
+          guard let selectedSpot = exploreState.selectedSpot else {
+            return .none
+          }
+          return .send(.inner(.presentExploreDetail(selectedSpot)))
+        default:
+          return .none
+        }
 
       case let .routeAction(id: id, action: .exploreList(.delegate(.presentExploreMapAtCurrentLocation))):
         guard state.routes.indices.contains(id) else {
@@ -221,8 +233,8 @@ extension HomeCoordinator {
       state.routes.push(.exploreList(.init()))
       return .none
 
-    case .presentExploreDetail:
-      state.routes.push(.exploreDetail(.init()))
+    case .presentExploreDetail(let spot):
+      state.routes.push(.exploreDetail(.init(spot: spot)))
       return .none
     }
   }
