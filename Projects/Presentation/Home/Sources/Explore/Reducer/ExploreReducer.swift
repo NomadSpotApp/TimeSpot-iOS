@@ -435,7 +435,8 @@ extension ExploreReducer {
           state.shouldReturnToCurrentLocation = false
           return .none
         }
-        if !state.hasFetchedPlacesWithCurrentLocation,
+        if state.spots.isEmpty,
+           !state.hasFetchedPlacesWithCurrentLocation,
            !state.isLoadingPlaces {
           ExploreHelpers.resetSearchContext(state: &state, clearMarker: false)
           return .merge(
@@ -457,11 +458,6 @@ extension ExploreReducer {
         state.currentPage = entities.currentPage
         state.hasNextPage = entities.hasNextPage || ExploreHelpers.hasUnresolvedBaseSpots(entities.spots)
         state.hasFetchedPlacesWithCurrentLocation = usedCurrentLocation
-        if state.currentLocation != nil
-            && !usedCurrentLocation
-            && !state.hasFetchedPlacesWithCurrentLocation {
-          return .send(.async(.fetchPlaces))
-        }
         return .none
 
       case .fetchPlacesFailed(let message, let usedCurrentLocation):
