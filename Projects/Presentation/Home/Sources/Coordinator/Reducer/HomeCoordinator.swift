@@ -52,7 +52,7 @@ public struct HomeCoordinator {
     case presentProfileWithAnimation
     case presentExplore
     case presentExploreList(ExploreReducer.State)
-    case presentExploreDetail(ExploreMapSpot)
+    case presentExploreDetail
   }
 
   // MARK: - NavigationAction
@@ -120,11 +120,8 @@ extension HomeCoordinator {
         }
 
         switch state.routes[id] {
-        case let .push(.explore(exploreState)):
-          guard let selectedSpot = exploreState.selectedSpot else {
-            return .none
-          }
-          return .send(.inner(.presentExploreDetail(selectedSpot)))
+        case .push(.explore):
+          return .send(.inner(.presentExploreDetail))
         default:
           return .none
         }
@@ -230,11 +227,24 @@ extension HomeCoordinator {
       return .none
 
     case let .presentExploreList(exploreState):
-      state.routes.push(.exploreList(.init()))
+      var exploreListState = ExploreListFeature.State()
+      exploreListState.searchText = exploreState.searchText
+      exploreListState.selectedCategory = exploreState.selectedCategory
+      exploreListState.currentLocation = exploreState.currentLocation?.coordinate
+      exploreListState.markerLat = exploreState.mapCenterLat ?? exploreState.searchMarkerLat
+      exploreListState.markerLon = exploreState.mapCenterLon ?? exploreState.searchMarkerLon
+      exploreListState.bufferedSpots = exploreState.spots
+      exploreListState.spots = Array(
+        exploreState.spots.prefix(ExploreListFeature.State.pageChunkSize)
+      )
+      exploreListState.currentPage = exploreState.currentPage
+      exploreListState.hasNextPage = exploreState.hasNextPage
+      exploreListState.hasLoadedInitialPage = !exploreState.spots.isEmpty
+      state.routes.push(.exploreList(exploreListState))
       return .none
 
-    case .presentExploreDetail(let spot):
-      state.routes.push(.exploreDetail(.init(spot: spot)))
+    case .presentExploreDetail:
+      state.routes.push(.exploreDetail(.init()))
       return .none
     }
   }

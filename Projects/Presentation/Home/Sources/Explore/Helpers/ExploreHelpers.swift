@@ -50,6 +50,7 @@ public struct ExploreHelpers {
 
     state.$userSession.withLock {
       $0.selectedExploreSpotID = ""
+      $0.selectedExplorePlaceID = ""
     }
   }
 
@@ -124,6 +125,25 @@ public struct ExploreHelpers {
     guard state.spots.contains(where: { $0.id == selectedSpotID }) else {
       clearSelectedSpot(state: &state)
       return
+    }
+  }
+
+  public static func syncSelectionWithFilters(state: inout ExploreReducer.State) {
+    guard let selectedSpotID = state.userSession.selectedExploreSpotID.nilIfEmpty else {
+      return
+    }
+
+    guard let selectedSpot = state.spots.first(where: { $0.id == selectedSpotID && $0.hasDetail }) else {
+      clearSelectedSpot(state: &state)
+      return
+    }
+
+    let matchesCategory = state.selectedCategory == .all || selectedSpot.category == state.selectedCategory
+    let query = currentKeyword(state: state)
+    let matchesQuery = query.isEmpty || selectedSpot.name.localizedCaseInsensitiveContains(query)
+
+    if !matchesCategory || !matchesQuery {
+      clearSelectedSpot(state: &state)
     }
   }
 

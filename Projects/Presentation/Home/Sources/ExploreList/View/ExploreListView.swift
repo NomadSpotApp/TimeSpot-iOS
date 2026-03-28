@@ -48,10 +48,11 @@ public struct ExploreListView: View {
             LazyVStack(spacing: 12) {
               ForEach(filteredSpots) { spot in
                 ExploreSpotListCardView(spot: spot)
-                .onAppear {
-                  guard spot.id == filteredSpots.last?.id else { return }
-                  store.send(.view(.loadNextPage))
-                }
+                  .onAppear {
+                    guard shouldShowLoadMore else { return }
+                    guard spot.id == filteredSpots.last?.id else { return }
+                    store.send(.view(.loadNextPage))
+                  }
               }
 
               if store.isLoading {
@@ -84,9 +85,20 @@ public struct ExploreListView: View {
 }
 
 private extension ExploreListView {
+  var isFilteringLocally: Bool {
+    !store.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+      || store.selectedCategory != .all
+  }
+
+  var shouldShowLoadMore: Bool {
+    !isFilteringLocally && (store.spots.count < store.bufferedSpots.count || store.hasNextPage)
+  }
+
   var filteredSpots: [ExploreMapSpot] {
     let query = store.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-    return store.spots.filter { spot in
+    let sourceSpots = isFilteringLocally ? store.bufferedSpots : store.spots
+
+    return sourceSpots.filter { spot in
       let hasDetail = spot.hasDetail
       let matchesCategory = store.selectedCategory == .all || spot.category == store.selectedCategory
       let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
