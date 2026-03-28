@@ -8,6 +8,8 @@
 import ComposableArchitecture
 import TCACoordinators
 import Profile
+import CoreLocation
+import Entity
 
 @Reducer
 public struct HomeCoordinator {
@@ -50,6 +52,7 @@ public struct HomeCoordinator {
     case presentProfileWithAnimation
     case presentExplore
     case presentExploreList(ExploreReducer.State)
+    case presentExploreDetail
   }
 
   // MARK: - NavigationAction
@@ -110,6 +113,9 @@ extension HomeCoordinator {
         default:
           return .none
         }
+
+      case .routeAction(id: _, action: .explore(.delegate(.presentExplorerDetail))):
+        return .send(.inner(.presentExploreDetail))
 
       case let .routeAction(id: id, action: .exploreList(.delegate(.presentExploreMapAtCurrentLocation))):
         guard state.routes.indices.contains(id) else {
@@ -200,11 +206,23 @@ extension HomeCoordinator {
       return .none
 
     case .presentExplore:
-      state.routes.push(.explore(.init()))
+      var exploreState = ExploreReducer.State()
+      if let lat = exploreState.userSession.travelStationLat,
+         let lng = exploreState.userSession.travelStationLng {
+        exploreState.selectedDestination = Destination(
+          name: exploreState.userSession.travelStationName,
+          coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng)
+        )
+      }
+      state.routes.push(.explore(exploreState))
       return .none
 
     case let .presentExploreList(exploreState):
-        state.routes.push(.exploreList(.init()))
+      state.routes.push(.exploreList(.init()))
+      return .none
+
+    case .presentExploreDetail:
+      state.routes.push(.exploreDetail(.init()))
       return .none
     }
   }
@@ -217,6 +235,7 @@ extension HomeCoordinator {
     case home(HomeFeature)
     case explore(ExploreReducer)
     case exploreList(ExploreListFeature)
+    case exploreDetail(ExploreDetailFeature)
     case profile(ProfileCoordinator)
   }
 }
