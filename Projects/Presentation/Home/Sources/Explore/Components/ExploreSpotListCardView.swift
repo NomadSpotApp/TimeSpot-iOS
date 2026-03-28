@@ -26,17 +26,10 @@ struct ExploreSpotListCardView: View {
             .padding(.bottom, 12)
         }
 
-        VStack(alignment: .leading, spacing: 4) {
-          Text(spot.name)
-            .pretendardFont(family: .SemiBold, size: 17)
-            .foregroundStyle(.staticBlack)
+        VStack(alignment: .leading, spacing: 6) {
+          titleText
             .lineLimit(2)
             .frame(maxWidth: .infinity, alignment: .leading)
-
-          Text(spot.subtitle)
-            .pretendardCustomFont(textStyle: .caption)
-            .foregroundStyle(.gray500)
-            .lineLimit(1)
         }
         .padding(.bottom, 8)
 
@@ -51,7 +44,7 @@ struct ExploreSpotListCardView: View {
           if !spot.closingText.isEmpty {
             Text(spot.closingText)
               .pretendardCustomFont(textStyle: .body2Regular)
-              .foregroundStyle(.gray500)
+              .foregroundStyle(.gray750)
               .lineLimit(1)
               .minimumScaleFactor(0.8)
               .frame(maxWidth: .infinity, alignment: .leading)
@@ -63,7 +56,7 @@ struct ExploreSpotListCardView: View {
         HStack(spacing: 8) {
           if !spot.distanceText.isEmpty {
             Text(spot.distanceText)
-              .pretendardFont(family: .SemiBold, size: 15)
+              .pretendardFont(family: .SemiBold, size: 16)
               .foregroundStyle(.staticBlack)
               .fixedSize()
           }
@@ -71,7 +64,7 @@ struct ExploreSpotListCardView: View {
           if !spot.walkTimeText.isEmpty {
             Text(spot.walkTimeText)
               .pretendardCustomFont(textStyle: .body2Regular)
-              .foregroundStyle(.gray650)
+              .foregroundStyle(.gray830)
               .lineLimit(1)
               .minimumScaleFactor(0.8)
               .frame(maxWidth: .infinity, alignment: .leading)
@@ -90,8 +83,24 @@ struct ExploreSpotListCardView: View {
     .clipShape(RoundedRectangle(cornerRadius: 22))
     .overlay {
       RoundedRectangle(cornerRadius: 22)
-        .stroke(.gray300.opacity(0.9), lineWidth: 1)
+        .stroke(.enableColor, lineWidth: 1)
     }
+  }
+
+  private var titleText: Text {
+    let nameText = Text(spot.name)
+      .font(.pretendardFontFamily(family: .SemiBold, size: 18))
+      .foregroundColor(.staticBlack)
+
+    guard !spot.subtitle.isEmpty else {
+      return nameText
+    }
+
+    let subtitleText = Text(" \(spot.subtitle)")
+      .font(.pretendardFontFamily(family: .Medium, size: 14))
+      .foregroundColor(.gray700)
+
+    return nameText + subtitleText
   }
 
   @ViewBuilder

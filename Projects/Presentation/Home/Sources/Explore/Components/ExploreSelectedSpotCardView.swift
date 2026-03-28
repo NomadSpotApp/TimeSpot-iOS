@@ -50,7 +50,7 @@ struct ExploreSelectedSpotCardView: View {
               .padding(.vertical, 2)
               .background(.orange200)
               .clipShape(Capsule())
-              .padding(.bottom, 8)
+              .padding(.bottom, 12)
           }
 
           HStack(alignment: .lastTextBaseline, spacing: 6) {
@@ -64,20 +64,20 @@ struct ExploreSelectedSpotCardView: View {
               .foregroundStyle(.gray650)
               .lineLimit(1)
           }
-          .padding(.bottom, 10)
+          .padding(.bottom, 4)
 
           if !spot.statusText.isEmpty || !spot.closingText.isEmpty {
             HStack(spacing: 12) {
               if !spot.statusText.isEmpty {
                 Text(spot.statusText)
                   .pretendardCustomFont(textStyle: .body2Medium)
-                  .foregroundStyle(.gray700)
+                  .foregroundStyle(.gray850)
               }
 
               if !spot.closingText.isEmpty {
                 Text(spot.closingText)
                   .pretendardCustomFont(textStyle: .body2Regular)
-                  .foregroundStyle(.gray500)
+                  .foregroundStyle(.gray750)
                   .lineLimit(1)
               }
             }
@@ -89,13 +89,13 @@ struct ExploreSelectedSpotCardView: View {
               if !spot.distanceText.isEmpty {
                 Text(spot.distanceText)
                   .pretendardCustomFont(textStyle: .bodyBold)
-                  .foregroundStyle(.staticBlack)
+                  .foregroundStyle(.gray830)
               }
 
               if !spot.walkTimeText.isEmpty {
                 Text(spot.walkTimeText)
                   .pretendardCustomFont(textStyle: .bodyRegular)
-                  .foregroundStyle(.gray650)
+                  .foregroundStyle(.gray830)
                   .lineLimit(1)
               }
             }

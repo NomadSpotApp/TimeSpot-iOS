@@ -51,7 +51,7 @@ struct ExploreFloatingControlsView: View {
         Text("목록보기")
           .pretendardCustomFont(textStyle: .body2Medium)
       }
-      .foregroundStyle(.gray700)
+      .foregroundStyle(.gray830)
       .padding(.horizontal, 12)
       .padding(.vertical, 6)
       .frame(width: listButtonWidth, height: 38)
