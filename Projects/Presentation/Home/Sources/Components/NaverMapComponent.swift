@@ -25,6 +25,7 @@ public struct NaverMapComponent: UIViewRepresentable {
   let returnToLocationTrigger: Int
   let onSpotTapped: ((String) -> Void)?
   let onMapTapped: (() -> Void)?
+  let onCameraIdle: ((CLLocationCoordinate2D) -> Void)?
 
   // 마커와 경로를 저장할 변수들
   private static var currentMarker: NMFMarker?
@@ -46,7 +47,8 @@ public struct NaverMapComponent: UIViewRepresentable {
     selectedSpotID: String? = nil,
     returnToLocationTrigger: Int = 0,
     onSpotTapped: ((String) -> Void)? = nil,
-    onMapTapped: (() -> Void)? = nil
+    onMapTapped: (() -> Void)? = nil,
+    onCameraIdle: ((CLLocationCoordinate2D) -> Void)? = nil
   ) {
     self.locationPermissionStatus = locationPermissionStatus
     self.currentLocation = currentLocation
@@ -57,6 +59,7 @@ public struct NaverMapComponent: UIViewRepresentable {
     self.returnToLocationTrigger = returnToLocationTrigger
     self.onSpotTapped = onSpotTapped
     self.onMapTapped = onMapTapped
+    self.onCameraIdle = onCameraIdle
   }
 
   public func makeCoordinator() -> Coordinator {
@@ -81,6 +84,7 @@ public struct NaverMapComponent: UIViewRepresentable {
     // 🎯 네이버 지도 위치 오버레이 설정 (항상 기본 오버레이 사용)
     mapView.locationOverlay.hidden = false
     mapView.touchDelegate = context.coordinator
+    mapView.addCameraDelegate(delegate: context.coordinator)
 
     // 현재 위치가 있으면 그 위치로, 없으면 선택한 역 위치, 그것도 없으면 서울
     let initialLatitude = currentLocation?.coordinate.latitude
@@ -101,6 +105,7 @@ public struct NaverMapComponent: UIViewRepresentable {
   }
 
   public static func dismantleUIView(_ uiView: NMFMapView, coordinator: Coordinator) {
+    uiView.removeCameraDelegate(delegate: coordinator)
     currentMarker?.mapView = nil
     destinationMarker?.mapView = nil
     routePath?.mapView = nil
@@ -315,7 +320,7 @@ public struct NaverMapComponent: UIViewRepresentable {
     }
   }
 
-  public final class Coordinator: NSObject, NMFMapViewTouchDelegate {
+  public final class Coordinator: NSObject, NMFMapViewTouchDelegate, NMFMapViewCameraDelegate {
     var parent: NaverMapComponent
     private var shouldIgnoreNextMapTap = false
 
@@ -333,6 +338,13 @@ public struct NaverMapComponent: UIViewRepresentable {
         return
       }
       parent.onMapTapped?()
+    }
+
+    public func mapViewCameraIdle(_ mapView: NMFMapView) {
+      let target = mapView.cameraPosition.target
+      parent.onCameraIdle?(
+        CLLocationCoordinate2D(latitude: target.lat, longitude: target.lng)
+      )
     }
   }
 

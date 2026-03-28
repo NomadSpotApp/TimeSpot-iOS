@@ -5,11 +5,10 @@
 //  Created by Wonji Suh  on 3/28/26.
 //
 
-
 import Foundation
 import ComposableArchitecture
 import Entity
-
+import UseCase
 
 @Reducer
 public struct ExploreDetailFeature {
@@ -17,11 +16,12 @@ public struct ExploreDetailFeature {
 
   @ObservableState
   public struct State: Equatable {
-    public let spot: ExploreMapSpot
+    public var placeDetail: PlaceDetailEntity?
+    public var isLoading: Bool = false
+    public var errorMessage: String?
+    @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
 
-    public init(spot: ExploreMapSpot) {
-      self.spot = spot
-    }
+    public init() {}
   }
 
   public enum Action: ViewAction, BindableAction {
@@ -30,51 +30,39 @@ public struct ExploreDetailFeature {
     case async(AsyncAction)
     case inner(InnerAction)
     case delegate(DelegateAction)
-
   }
 
-  //MARK: - ViewAction
   @CasePathable
   public enum View {
-
+    case onAppear
   }
 
-
-
-  //MARK: - AsyncAction 비동기 처리 액션
   public enum AsyncAction: Equatable {
-
+    case fetchPlaceDetail
   }
 
-  //MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
+    case fetchPlaceDetailResponse(Result<PlaceDetailEntity, PlaceError>)
   }
 
-  //MARK: - NavigationAction
-  public enum DelegateAction: Equatable {
+  public enum DelegateAction: Equatable {}
 
-
-  }
-
+  @Dependency(\.placeUseCase) var placeUseCase
 
   public var body: some Reducer<State, Action> {
     BindingReducer()
     Reduce { state, action in
       switch action {
-        case .binding(_):
-          return .none
-
-        case .view(let viewAction):
-          return handleViewAction(state: &state, action: viewAction)
-
-        case .async(let asyncAction):
-          return handleAsyncAction(state: &state, action: asyncAction)
-
-        case .inner(let innerAction):
-          return handleInnerAction(state: &state, action: innerAction)
-
-        case .delegate(let delegateAction):
-          return handleDelegateAction(state: &state, action: delegateAction)
+      case .binding:
+        return .none
+      case .view(let viewAction):
+        return handleViewAction(state: &state, action: viewAction)
+      case .async(let asyncAction):
+        return handleAsyncAction(state: &state, action: asyncAction)
+      case .inner(let innerAction):
+        return handleInnerAction(state: &state, action: innerAction)
+      case .delegate(let delegateAction):
+        return handleDelegateAction(state: &state, action: delegateAction)
       }
     }
   }
@@ -86,7 +74,8 @@ extension ExploreDetailFeature {
     action: View
   ) -> Effect<Action> {
     switch action {
-
+    case .onAppear:
+      return .send(.async(.fetchPlaceDetail))
     }
   }
 
@@ -95,7 +84,27 @@ extension ExploreDetailFeature {
     action: AsyncAction
   ) -> Effect<Action> {
     switch action {
+    case .fetchPlaceDetail:
+      guard let placeID = Int(state.userSession.selectedExplorePlaceID) else {
+        state.errorMessage = PlaceError.placeNotFound.errorDescription
+        return .none
+      }
 
+      state.isLoading = true
+      state.errorMessage = nil
+      let userSession = state.userSession
+
+      return .run { send in
+        let result = await Result {
+          try await placeUseCase.detailPlace(
+            userSession: userSession,
+            placeId: placeID
+          )
+        }
+        .mapError(PlaceError.from)
+
+        await send(.inner(.fetchPlaceDetailResponse(result)))
+      }
     }
   }
 
@@ -103,9 +112,7 @@ extension ExploreDetailFeature {
     state: inout State,
     action: DelegateAction
   ) -> Effect<Action> {
-    switch action {
-
-    }
+    switch action {}
   }
 
   private func handleInnerAction(
@@ -113,9 +120,26 @@ extension ExploreDetailFeature {
     action: InnerAction
   ) -> Effect<Action> {
     switch action {
+    case .fetchPlaceDetailResponse(let result):
+      state.isLoading = false
 
+      switch result {
+      case .success(let detail):
+        state.placeDetail = detail
+        state.errorMessage = nil
+      case .failure(let error):
+        state.errorMessage = error.errorDescription
+      }
+      return .none
     }
   }
 }
 
-extension ExploreDetailFeature.State: Hashable {}
+extension ExploreDetailFeature.State: Hashable {
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(placeDetail)
+    hasher.combine(isLoading)
+    hasher.combine(errorMessage)
+    hasher.combine(userSession)
+  }
+}

@@ -32,33 +32,44 @@ public struct ExploreDetailView: View {
           .edgesIgnoringSafeArea(.all)
 
         VStack {
-          CustomNavigationBackBar(buttonAction: {
-            dismiss()
-          }, title: "")
-          .padding(.horizontal, 16)
-          .offset(y: -30)
+          if !(store.isLoading && store.placeDetail == nil) {
+            CustomNavigationBackBar(buttonAction: {
+              dismiss()
+            }, title: "")
+            .padding(.horizontal, 16)
+            .offset(y: -30)
+          } else {
+            Spacer()
+              .frame(height: 24)
+          }
 
           ScrollView(.vertical) {
-            VStack(alignment: .leading) {
-              exploreSpotNameTitle()
+            Group {
+              if store.isLoading && store.placeDetail == nil {
+                skeletonContent()
+              } else {
+                VStack(alignment: .leading) {
+                  exploreSpotNameTitle()
 
-              imageSection()
-                .padding(.top, 24)
+                  imageSection()
+                    .padding(.top, 24)
 
-              stayInfoSection()
-                .padding(.top, 24)
+                  stayInfoSection()
+                    .padding(.top, 24)
 
-              returnDeadlineSection()
-                .padding(.top, 24)
+                  returnDeadlineSection()
+                    .padding(.top, 24)
 
-              placeInfoSection()
-                .padding(.top, 29)
+                  placeInfoSection()
+                    .padding(.top, 29)
 
-              locationMapSection()
-                .padding(.top, 24)
+                  locationMapSection()
+                    .padding(.top, 24)
 
-              routeButtonSection()
-                .padding(.top, 24)
+                  routeButtonSection()
+                    .padding(.top, 24)
+                }
+              }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 28)
@@ -67,6 +78,9 @@ public struct ExploreDetailView: View {
         }
 
       }
+    }
+    .onAppear {
+      store.send(.view(.onAppear))
     }
   }
 }
@@ -81,12 +95,12 @@ private extension ExploreDetailView {
         .frame(height: 4)
 
       HStack(spacing: 8) {
-        Text(store.spot.name.formattedPlaceNameForDisplay)
+        Text(placeNameText.formattedPlaceNameForDisplay)
           .pretendardCustomFont(textStyle: .heading1)
           .foregroundStyle(.staticBlack)
           .lineLimit(2)
 
-        Text(store.spot.subtitle)
+        Text(categoryText)
           .pretendardCustomFont(textStyle: .body2Regular)
           .foregroundStyle(.gray700)
 
@@ -126,7 +140,7 @@ private extension ExploreDetailView {
       divider
 
       metricColumn(
-        value: store.spot.distanceText,
+        value: distanceText,
         title: "거리",
         valueColor: .gray830
       )
@@ -161,9 +175,10 @@ private extension ExploreDetailView {
           }
 
           (
-            Text(returnDeadlineText).foregroundStyle(.orange800)
+            Text(returnDeadlineText)
+              .foregroundStyle(isVisitUnavailable ? .gray700 : .orange800)
             +
-            Text("에는 역으로 출발해야 합니다.").foregroundStyle(.gray800)
+            Text(returnDeadlineSuffixText).foregroundStyle(.gray800)
           )
           .pretendardCustomFont(textStyle: .body2Medium)
           .lineSpacing(2)
@@ -219,7 +234,7 @@ private extension ExploreDetailView {
   func locationMapSection() -> some View {
     GeometryReader { proxy in
       Map(initialPosition: .region(mapRegion), interactionModes: .all) {
-        Annotation(store.spot.name, coordinate: store.spot.coordinate) {
+        Annotation(placeNameText, coordinate: mapCoordinate) {
           Image(asset: .spotPin)
             .resizable()
             .scaledToFit()
@@ -237,9 +252,9 @@ private extension ExploreDetailView {
   func routeButtonSection() -> some View {
     CustomButton(
       action: {},
-      title: "경로 확인하기",
+      title: isVisitUnavailable ? "방문 불가능" : "경로 확인하기",
       config: CustomButtonConfig.create(),
-      isEnable: true
+      isEnable: !isVisitUnavailable
     )
   }
 
@@ -296,56 +311,162 @@ private extension ExploreDetailView {
   }
 
   var stayableMinutesText: String {
-    store.spot.badgeText.stayableMinutesDisplayText
+    "약 \(remainingStayableMinutes)분"
   }
 
   var walkMinutesText: String {
-    store.spot.walkTimeText.walkMinutesDisplayText(
-      spotName: store.spot.name,
-      subtitle: store.spot.subtitle,
-      distanceText: store.spot.distanceText
-    )
+    if let placeDetail = store.placeDetail {
+      return "\(placeDetail.timeToStation)분"
+    }
+    return "0분"
   }
 
   var imageCards: [URL?] {
-    if let imageURL {
-      return [imageURL, imageURL]
+    let urls = store.placeDetail?.imageURL.compactMap(\.normalizedURL) ?? []
+    if !urls.isEmpty {
+      return urls
     }
     return [nil, nil]
   }
 
-  var imageURL: URL? {
-    store.spot.imageURL?.normalizedURL
+  var placeNameText: String {
+    store.placeDetail?.name ?? ""
+  }
+
+  var categoryText: String {
+    store.placeDetail?.category ?? ""
+  }
+
+  var distanceText: String {
+    if let placeDetail = store.placeDetail {
+      return "\(placeDetail.distanceToStation)m"
+    }
+    return ""
   }
 
   var returnDeadlineText: String {
-    Date().formattedReturnDeadlineText(addingMinutes: stayableMinutesValue)
+    if isVisitUnavailable {
+      return "방문 불가능해요"
+    }
+
+    if let leaveTime = store.placeDetail?.leaveTime,
+       let formatted = formattedDeadlineTime(from: leaveTime) {
+      return formatted
+    }
+
+    return Date().formattedReturnDeadlineText(addingMinutes: stayableMinutesValue) + "분"
   }
 
   var stayableMinutesValue: Int {
-    stayableMinutesText.minutesValue
+    remainingStayableMinutes
+  }
+
+  var remainingStayableMinutes: Int {
+    let originalMinutes = store.placeDetail?.stayableMinutes ?? 0
+    let elapsedMinutes = elapsedMinutesSincePlacesFetched
+    return max(originalMinutes - elapsedMinutes, 0)
+  }
+
+  var elapsedMinutesSincePlacesFetched: Int {
+    guard let fetchedAt = store.userSession.explorePlacesFetchedAt else {
+      return 0
+    }
+
+    return max(Int(Date().timeIntervalSince(fetchedAt) / 60), 0)
+  }
+
+  var isVisitUnavailable: Bool {
+    remainingStayableMinutes <= 0
+  }
+
+  var returnDeadlineSuffixText: String {
+    isVisitUnavailable ? "" : " 출발해야 해"
   }
 
   var openingHoursText: String {
-    String.openingHoursText(
-      status: store.spot.statusText,
-      closing: store.spot.closingText
-    )
+    let weekdayText = summarizedOpeningHours(from: store.placeDetail?.weekday ?? [])
+    let weekendText = summarizedOpeningHours(from: store.placeDetail?.weekend ?? [])
+
+    switch (weekdayText.isEmpty, weekendText.isEmpty) {
+    case (false, false):
+      return "평일 \(weekdayText), 주말 \(weekendText)"
+    case (false, true):
+      return "평일 \(weekdayText)"
+    case (true, false):
+      return "주말 \(weekendText)"
+    case (true, true):
+      return "영업 시간 정보 준비 중"
+    }
+  }
+
+  func summarizedOpeningHours(from values: [String]) -> String {
+    let normalized = values
+      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+
+    guard !normalized.isEmpty else {
+      return ""
+    }
+
+    let extractedTimes = normalized.map { value in
+      guard let separatorIndex = value.firstIndex(of: ":") else {
+        return value
+      }
+      return value[value.index(after: separatorIndex)...]
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    let uniqueTimes = Array(Set(extractedTimes))
+
+    if uniqueTimes.count == 1, let first = extractedTimes.first {
+      return first
+    }
+
+    return normalized.joined(separator: ", ")
   }
 
   var phoneNumberText: String {
-    "전화번호 정보 준비 중"
+    (store.placeDetail?.phoneNumber)?.nilIfEmpty ?? "전화번호 정보 준비 중"
   }
 
   var addressText: String {
-    store.spot.coordinate.approximateAddressText
+    (store.placeDetail?.address)?.nilIfEmpty ?? "주소 정보 준비 중"
   }
 
   var mapRegion: MKCoordinateRegion {
     MKCoordinateRegion(
-      center: store.spot.coordinate,
+      center: mapCoordinate,
       span: MKCoordinateSpan(latitudeDelta: 0.0035, longitudeDelta: 0.0035)
     )
+  }
+
+  var mapCoordinate: CLLocationCoordinate2D {
+    if let placeDetail = store.placeDetail {
+      return CLLocationCoordinate2D(
+        latitude: placeDetail.stationLat,
+        longitude: placeDetail.stationLon
+      )
+    }
+
+    return CLLocationCoordinate2D(
+      latitude: store.userSession.travelStationLat ?? 37.5666805,
+      longitude: store.userSession.travelStationLng ?? 126.9784147
+    )
+  }
+
+  func formattedDeadlineTime(from value: String) -> String? {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+
+    guard let date = formatter.date(from: value) else {
+      return nil
+    }
+
+    let outputFormatter = DateFormatter()
+    outputFormatter.locale = Locale(identifier: "ko_KR")
+    outputFormatter.dateFormat = "a h:mm분"
+    return outputFormatter.string(from: date)
   }
 
   @ViewBuilder
@@ -389,5 +510,158 @@ private extension ExploreDetailView {
         .foregroundStyle(.gray500)
     }
   }
+}
 
+private extension ExploreDetailView {
+  @ViewBuilder
+  func skeletonContent() -> some View {
+    VStack(alignment: .leading, spacing: 0) {
+      RoundedRectangle(cornerRadius: 4)
+        .fill(.gray200)
+        .frame(width: 84, height: 14)
+        .skeletonShimmer()
+        .padding(.top, 12)
+
+      HStack(spacing: 12) {
+        RoundedRectangle(cornerRadius: 20)
+          .fill(.gray200)
+          .frame(height: 180)
+          .frame(maxWidth: .infinity)
+          .skeletonShimmer()
+
+        RoundedRectangle(cornerRadius: 20)
+          .fill(.gray200)
+          .frame(width: 84, height: 180)
+          .skeletonShimmer()
+      }
+      .padding(.top, 24)
+
+      HStack(spacing: 0) {
+        skeletonMetricColumn()
+        divider
+        skeletonMetricColumn()
+        divider
+        skeletonMetricColumn()
+      }
+      .padding(.horizontal, 8)
+      .padding(.vertical, 16)
+      .background(.staticWhite)
+      .clipShape(RoundedRectangle(cornerRadius: 16))
+      .overlay {
+        RoundedRectangle(cornerRadius: 16)
+          .stroke(.gray300, lineWidth: 1)
+      }
+      .padding(.top, 24)
+
+      RoundedRectangle(cornerRadius: 20)
+        .fill(.gray200)
+        .frame(height: 84)
+        .skeletonShimmer()
+        .padding(.top, 24)
+
+      VStack(alignment: .leading, spacing: 16) {
+        RoundedRectangle(cornerRadius: 4)
+          .fill(.gray200)
+          .frame(width: 64, height: 14)
+          .skeletonShimmer()
+
+        skeletonInfoRow(lineWidth: 180)
+        skeletonInfoRow(lineWidth: 120)
+        skeletonInfoRow(lineWidth: 200)
+      }
+      .padding(.top, 24)
+
+      RoundedRectangle(cornerRadius: 20)
+        .fill(.gray200)
+        .frame(height: 180)
+        .skeletonShimmer()
+        .padding(.top, 24)
+
+      Capsule()
+        .fill(.gray200)
+        .frame(height: 56)
+        .skeletonShimmer()
+        .padding(.top, 24)
+    }
+  }
+
+  @ViewBuilder
+  func skeletonMetricColumn() -> some View {
+    VStack(spacing: 8) {
+      RoundedRectangle(cornerRadius: 4)
+        .fill(.gray200)
+        .frame(width: 46, height: 16)
+        .skeletonShimmer()
+
+      RoundedRectangle(cornerRadius: 4)
+        .fill(.gray200)
+        .frame(width: 34, height: 12)
+        .skeletonShimmer()
+    }
+    .frame(maxWidth: .infinity)
+  }
+
+  @ViewBuilder
+  func skeletonInfoRow(lineWidth: CGFloat) -> some View {
+    HStack(alignment: .top, spacing: 10) {
+      Circle()
+        .fill(.gray200)
+        .frame(width: 20, height: 20)
+        .skeletonShimmer()
+
+      VStack(alignment: .leading, spacing: 6) {
+        RoundedRectangle(cornerRadius: 4)
+          .fill(.gray200)
+          .frame(width: 56, height: 12)
+          .skeletonShimmer()
+
+        RoundedRectangle(cornerRadius: 4)
+          .fill(.gray200)
+          .frame(width: lineWidth, height: 14)
+          .skeletonShimmer()
+      }
+
+      Spacer(minLength: 0)
+    }
+  }
+}
+
+private extension View {
+  func skeletonShimmer() -> some View {
+    modifier(ExploreDetailSkeletonShimmerModifier())
+  }
+}
+
+private struct ExploreDetailSkeletonShimmerModifier: ViewModifier {
+  @State private var isAnimating = false
+
+  func body(content: Content) -> some View {
+    content
+      .overlay {
+        GeometryReader { geometry in
+          LinearGradient(
+            colors: [
+              .white.opacity(0),
+              .white.opacity(0.28),
+              .white.opacity(0)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          )
+          .frame(width: geometry.size.width * 0.55)
+          .offset(x: isAnimating ? geometry.size.width * 1.25 : -geometry.size.width * 0.8)
+        }
+        .clipped()
+      }
+      .mask(content)
+      .onAppear {
+        guard !isAnimating else { return }
+        withAnimation(
+          .easeInOut(duration: 1.0)
+            .repeatForever(autoreverses: false)
+        ) {
+          isAnimating = true
+        }
+      }
+  }
 }

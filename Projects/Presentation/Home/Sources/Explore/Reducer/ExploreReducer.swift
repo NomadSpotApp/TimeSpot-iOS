@@ -42,6 +42,8 @@ public struct ExploreReducer: Sendable {
     public var pendingSelectFirstSpotFromNextPage: Bool = false
     public var searchMarkerLat: Double?
     public var searchMarkerLon: Double?
+    public var mapCenterLat: Double?
+    public var mapCenterLon: Double?
     @Presents public var alert: AlertState<Alert>?
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
 
@@ -94,10 +96,12 @@ public struct ExploreReducer: Sendable {
     case searchTextChanged(String)
     case categoryTapped(ExploreCategory)
     case spotTapped(String)
+    case detailTapped
     case spotCardChanged(String?)
     case cardDragChanged(CGFloat)
     case cardDragEnded(CGFloat)
     case loadNextSpotPage
+    case mapCenterChanged(CLLocationCoordinate2D)
     // 길찾기 관련 액션
     case searchRouteToGangnam
     case clearRoute
@@ -241,25 +245,13 @@ extension ExploreReducer {
 
       case .searchTextChanged(let text):
         state.searchText = text
-        ExploreHelpers.resetSearchContext(
-          state: &state,
-          preserveSearchText: true
-        )
-        return .merge(
-          .cancel(id: CancelID.searchPlaces),
-          .send(.async(.fetchPlaces))
-        )
+        ExploreHelpers.syncSelectionWithFilters(state: &state)
+        return .none
 
       case .categoryTapped(let category):
         state.selectedCategory = category
-        ExploreHelpers.resetSearchContext(
-          state: &state,
-          preserveSelectedCategory: true
-        )
-        return .merge(
-          .cancel(id: CancelID.searchPlaces),
-          .send(.async(.fetchPlaces))
-        )
+        ExploreHelpers.syncSelectionWithFilters(state: &state)
+        return .none
 
       case .spotTapped(let spotID):
         if state.userSession.selectedExploreSpotID == spotID, state.isSpotCardVisible {
@@ -272,6 +264,7 @@ extension ExploreReducer {
 
         state.$userSession.withLock {
           $0.selectedExploreSpotID = spotID
+          $0.selectedExplorePlaceID = spotID
         }
         state.isSpotCardVisible = state.spots.contains(where: { $0.id == spotID && $0.hasDetail })
         #logDebug(" [ExploreReducer] spotTapped id=\(spotID), hasDetail=\(state.isSpotCardVisible)")
@@ -289,10 +282,26 @@ extension ExploreReducer {
           .send(.async(.fetchPlaces))
         )
 
+      case .detailTapped:
+        guard state.remainingSelectedSpotMinutes > 0 else {
+          state.alert = AlertState {
+            TextState("방문 불가능해요")
+          } actions: {
+            ButtonState(action: .dismissAlert) {
+              TextState("확인")
+            }
+          } message: {
+            TextState("남은 체류 시간이 없어서 상세 보기를 열 수 없어요.")
+          }
+          return .none
+        }
+        return .send(.delegate(.presentExplorerDetail))
+
       case .spotCardChanged(let spotID):
         if let spotID {
           state.$userSession.withLock {
             $0.selectedExploreSpotID = spotID
+            $0.selectedExplorePlaceID = spotID
           }
           state.isSpotCardVisible = true
         } else {
@@ -335,6 +344,11 @@ extension ExploreReducer {
         state.pendingSelectFirstSpotFromNextPage = true
         return .send(.async(.searchPlaces(page: state.currentPage, append: true)))
 
+      case .mapCenterChanged(let coordinate):
+        state.mapCenterLat = coordinate.latitude
+        state.mapCenterLon = coordinate.longitude
+        return .none
+
       // 길찾기 관련 액션
       case .searchRouteToGangnam:
         guard let currentLocation = state.currentLocation else {
@@ -366,6 +380,7 @@ extension ExploreReducer {
         if clearResult.shouldClearSpot {
           state.$userSession.withLock {
             $0.selectedExploreSpotID = ""
+            $0.selectedExplorePlaceID = ""
           }
         }
 
@@ -458,6 +473,9 @@ extension ExploreReducer {
         state.currentPage = entities.currentPage
         state.hasNextPage = entities.hasNextPage || ExploreHelpers.hasUnresolvedBaseSpots(entities.spots)
         state.hasFetchedPlacesWithCurrentLocation = usedCurrentLocation
+        state.$userSession.withLock {
+          $0.explorePlacesFetchedAt = Date()
+        }
         return .none
 
       case .fetchPlacesFailed(let message, let usedCurrentLocation):
@@ -486,8 +504,16 @@ extension ExploreReducer {
         let previousDetailedCount = state.spots.filter(\.hasDetail).count
         let currentKeyword = ExploreHelpers.currentKeyword(state: state)
         let currentCategory = ExploreHelpers.currentCategory(state: state)
-        let currentMarkerLat = state.searchMarkerLat
-        let currentMarkerLon = state.searchMarkerLon
+        let currentMarkerLat: Double?
+        let currentMarkerLon: Double?
+
+        if ExploreHelpers.isResolvingSelectedMarkerDetail(state: state) {
+          currentMarkerLat = state.searchMarkerLat
+          currentMarkerLon = state.searchMarkerLon
+        } else {
+          currentMarkerLat = state.mapCenterLat ?? state.userSession.travelStationLat
+          currentMarkerLon = state.mapCenterLon ?? state.userSession.travelStationLng
+        }
 
         guard requestedPage == 0 || append else {
           return .none
@@ -508,8 +534,19 @@ extension ExploreReducer {
         }
 
         state.hasFetchedPlacesWithCurrentLocation = usedCurrentLocation
-        state.currentPage = pageEntity.currentPage
         let newSpots = pageEntity.spots
+        let mergedSpots: [ExploreMapSpot]
+        if append {
+          let existingSpotIDs = Set(state.spots.map(\.id))
+          let uniqueNewSpots = newSpots.filter { !existingSpotIDs.contains($0.id) }
+          mergedSpots = state.spots + uniqueNewSpots
+        } else {
+          mergedSpots = newSpots
+        }
+        state.currentPage = requestedPage + 1
+        state.$userSession.withLock {
+          $0.explorePlacesFetchedAt = Date()
+        }
         let newDetailedCount = newSpots.filter(\.hasDetail).count
         let gainedMoreDetail = newDetailedCount > previousDetailedCount
         let shouldKeepBootstrappingDetails =
@@ -524,9 +561,9 @@ extension ExploreReducer {
         let firstNewSpotID = newSpots.first(where: \.hasDetail)?.id
         let selectedSpotID = state.userSession.selectedExploreSpotID.nilIfEmpty
 
-        state.spots = newSpots
+        state.spots = mergedSpots
         if let selectedSpotID,
-           newSpots.contains(where: { $0.id == selectedSpotID && $0.hasDetail }) {
+           mergedSpots.contains(where: { $0.id == selectedSpotID && $0.hasDetail }) {
           state.isSpotCardVisible = true
         } else if state.searchMarkerLat != nil {
           state.isSpotCardVisible = false
@@ -537,6 +574,7 @@ extension ExploreReducer {
         if state.pendingSelectFirstSpotFromNextPage, let firstNewSpotID {
           state.$userSession.withLock {
             $0.selectedExploreSpotID = firstNewSpotID
+            $0.selectedExplorePlaceID = firstNewSpotID
           }
           state.isSpotCardVisible = true
           state.pendingSelectFirstSpotFromNextPage = false
@@ -636,15 +674,18 @@ extension ExploreReducer {
 
           state.$userSession.withLock {
             $0.selectedExploreSpotID = cardSpots[0].id
+            $0.selectedExplorePlaceID = cardSpots[0].id
           }
         } else if isAtStart {
           state.$userSession.withLock {
             $0.selectedExploreSpotID = cardSpots[cardSpots.count - 1].id
+            $0.selectedExplorePlaceID = cardSpots[cardSpots.count - 1].id
           }
         } else {
           let newIndex = next ? currentIndex + 1 : currentIndex - 1
           state.$userSession.withLock {
             $0.selectedExploreSpotID = cardSpots[newIndex].id
+            $0.selectedExplorePlaceID = cardSpots[newIndex].id
           }
         }
 
@@ -776,17 +817,21 @@ extension ExploreReducer {
         let fallbackLng = state.userSession.travelStationLng ?? 0
         let userLat = state.currentLocation?.coordinate.latitude ?? fallbackLat
         let userLon = state.currentLocation?.coordinate.longitude ?? fallbackLng
-        let markerLat = state.searchMarkerLat ?? state.userSession.travelStationLat ?? fallbackLat
-        let markerLon = state.searchMarkerLon ?? state.userSession.travelStationLng ?? fallbackLng
-        let requestedMarkerLat = state.searchMarkerLat
-        let requestedMarkerLon = state.searchMarkerLon
         let rawKeyword = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let isResolvingSelectedMarkerDetail = ExploreHelpers.isResolvingSelectedMarkerDetail(state: state)
+        let mapLat = isResolvingSelectedMarkerDetail
+          ? (state.searchMarkerLat ?? state.userSession.travelStationLat ?? fallbackLat)
+          : (state.mapCenterLat ?? state.userSession.travelStationLat ?? fallbackLat)
+        let mapLon = isResolvingSelectedMarkerDetail
+          ? (state.searchMarkerLon ?? state.userSession.travelStationLng ?? fallbackLng)
+          : (state.mapCenterLon ?? state.userSession.travelStationLng ?? fallbackLng)
+        let requestedMarkerLat = mapLat
+        let requestedMarkerLon = mapLon
         let keyword = isResolvingSelectedMarkerDetail ? nil : rawKeyword.nilIfEmpty
         let category: ExploreCategory? = isResolvingSelectedMarkerDetail
           ? nil
           : (state.selectedCategory == .all ? nil : state.selectedCategory)
-        let sortBy = isResolvingSelectedMarkerDetail ? "MARKER_NEAREST" : "STATION_NEAREST"
+        let sortBy = "MAP_NEAREST"
         let usedCurrentLocation = state.currentLocation != nil
         let baseSpots = state.spots
 
@@ -800,8 +845,8 @@ extension ExploreReducer {
               keyword: keyword,
               category: category,
               sortBy: sortBy,
-              markerLat: markerLat,
-              markerLon: markerLon,
+              mapLat: mapLat,
+              mapLon: mapLon,
               page: page
             )
           }
@@ -900,5 +945,33 @@ extension ExploreReducer {
         state.alert = nil
         return .none
     }
+  }
+}
+
+private extension ExploreReducer.State {
+  var remainingSelectedSpotMinutes: Int {
+    guard let selectedSpot else {
+      return 0
+    }
+
+    let originalMinutes = selectedSpot.originalStayableMinutes
+    let elapsedMinutes = elapsedMinutesSincePlacesFetched
+    return max(originalMinutes - elapsedMinutes, 0)
+  }
+
+  var elapsedMinutesSincePlacesFetched: Int {
+    guard let fetchedAt = userSession.explorePlacesFetchedAt else {
+      return 0
+    }
+
+    return max(Int(Date().timeIntervalSince(fetchedAt) / 60), 0)
+  }
+}
+
+private extension ExploreMapSpot {
+  var originalStayableMinutes: Int {
+    let digits = badgeText.compactMap(\.wholeNumberValue)
+    guard !digits.isEmpty else { return 0 }
+    return digits.reduce(0) { ($0 * 10) + $1 }
   }
 }
