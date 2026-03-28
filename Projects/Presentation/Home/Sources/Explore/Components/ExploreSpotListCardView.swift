@@ -27,9 +27,9 @@ struct ExploreSpotListCardView: View {
         }
 
         VStack(alignment: .leading, spacing: 6) {
-          titleText
-            .lineLimit(2)
+          titleRow
             .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: titleMinHeight, alignment: .topLeading)
         }
         .padding(.bottom, 8)
 
@@ -87,20 +87,43 @@ struct ExploreSpotListCardView: View {
     }
   }
 
-  private var titleText: Text {
-    let nameText = Text(spot.name)
-      .font(.pretendardFontFamily(family: .SemiBold, size: 18))
-      .foregroundColor(.staticBlack)
+  @ViewBuilder
+  private var titleRow: some View {
+    HStack(alignment: .top, spacing: 6) {
+      Text(formattedDisplayName)
+        .font(.pretendardFontFamily(family: .SemiBold, size: 18))
+        .foregroundStyle(.staticBlack)
+        .lineLimit(titleLineLimit)
+        .layoutPriority(1)
 
-    guard !spot.subtitle.isEmpty else {
-      return nameText
+      if !spot.subtitle.isEmpty {
+        Text(spot.subtitle)
+          .font(.pretendardFontFamily(family: .Medium, size: 14))
+          .foregroundStyle(.gray700)
+          .lineLimit(1)
+          .fixedSize()
+          .padding(.top, 2)
+      }
+
+      Spacer(minLength: 0)
+    }
+  }
+
+  private var titleLineLimit: Int {
+    spot.name.count > 7 ? 2 : 1
+  }
+
+  private var titleMinHeight: CGFloat {
+    spot.name.count > 7 ? 48 : 24
+  }
+
+  private var formattedDisplayName: String {
+    guard spot.name.count > 7 else {
+      return spot.name
     }
 
-    let subtitleText = Text(" \(spot.subtitle)")
-      .font(.pretendardFontFamily(family: .Medium, size: 14))
-      .foregroundColor(.gray700)
-
-    return nameText + subtitleText
+    let splitIndex = spot.name.index(spot.name.startIndex, offsetBy: 7)
+    return "\(spot.name[..<splitIndex])\n\(spot.name[splitIndex...])"
   }
 
   @ViewBuilder
