@@ -26,8 +26,6 @@ public struct ExploreView: View {
     (UIScreen.main.bounds.width - 32) / 2
   }
 
-  private let cardHeight: CGFloat = 182
-
   public init(store: StoreOf<ExploreReducer>) {
     self.store = store
   }
@@ -64,7 +62,7 @@ private extension ExploreView {
       currentLocation: store.currentLocation,
       routeInfo: store.routeInfo,
       destination: store.selectedDestination,
-      spots: filteredMapSpots,
+      spots: store.state.filteredMapSpots,
       selectedSpotID: store.userSession.selectedExploreSpotID.isEmpty
         ? nil
         : store.userSession.selectedExploreSpotID,
@@ -93,16 +91,28 @@ private extension ExploreView {
 
   @ViewBuilder
   func bottomSection() -> some View {
+    let selectedSpot = store.state.selectedSpot
     let hasSelectedSpotCard = selectedSpot != nil
 
-    ZStack(alignment: .bottom) {
+    VStack(spacing: 16) {
+      ExploreFloatingControlsView(
+        showsListButton: hasSelectedSpotCard,
+        controlsBottomPadding: 0,
+        onListTap: {
+          store.send(.delegate(.presentExploreList))
+        },
+        onCurrentLocationTap: {
+          store.send(.view(.returnToCurrentLocation))
+        }
+      )
+
       if let selectedSpot {
         ExploreSelectedSpotCardView(
           currentSpot: selectedSpot,
-          adjacentSpot: adjacentSpot,
+          adjacentSpot: store.state.adjacentSpot(cardTravelDistance: cardTravelDistance),
           currentOffset: store.cardBaseOffset + store.cardDragOffset,
-          adjacentOffset: adjacentCardOffset,
-          cardOpacity: cardOpacity,
+          adjacentOffset: store.state.adjacentCardOffset(cardTravelDistance: cardTravelDistance),
+          cardOpacity: store.state.cardOpacity(cardTravelDistance: cardTravelDistance),
           onCardTap: {
             store.send(.delegate(.presentExplorerDetail))
           },
@@ -114,41 +124,9 @@ private extension ExploreView {
             store.send(.view(.cardDragEnded(value.translation.width)))
           }
         )
-          .padding(.horizontal, 16)
-          .frame(height: cardHeight)
+        .padding(.horizontal, 16)
       }
-
-      ExploreFloatingControlsView(
-        showsListButton: hasSelectedSpotCard,
-        controlsBottomPadding: hasSelectedSpotCard ? cardHeight + 20 : 0,
-        onListTap: {
-          store.send(.delegate(.presentExploreList))
-        },
-        onCurrentLocationTap: {
-          store.send(.view(.returnToCurrentLocation))
-        }
-      )
     }
     .padding(.bottom, 36)
-  }
-
-  var filteredMapSpots: [ExploreMapSpot] {
-    store.state.filteredMapSpots
-  }
-
-  var selectedSpot: ExploreMapSpot? {
-    store.state.selectedSpot
-  }
-
-  var adjacentSpot: ExploreMapSpot? {
-    store.state.adjacentSpot(cardTravelDistance: cardTravelDistance)
-  }
-
-  var adjacentCardOffset: CGFloat? {
-    store.state.adjacentCardOffset(cardTravelDistance: cardTravelDistance)
-  }
-
-  var cardOpacity: Double {
-    store.state.cardOpacity(cardTravelDistance: cardTravelDistance)
   }
 }

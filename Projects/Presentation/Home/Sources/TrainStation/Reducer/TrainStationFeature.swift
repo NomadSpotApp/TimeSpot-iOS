@@ -162,13 +162,13 @@ extension TrainStationFeature {
       return .run { [stationUseCase] send in
         let locationManager = await LocationPermissionManager.shared
         let location = await MainActor.run { locationManager.currentLocation }
-        let lat = location?.coordinate.latitude ?? 37.5666805
-        let lng = location?.coordinate.longitude ?? 126.9784147
+        let userLat = location?.coordinate.latitude ?? 37.5666805
+        let userLon = location?.coordinate.longitude ?? 126.9784147
 
         do {
           let entity = try await stationUseCase.fetchStations(
-            lat: lat,
-            lng: lng,
+            userLat: userLat,
+            userLon: userLon,
             page: 1,
             size: 30
           )
