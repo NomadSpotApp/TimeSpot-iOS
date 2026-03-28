@@ -159,24 +159,39 @@ extension ExploreListFeature {
 
       case .loadNextPage:
         guard !state.isLoading else {
+          print("⏸️ [ExploreList] loadNextPage skipped: already loading")
           return .none
         }
 
-        let currentLastSpotID = state.spots.last?.id
+        let visibleSpots = filteredSpots(from: state.spots, state: state)
+        let bufferedVisibleSpots = filteredSpots(from: state.bufferedSpots, state: state)
+        let currentLastSpotID = visibleSpots.last?.id
+
         guard state.lastTriggeredLoadSpotID != currentLastSpotID else {
+          print("⏸️ [ExploreList] loadNextPage skipped: duplicate trigger for lastVisibleSpotID=\(currentLastSpotID ?? "nil")")
           return .none
         }
-        if state.spots.count < state.bufferedSpots.count {
+
+        if visibleSpots.count < bufferedVisibleSpots.count {
           state.lastTriggeredLoadSpotID = currentLastSpotID
-          revealNextChunk(state: &state)
+          print(
+            "📦 [ExploreList] reveal buffered chunk: lastVisibleSpotID=\(currentLastSpotID ?? "nil"), visible=\(visibleSpots.count), bufferedVisible=\(bufferedVisibleSpots.count), rawShown=\(state.spots.count), rawBuffered=\(state.bufferedSpots.count)"
+          )
+          revealNextVisibleChunk(state: &state)
           return .none
         }
 
         guard state.hasNextPage else {
+          print(
+            "⏹️ [ExploreList] loadNextPage skipped: no next page, lastVisibleSpotID=\(currentLastSpotID ?? "nil"), visible=\(visibleSpots.count), bufferedVisible=\(bufferedVisibleSpots.count)"
+          )
           return .none
         }
 
         state.lastTriggeredLoadSpotID = currentLastSpotID
+        print(
+          "🌐 [ExploreList] request next page: page=\(state.currentPage), lastVisibleSpotID=\(currentLastSpotID ?? "nil"), visible=\(visibleSpots.count), bufferedVisible=\(bufferedVisibleSpots.count)"
+        )
         return .send(.async(.searchPlaces(page: state.currentPage, append: true)))
     }
   }
@@ -264,10 +279,28 @@ extension ExploreListFeature {
         if append {
           let existingSpotIDs = Set(state.bufferedSpots.map(\.id))
           let uniqueNewSpots = pageEntity.spots.filter { !existingSpotIDs.contains($0.id) }
+          let duplicateSpotIDs = pageEntity.spots
+            .map(\.id)
+            .filter { existingSpotIDs.contains($0) }
+
+          print(
+            "📥 [ExploreList] append response: requestedPage=\(requestedPage), responseCount=\(pageEntity.spots.count), uniqueNew=\(uniqueNewSpots.count), duplicates=\(duplicateSpotIDs.count), firstID=\(pageEntity.spots.first?.id ?? "nil"), lastID=\(pageEntity.spots.last?.id ?? "nil"), hasNextPage=\(pageEntity.hasNextPage)"
+          )
+
+          if uniqueNewSpots.isEmpty {
+            let duplicatePreview = Array(duplicateSpotIDs.prefix(10)).joined(separator: ", ")
+            print(
+              "⚠️ [ExploreList] append response contained no new spots. duplicateIDs(prefix10)=[\(duplicatePreview)]"
+            )
+          }
+
           state.bufferedSpots.append(contentsOf: uniqueNewSpots)
           revealNextChunk(state: &state)
           print("🔄 [무한스크롤] 버퍼 총: \(state.bufferedSpots.count)개, 화면 노출: \(state.spots.count)개")
         } else {
+          print(
+            "📥 [ExploreList] initial response: requestedPage=\(requestedPage), responseCount=\(pageEntity.spots.count), firstID=\(pageEntity.spots.first?.id ?? "nil"), lastID=\(pageEntity.spots.last?.id ?? "nil"), hasNextPage=\(pageEntity.hasNextPage)"
+          )
           state.bufferedSpots = pageEntity.spots
           state.spots = []
           revealNextChunk(state: &state)
@@ -292,6 +325,34 @@ private extension ExploreListFeature {
       state.bufferedSpots.count
     )
     state.spots = Array(state.bufferedSpots.prefix(nextCount))
+  }
+
+  func revealNextVisibleChunk(state: inout State) {
+    let currentVisibleCount = filteredSpots(from: state.spots, state: state).count
+    var nextCount = state.spots.count
+
+    while nextCount < state.bufferedSpots.count {
+      nextCount = min(nextCount + State.pageChunkSize, state.bufferedSpots.count)
+      let nextSpots = Array(state.bufferedSpots.prefix(nextCount))
+      let nextVisibleCount = filteredSpots(from: nextSpots, state: state).count
+
+      state.spots = nextSpots
+
+      if nextVisibleCount > currentVisibleCount || nextCount == state.bufferedSpots.count {
+        return
+      }
+    }
+  }
+
+  func filteredSpots(from spots: [ExploreMapSpot], state: State) -> [ExploreMapSpot] {
+    let query = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    return spots.filter { spot in
+      let hasDetail = spot.hasDetail
+      let matchesCategory = state.selectedCategory == .all || spot.category == state.selectedCategory
+      let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
+      return hasDetail && matchesCategory && matchesQuery
+    }
   }
 
   func makeSpots(

@@ -57,8 +57,10 @@ public struct ExploreDetailView: View {
                   stayInfoSection()
                     .padding(.top, 24)
 
-                  returnDeadlineSection()
-                    .padding(.top, 24)
+                  if !isVisitUnavailable {
+                    returnDeadlineSection()
+                      .padding(.top, 24)
+                  }
 
                   placeInfoSection()
                     .padding(.top, 29)
@@ -66,8 +68,10 @@ public struct ExploreDetailView: View {
                   locationMapSection()
                     .padding(.top, 24)
 
-                  routeButtonSection()
-                    .padding(.top, 24)
+                  if !isVisitUnavailable {
+                    routeButtonSection()
+                      .padding(.top, 24)
+                  }
                 }
               }
             }
@@ -82,6 +86,11 @@ public struct ExploreDetailView: View {
     .onAppear {
       store.send(.view(.onAppear))
     }
+    .onChange(of: store.shouldDismiss) { _, shouldDismiss in
+      guard shouldDismiss else { return }
+      dismiss()
+    }
+    .customAlert($store.scope(state: \.customAlert, action: \.scope.customAlert))
   }
 }
 
