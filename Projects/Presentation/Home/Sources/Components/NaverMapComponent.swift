@@ -34,6 +34,7 @@ public struct NaverMapComponent: UIViewRepresentable {
   private static var lastSyncedSpotID: String?
   private static var lastDestinationKey: String?
   private static var lastReturnToLocationTrigger: Int?
+  private static var lastAutoFitKey: String?
   private static var routePath: NMFPath?
 
   public init(
@@ -99,12 +100,29 @@ public struct NaverMapComponent: UIViewRepresentable {
     return mapView
   }
 
+  public static func dismantleUIView(_ uiView: NMFMapView, coordinator: Coordinator) {
+    currentMarker?.mapView = nil
+    destinationMarker?.mapView = nil
+    routePath?.mapView = nil
+    spotMarkers.values.forEach { $0.mapView = nil }
+    spotMarkers.removeAll()
+    currentMarker = nil
+    destinationMarker = nil
+    selectedSpotID = nil
+    lastSyncedSpotID = nil
+    lastDestinationKey = nil
+    lastReturnToLocationTrigger = nil
+    lastAutoFitKey = nil
+    routePath = nil
+  }
+
   public func updateUIView(_ uiView: NMFMapView, context: Context) {
     context.coordinator.parent = self
     let shouldReturnToLocation =
       currentLocation != nil
       && Self.lastReturnToLocationTrigger != returnToLocationTrigger
     let shouldPrioritizeCurrentLocation = shouldReturnToLocation
+    let autoFitKey = makeAutoFitKey(destination: destination, spots: spots)
     // 기존 마커들과 경로 제거
     Self.currentMarker?.mapView = nil
     Self.destinationMarker?.mapView = nil
@@ -119,12 +137,15 @@ public struct NaverMapComponent: UIViewRepresentable {
       // 현재 위치로 돌아가기 버튼이 눌렸을 때만 카메라 이동
       if shouldReturnToLocation {
         Self.lastReturnToLocationTrigger = returnToLocationTrigger
+        Self.lastAutoFitKey = autoFitKey
+
+        let target = NMGLatLng(
+          lat: location.coordinate.latitude,
+          lng: location.coordinate.longitude
+        )
         moveCamera(
           on: uiView,
-          to: NMGLatLng(
-            lat: location.coordinate.latitude,
-            lng: location.coordinate.longitude
-          ),
+          to: target,
           zoom: 16
         )
       }
@@ -246,7 +267,11 @@ public struct NaverMapComponent: UIViewRepresentable {
           zoom: 17
         )
       }
-    } else if !shouldPrioritizeCurrentLocation, routeInfo == nil, !spots.isEmpty {
+    } else if !shouldPrioritizeCurrentLocation,
+              routeInfo == nil,
+              !spots.isEmpty,
+              Self.lastAutoFitKey != autoFitKey {
+      Self.lastAutoFitKey = autoFitKey
       adjustCameraToFitSpots(
         mapView: uiView,
         spots: spots,
@@ -358,6 +383,20 @@ public struct NaverMapComponent: UIViewRepresentable {
     cameraUpdate.animation = .easeOut
     cameraUpdate.animationDuration = 0.45
     mapView.moveCamera(cameraUpdate)
+  }
+
+  private func makeAutoFitKey(
+    destination: Destination?,
+    spots: [ExploreMapSpot]
+  ) -> String {
+    let destinationKey = destination.map {
+      "\($0.name)-\($0.coordinate.latitude)-\($0.coordinate.longitude)"
+    } ?? "nil"
+    let spotKey = spots
+      .map { "\($0.id)-\($0.coordinate.latitude)-\($0.coordinate.longitude)" }
+      .sorted()
+      .joined(separator: "|")
+    return "\(destinationKey)::\(spotKey)"
   }
 
   // 3D 효과가 있는 핀 마커 이미지 생성

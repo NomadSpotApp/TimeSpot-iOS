@@ -503,13 +503,24 @@ extension ExploreReducer {
         return .none
 
       case .returnToCurrentLocation:
-        #logDebug(
-          " [ExploreReducer] returnToCurrentLocation current=\(String(describing: state.currentLocation?.coordinate))"
-        )
+        // ⭐️ 핵심: 선택된 스팟 클리어 (NaverMapComponent에서 스팟으로 다시 이동하는 것 방지)
+        state.$userSession.withLock {
+          $0.selectedExploreSpotID = ""
+        }
+
+        // 경로만 제거하고 역 목적지 마커는 유지
+        state.routeInfo = nil
+
+        // 카드가 올라와있으면 먼저 내리기
+        if state.isSpotCardVisible {
+          clearSelectedSpot(state: &state)
+        }
+
         guard state.currentLocation != nil else {
           state.shouldReturnToCurrentLocation = true
           return .send(.async(.requestCurrentLocation))
         }
+
         state.returnToCurrentLocationTrigger += 1
         return .none
     }
