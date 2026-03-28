@@ -21,6 +21,7 @@ public extension ShapeStyle where Self == Color {
   static var gray700: Color {  .init(hex: "878787") }
   static var gray750: Color {  .init(hex: "595959") }
   static var gray800: Color {  .init(hex: "545454") }
+  static var gray830: Color {  .init(hex: "3D3D3D") }
   static var gray850: Color {  .init(hex: "373737") }
   static var gray900: Color {  .init(hex: "181818") }
   static var lightGray: Color { .init(hex: "CCCCCC") }
