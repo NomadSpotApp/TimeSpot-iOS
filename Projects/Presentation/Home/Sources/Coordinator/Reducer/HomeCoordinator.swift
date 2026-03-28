@@ -233,13 +233,21 @@ extension HomeCoordinator {
       exploreListState.currentLocation = exploreState.currentLocation?.coordinate
       exploreListState.markerLat = exploreState.mapCenterLat ?? exploreState.searchMarkerLat
       exploreListState.markerLon = exploreState.mapCenterLon ?? exploreState.searchMarkerLon
-      exploreListState.bufferedSpots = exploreState.spots
-      exploreListState.spots = Array(
-        exploreState.spots.prefix(ExploreListFeature.State.pageChunkSize)
-      )
-      exploreListState.currentPage = exploreState.currentPage
-      exploreListState.hasNextPage = exploreState.hasNextPage
-      exploreListState.hasLoadedInitialPage = !exploreState.spots.isEmpty
+
+      let hasFullyLoadedMarkerData =
+        !exploreState.spots.isEmpty
+        && exploreState.spots.allSatisfy(\.hasDetail)
+
+      if hasFullyLoadedMarkerData {
+        exploreListState.bufferedSpots = exploreState.spots
+        exploreListState.spots = Array(
+          exploreState.spots.prefix(ExploreListFeature.State.pageChunkSize)
+        )
+        exploreListState.currentPage = exploreState.currentPage
+        exploreListState.hasNextPage = exploreState.hasNextPage
+        exploreListState.hasLoadedInitialPage = true
+      }
+
       state.routes.push(.exploreList(exploreListState))
       return .none
 

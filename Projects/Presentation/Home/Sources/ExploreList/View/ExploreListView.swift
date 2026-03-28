@@ -24,7 +24,7 @@ public struct ExploreListView: View {
   public var body: some View {
     ZStack {
       VStack(spacing: 0) {
-        if store.isLoading && store.spots.isEmpty {
+        if shouldShowInitialSkeleton {
           ExploreListSkeletonView()
         } else {
           ExploreSearchHeaderView(
@@ -85,6 +85,10 @@ public struct ExploreListView: View {
 }
 
 private extension ExploreListView {
+  var shouldShowInitialSkeleton: Bool {
+    store.spots.isEmpty && (!store.hasLoadedInitialPage || store.isLoading)
+  }
+
   var isFilteringLocally: Bool {
     !store.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
       || store.selectedCategory != .all

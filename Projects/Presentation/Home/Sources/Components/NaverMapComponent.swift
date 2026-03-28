@@ -31,6 +31,7 @@ public struct NaverMapComponent: UIViewRepresentable {
   private static var currentMarker: NMFMarker?
   private static var destinationMarker: NMFMarker?
   private static var spotMarkers: [String: NMFMarker] = [:]
+  private static let markerImageCache = NSCache<NSString, UIImage>()
   private static var selectedSpotID: String?
   private static var lastSyncedSpotID: String?
   private static var lastDestinationKey: String?
@@ -106,19 +107,19 @@ public struct NaverMapComponent: UIViewRepresentable {
 
   public static func dismantleUIView(_ uiView: NMFMapView, coordinator: Coordinator) {
     uiView.removeCameraDelegate(delegate: coordinator)
-    currentMarker?.mapView = nil
-    destinationMarker?.mapView = nil
-    routePath?.mapView = nil
-    spotMarkers.values.forEach { $0.mapView = nil }
-    spotMarkers.removeAll()
-    currentMarker = nil
-    destinationMarker = nil
-    selectedSpotID = nil
-    lastSyncedSpotID = nil
-    lastDestinationKey = nil
-    lastReturnToLocationTrigger = nil
-    lastAutoFitKey = nil
-    routePath = nil
+    Self.currentMarker?.mapView = nil
+    Self.destinationMarker?.mapView = nil
+    Self.routePath?.mapView = nil
+    Self.spotMarkers.values.forEach { $0.mapView = nil }
+    Self.spotMarkers.removeAll()
+    Self.currentMarker = nil
+    Self.destinationMarker = nil
+    Self.selectedSpotID = nil
+    Self.lastSyncedSpotID = nil
+    Self.lastDestinationKey = nil
+    Self.lastReturnToLocationTrigger = nil
+    Self.lastAutoFitKey = nil
+    Self.routePath = nil
   }
 
   public func updateUIView(_ uiView: NMFMapView, context: Context) {
@@ -128,12 +129,8 @@ public struct NaverMapComponent: UIViewRepresentable {
       && Self.lastReturnToLocationTrigger != returnToLocationTrigger
     let shouldPrioritizeCurrentLocation = shouldReturnToLocation
     let autoFitKey = makeAutoFitKey(destination: destination, spots: spots)
-    // 기존 마커들과 경로 제거
-    Self.currentMarker?.mapView = nil
-    Self.destinationMarker?.mapView = nil
-    Self.spotMarkers.values.forEach { $0.mapView = nil }
-    Self.spotMarkers.removeAll()
     Self.routePath?.mapView = nil
+    Self.routePath = nil
 
     // 위치 권한이 허용되었고 현재 위치가 있을 때 - 항상 현재 위치 마커 표시
     if (locationPermissionStatus == .authorizedWhenInUse || locationPermissionStatus == .authorizedAlways),
@@ -157,45 +154,55 @@ public struct NaverMapComponent: UIViewRepresentable {
 
       // 경로가 있을 때는 출발점에 빨간색 마커도 추가로 표시
       if routeInfo != nil {
-        let currentMarker = NMFMarker()
-        currentMarker.position = NMGLatLng(lat: location.coordinate.latitude, lng: location.coordinate.longitude)
-
-        // 네이버 기본 마커 (빨간색)
-        currentMarker.iconTintColor = UIColor.red
-        currentMarker.touchHandler = { _ in
-          Self.selectedSpotID = nil
-          Self.updateSpotMarkerSelection()
-          onMapTapped?()
-          return true
+        if Self.currentMarker == nil {
+          let currentMarker = NMFMarker()
+          currentMarker.iconTintColor = UIColor.red
+          currentMarker.touchHandler = { _ in
+            Self.setSelectedSpotID(nil)
+            onMapTapped?()
+            return true
+          }
+          currentMarker.mapView = uiView
+          Self.currentMarker = currentMarker
         }
-        currentMarker.mapView = uiView
-        Self.currentMarker = currentMarker
+
+        Self.currentMarker?.position = NMGLatLng(
+          lat: location.coordinate.latitude,
+          lng: location.coordinate.longitude
+        )
+        Self.currentMarker?.mapView = uiView
 
         #logDebug(" [NaverMapComponent] 출발점 마커 추가")
       } else {
+        Self.currentMarker?.mapView = nil
+        Self.currentMarker = nil
         #logDebug(" [NaverMapComponent] 기본 위치 오버레이 사용")
       }
+    } else {
+      Self.currentMarker?.mapView = nil
+      Self.currentMarker = nil
     }
 
     // 목적지 마커 추가 (네이버 3D 기본 마커 - 초록색)
     if let destination = destination {
       let destinationKey = "\(destination.coordinate.latitude),\(destination.coordinate.longitude),\(destination.name)"
-      let destinationMarker = NMFMarker()
-      destinationMarker.position = NMGLatLng(
+      if Self.destinationMarker == nil {
+        let destinationMarker = NMFMarker()
+        destinationMarker.iconTintColor = UIColor.systemGreen
+        destinationMarker.touchHandler = { _ in
+          Self.setSelectedSpotID(nil)
+          onMapTapped?()
+          return true
+        }
+        destinationMarker.mapView = uiView
+        Self.destinationMarker = destinationMarker
+      }
+
+      Self.destinationMarker?.position = NMGLatLng(
         lat: destination.coordinate.latitude,
         lng: destination.coordinate.longitude
       )
-
-      // 네이버 기본 마커 (초록색)
-      destinationMarker.iconTintColor = UIColor.systemGreen
-      destinationMarker.touchHandler = { _ in
-        Self.selectedSpotID = nil
-        Self.updateSpotMarkerSelection()
-        onMapTapped?()
-        return true
-      }
-      destinationMarker.mapView = uiView
-      Self.destinationMarker = destinationMarker
+      Self.destinationMarker?.mapView = uiView
 
       #logDebug(" [NaverMapComponent] 목적지 마커 추가: \(destination.name)")
 
@@ -211,47 +218,24 @@ public struct NaverMapComponent: UIViewRepresentable {
         )
       }
     } else {
+      Self.destinationMarker?.mapView = nil
+      Self.destinationMarker = nil
       Self.lastDestinationKey = nil
     }
 
     let previousSpotID = Self.lastSyncedSpotID
-    Self.selectedSpotID = selectedSpotID
-    Self.lastSyncedSpotID = selectedSpotID
+    Self.setSelectedSpotID(selectedSpotID)
+    Self.lastSyncedSpotID = Self.selectedSpotID
 
     if !spots.contains(where: { $0.id == Self.selectedSpotID }) {
-      Self.selectedSpotID = nil
+      Self.setSelectedSpotID(nil)
     }
 
-    for spot in spots {
-      let marker = NMFMarker()
-      marker.position = NMGLatLng(
-        lat: spot.coordinate.latitude,
-        lng: spot.coordinate.longitude
-      )
-      marker.iconImage = NMFOverlayImage(image: markerImage(for: spot.category))
-      marker.anchor = CGPoint(x: 0.5, y: 1.0)
-      Self.applySpotMarkerStyle(
-        marker,
-        isSelected: spot.id == Self.selectedSpotID
-      )
-      marker.touchHandler = { _ in
-        context.coordinator.markMarkerTap()
-        Self.selectedSpotID = spot.id
-        Self.updateSpotMarkerSelection()
-        onSpotTapped?(spot.id)
-        moveCamera(
-          on: uiView,
-          to: NMGLatLng(
-            lat: spot.coordinate.latitude,
-            lng: spot.coordinate.longitude
-          ),
-          zoom: 17
-        )
-        return true
-      }
-      marker.mapView = uiView
-      Self.spotMarkers[spot.id] = marker
-    }
+    syncSpotMarkers(
+      on: uiView,
+      coordinator: context.coordinator,
+      onSpotTapped: onSpotTapped
+    )
 
     if !shouldPrioritizeCurrentLocation,
        let selectedSpotID = Self.selectedSpotID,
@@ -351,6 +335,11 @@ public struct NaverMapComponent: UIViewRepresentable {
   // MARK: - Helper Functions
 
   private func markerImage(for category: ExploreCategory) -> UIImage {
+    let cacheKey = NSString(string: "marker-\(category.rawValue)")
+    if let cachedImage = Self.markerImageCache.object(forKey: cacheKey) {
+      return cachedImage
+    }
+
     let asset: ImageAsset
     switch category {
     case .all:
@@ -367,7 +356,9 @@ public struct NaverMapComponent: UIViewRepresentable {
       asset = .etcPin
     }
 
-    return UIImage(asset) ?? UIImage()
+    let image = UIImage(asset) ?? UIImage()
+    Self.markerImageCache.setObject(image, forKey: cacheKey)
+    return image
   }
 
   private static func applySpotMarkerStyle(
@@ -382,6 +373,70 @@ public struct NaverMapComponent: UIViewRepresentable {
   private static func updateSpotMarkerSelection() {
     for (spotID, marker) in spotMarkers {
       applySpotMarkerStyle(marker, isSelected: spotID == selectedSpotID)
+    }
+  }
+
+  private static func setSelectedSpotID(_ newValue: String?) {
+    guard selectedSpotID != newValue else { return }
+
+    let previousSpotID = selectedSpotID
+    selectedSpotID = newValue
+
+    if let previousSpotID, let previousMarker = spotMarkers[previousSpotID] {
+      applySpotMarkerStyle(previousMarker, isSelected: false)
+    }
+
+    if let newValue, let selectedMarker = spotMarkers[newValue] {
+      applySpotMarkerStyle(selectedMarker, isSelected: true)
+    }
+  }
+
+  private func syncSpotMarkers(
+    on mapView: NMFMapView,
+    coordinator: Coordinator,
+    onSpotTapped: ((String) -> Void)?
+  ) {
+    let currentSpotIDs = Set(spots.map(\.id))
+
+    for (spotID, marker) in Self.spotMarkers where !currentSpotIDs.contains(spotID) {
+      marker.mapView = nil
+      Self.spotMarkers.removeValue(forKey: spotID)
+    }
+
+    for spot in spots {
+      let marker: NMFMarker
+
+      if let existingMarker = Self.spotMarkers[spot.id] {
+        marker = existingMarker
+      } else {
+        let newMarker = NMFMarker()
+        newMarker.anchor = CGPoint(x: 0.5, y: 1.0)
+        newMarker.mapView = mapView
+        Self.spotMarkers[spot.id] = newMarker
+        marker = newMarker
+      }
+
+      marker.position = NMGLatLng(
+        lat: spot.coordinate.latitude,
+        lng: spot.coordinate.longitude
+      )
+      marker.iconImage = NMFOverlayImage(image: markerImage(for: spot.category))
+      marker.mapView = mapView
+      marker.touchHandler = { _ in
+        coordinator.markMarkerTap()
+        Self.setSelectedSpotID(spot.id)
+        onSpotTapped?(spot.id)
+        moveCamera(
+          on: mapView,
+          to: NMGLatLng(
+            lat: spot.coordinate.latitude,
+            lng: spot.coordinate.longitude
+          ),
+          zoom: 17
+        )
+        return true
+      }
+      Self.applySpotMarkerStyle(marker, isSelected: spot.id == Self.selectedSpotID)
     }
   }
 
