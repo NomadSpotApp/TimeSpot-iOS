@@ -8,6 +8,7 @@ import SwiftUI
 import DesignSystem
 import Entity
 import Kingfisher
+import Utill
 
 struct ExploreSelectedSpotCardView: View {
   let currentSpot: ExploreMapSpot
@@ -54,17 +55,26 @@ struct ExploreSelectedSpotCardView: View {
               .padding(.bottom, 12)
           }
 
-          HStack(alignment: .lastTextBaseline, spacing: 6) {
-            Text(spot.name)
+          HStack(alignment: .top, spacing: 6) {
+            Text(formattedDisplayName(for: spot))
               .pretendardFont(family: .SemiBold, size: 18)
               .foregroundStyle(.staticBlack)
-              .lineLimit(1)
+              .lineLimit(titleLineLimit(for: spot))
+              .fixedSize(horizontal: false, vertical: true)
+              .layoutPriority(1)
 
-            Text(spot.subtitle)
-              .pretendardCustomFont(textStyle: .caption)
-              .foregroundStyle(.gray650)
-              .lineLimit(1)
+            if !spot.subtitle.isEmpty {
+              Text(spot.subtitle)
+                .pretendardCustomFont(textStyle: .caption)
+                .foregroundStyle(.gray650)
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.top, 2)
+            }
+
+            Spacer(minLength: 0)
           }
+          .frame(minHeight: titleMinHeight(for: spot), alignment: .topLeading)
           .padding(.bottom, 4)
 
           if !spot.statusText.isEmpty || !spot.closingText.isEmpty {
@@ -149,6 +159,34 @@ struct ExploreSelectedSpotCardView: View {
     } else {
       imagePlaceholder()
     }
+  }
+
+  private func titleLineLimit(for spot: ExploreMapSpot) -> Int {
+    spot.name.count > 7 ? 2 : 1
+  }
+
+  private func titleMinHeight(for spot: ExploreMapSpot) -> CGFloat {
+    spot.name.count > 7 ? 44 : 24
+  }
+
+  private func formattedDisplayName(for spot: ExploreMapSpot) -> String {
+    let formatted = spot.name.formattedPlaceNameForDisplay
+
+    guard spot.name.count > 7 else {
+      return formatted
+    }
+
+    let characters = Array(formatted)
+    let threshold = min(7, characters.count)
+
+    if let splitIndex = characters.indices.dropFirst(threshold).first(where: { characters[$0] == " " }) {
+      let left = String(characters[..<splitIndex])
+      let right = String(characters[characters.index(after: splitIndex)...])
+      return "\(left)\n\(right)"
+    }
+
+    let splitIndex = formatted.index(formatted.startIndex, offsetBy: threshold)
+    return "\(formatted[..<splitIndex])\n\(formatted[splitIndex...])"
   }
 
   private func imageURL(for spot: ExploreMapSpot) -> URL? {

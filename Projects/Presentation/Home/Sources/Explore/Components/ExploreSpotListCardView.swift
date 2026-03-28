@@ -8,6 +8,7 @@ import SwiftUI
 import DesignSystem
 import Entity
 import Kingfisher
+import Utill
 
 struct ExploreSpotListCardView: View {
   let spot: ExploreMapSpot
@@ -118,12 +119,23 @@ struct ExploreSpotListCardView: View {
   }
 
   private var formattedDisplayName: String {
+    let formatted = spot.name.formattedPlaceNameForDisplay
+
     guard spot.name.count > 7 else {
-      return spot.name
+      return formatted
     }
 
-    let splitIndex = spot.name.index(spot.name.startIndex, offsetBy: 7)
-    return "\(spot.name[..<splitIndex])\n\(spot.name[splitIndex...])"
+    let characters = Array(formatted)
+    let threshold = min(7, characters.count)
+
+    if let splitIndex = characters.indices.dropFirst(threshold).first(where: { characters[$0] == " " }) {
+      let left = String(characters[..<splitIndex])
+      let right = String(characters[characters.index(after: splitIndex)...])
+      return "\(left)\n\(right)"
+    }
+
+    let splitIndex = formatted.index(formatted.startIndex, offsetBy: threshold)
+    return "\(formatted[..<splitIndex])\n\(formatted[splitIndex...])"
   }
 
   @ViewBuilder
