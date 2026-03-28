@@ -13,6 +13,7 @@ import CoreLocation
 import UseCase
 import Entity
 import LogMacro
+import Utill
 
 @Reducer
 public struct ExploreReducer: Sendable {
@@ -144,6 +145,7 @@ public struct ExploreReducer: Sendable {
 
   public enum DelegateAction: Equatable {
     case presentExploreList
+    case presentExplorerDetail
   }
 
   @Dependency(\.getRouteUseCase) var getRouteUseCase
@@ -507,7 +509,6 @@ extension ExploreReducer {
         return .none
 
       case .returnToCurrentLocation:
-        // ⭐️ 핵심: 선택된 스팟 클리어 (NaverMapComponent에서 스팟으로 다시 이동하는 것 방지)
         state.$userSession.withLock {
           $0.selectedExploreSpotID = ""
         }
@@ -1009,6 +1010,9 @@ extension ExploreReducer {
     switch action {
       case .presentExploreList:
         return .none
+
+      case .presentExplorerDetail:
+        return .none
     }
   }
 
@@ -1157,14 +1161,6 @@ extension ExploreReducer.State: Hashable {
     hasher.combine(userSession)
   }
 }
-
-
-private extension String {
-  var nilIfEmpty: String? {
-    isEmpty ? nil : self
-  }
-}
-
 extension ExploreReducer.AsyncAction {
   public static func == (lhs: Self, rhs: Self) -> Bool {
     switch (lhs, rhs) {

@@ -146,4 +146,8 @@ public extension String {
     }
     return self
   }
+
+  var nilIfEmpty: String? {
+    isEmpty ? nil : self
+  }
 }

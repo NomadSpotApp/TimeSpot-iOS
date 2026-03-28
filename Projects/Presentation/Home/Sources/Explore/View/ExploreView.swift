@@ -103,6 +103,9 @@ private extension ExploreView {
           currentOffset: store.cardBaseOffset + store.cardDragOffset,
           adjacentOffset: adjacentCardOffset,
           cardOpacity: cardOpacity,
+          onCardTap: {
+            store.send(.delegate(.presentExplorerDetail))
+          },
           onRouteTap: {},
           onDragChanged: { value in
             store.send(.view(.cardDragChanged(value.translation.width)))
