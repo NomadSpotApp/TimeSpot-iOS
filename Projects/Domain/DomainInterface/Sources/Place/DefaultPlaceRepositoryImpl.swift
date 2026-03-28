@@ -26,4 +26,12 @@ public final class DefaultPlaceRepositoryImpl: PlaceInterface {
       userInfo: [NSLocalizedDescriptionKey: "PlaceRepository is not configured."]
     )
   }
+
+  public func detailPlaces(_ input: PlaceDetailInput) async throws -> PlaceDetailEntity {
+    throw NSError(
+      domain: "PlaceRepository",
+      code: -1,
+      userInfo: [NSLocalizedDescriptionKey: "PlaceRepository is not configured."]
+    )
+  }
 }

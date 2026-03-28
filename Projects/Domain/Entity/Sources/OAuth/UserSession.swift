@@ -19,6 +19,8 @@ public struct UserSession: Equatable, Hashable {
   public var travelStationLng: Double?
   public var remainingMinutes: Int
   public var selectedExploreSpotID: String
+  public var selectedExplorePlaceID: String
+  public var explorePlacesFetchedAt: Date?
 
   public init(
     name: String = "",
@@ -31,7 +33,9 @@ public struct UserSession: Equatable, Hashable {
     travelStationLat: Double? = nil,
     travelStationLng: Double? = nil,
     remainingMinutes: Int = 0,
-    selectedExploreSpotID: String = ""
+    selectedExploreSpotID: String = "",
+    selectedExplorePlaceID: String = "",
+    explorePlacesFetchedAt: Date? = nil
   ) {
     self.name = name
     self.email = email
@@ -44,6 +48,8 @@ public struct UserSession: Equatable, Hashable {
     self.travelStationLng = travelStationLng
     self.remainingMinutes = remainingMinutes
     self.selectedExploreSpotID = selectedExploreSpotID
+    self.selectedExplorePlaceID = selectedExplorePlaceID
+    self.explorePlacesFetchedAt = explorePlacesFetchedAt
   }
 }
 

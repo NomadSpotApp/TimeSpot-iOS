@@ -52,11 +52,26 @@ public final class PlaceRepositoryImpl: PlaceInterface, @unchecked Sendable {
       keyword: input.keyword,
       category: input.category,
       sortBy: input.sortBy,
-      markerLat: input.markerLat,
-      markerLon: input.markerLon,
+      mapLat: input.mapLat,
+      mapLon: input.mapLon,
       pageable: .init(page: input.page, size: input.size)
     )
     let dto: PlaceSearchDTOModel = try await provider.request(.searchPlaces(body: body))
+    return dto.data.toDomain()
+  }
+
+  public func detailPlaces(
+    _ input: PlaceDetailInput
+  ) async throws -> PlaceDetailEntity {
+    let body: PlaceDetailRequest = .init(
+      placeId: input.placeId,
+      stationId: input.stationId,
+      userLat: input.userLat,
+      userLon: input.userLon,
+      remainingMinutes: input.remainingMinutes
+    )
+
+    let dto: PlaceDetailDTOModel = try await provider.request(.detailPlaces(body: body))
     return dto.data.toDomain()
   }
 }
