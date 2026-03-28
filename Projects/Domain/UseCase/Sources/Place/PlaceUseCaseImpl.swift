@@ -11,8 +11,14 @@ import Entity
 import ComposableArchitecture
 import CoreLocation
 import Utill
+import LogMacro
 
 public protocol PlaceUseCaseInterface: Sendable {
+  func detailPlace(
+    userSession: UserSession,
+    placeId: Int
+  ) async throws -> PlaceDetailEntity
+
   func fetchPlaces(
     userSession: UserSession,
     userLat: Double,
@@ -32,8 +38,8 @@ public protocol PlaceUseCaseInterface: Sendable {
     keyword: String?,
     category: ExploreCategory?,
     sortBy: String,
-    markerLat: Double?,
-    markerLon: Double?,
+    mapLat: Double?,
+    mapLon: Double?,
     page: Int
   ) async throws -> PlaceSearchPageEntity
 
@@ -45,16 +51,39 @@ public protocol PlaceUseCaseInterface: Sendable {
     keyword: String?,
     category: ExploreCategory?,
     sortBy: String,
-    markerLat: Double?,
-    markerLon: Double?,
+    mapLat: Double?,
+    mapLon: Double?,
     page: Int
   ) async throws -> ExploreSpotPageEntity
 }
 
 public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
   @Dependency(\.placeRepository) var repository
+  @Dependency(\.locationUseCase) var locationUseCase
 
   public init() {}
+
+  public func detailPlace(
+    userSession: UserSession,
+    placeId: Int
+  ) async throws -> PlaceDetailEntity {
+    let resolvedLocation: CLLocation?
+    do {
+      resolvedLocation = try await locationUseCase.requestCurrentLocation()
+    } catch {
+      resolvedLocation = nil
+    }
+
+    let input = PlaceDetailInput(
+      placeId: placeId,
+      stationId: Int(userSession.travelID) ?? 0,
+      userLat: resolvedLocation?.coordinate.latitude ?? userSession.travelStationLat ?? 0,
+      userLon: resolvedLocation?.coordinate.longitude ?? userSession.travelStationLng ?? 0,
+      remainingMinutes: 250
+    )
+
+    return try await repository.detailPlaces(input)
+  }
 
   public func fetchPlaces(
     userSession: UserSession,
@@ -87,15 +116,15 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       keyword: nil,
       category: nil,
       sortBy: "STATION_NEAREST",
-      markerLat: userSession.travelStationLat,
-      markerLon: userSession.travelStationLng,
+      mapLat: userSession.travelStationLat,
+      mapLon: userSession.travelStationLng,
       page: 0,
       size: 30  // 더 많은 데이터 로딩
     )
 
     let pageEntity = try await repository.searchPlaces(searchInput)
 
-    print("🚀 [초기로딩] searchPlaces 응답: \(pageEntity.content.count)개")
+    #logDebug("🚀 [초기로딩] searchPlaces 응답: \(pageEntity.content.count)개")
 
     // 직접 마커 생성 (병합 없이)
     let spots = pageEntity.content.map { entity in
@@ -108,7 +137,7 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       )
     }
 
-    print("🚀 [초기로딩] 최종 spots: \(spots.count)개")
+    #logDebug("🚀 [초기로딩] 최종 spots: \(spots.count)개")
 
     return ExploreSpotPageEntity(
       spots: spots,
@@ -124,8 +153,8 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
     keyword: String?,
     category: ExploreCategory?,
     sortBy: String = "STATION_NEAREST",
-    markerLat: Double?,
-    markerLon: Double?,
+    mapLat: Double?,
+    mapLon: Double?,
     page: Int
   ) async throws -> PlaceSearchPageEntity {
     let input = PlaceSearchInput(
@@ -136,8 +165,8 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       keyword: keyword,
       category: mapCategory(category),
       sortBy: sortBy,
-      markerLat: markerLat,
-      markerLon: markerLon,
+      mapLat: mapLat,
+      mapLon: mapLon,
       page: page,
       size: 10
     )
@@ -153,8 +182,8 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
     keyword: String?,
     category: ExploreCategory?,
     sortBy: String = "STATION_NEAREST",
-    markerLat: Double?,
-    markerLon: Double?,
+    mapLat: Double?,
+    mapLon: Double?,
     page: Int
   ) async throws -> ExploreSpotPageEntity {
     // 🔍 단순화: searchPlaces API 하나만 사용
@@ -166,19 +195,19 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       keyword: keyword,
       category: mapCategory(category),
       sortBy: sortBy,
-      markerLat: markerLat,
-      markerLon: markerLon,
+      mapLat: mapLat,
+      mapLon: mapLon,
       page: page,
       size: 30  // 더 많은 데이터 로딩
     )
 
-    print("🔍 [API요청] searchExploreSpots - page: \(page), size: 30")
+    #logDebug("🔍 [API요청] searchExploreSpots - page: \(page), size: 30")
 
     let pageEntity = try await repository.searchPlaces(searchInput)
 
-    print("🔍 [API응답] searchExploreSpots - 응답 size: \(pageEntity.content.count), hasNext: \(!pageEntity.isLastPage)")
+    #logDebug("🔍 [API응답] searchExploreSpots - 응답 size: \(pageEntity.content.count), hasNext: \(!pageEntity.isLastPage)")
 
-    print("🔍 [필터링] searchPlaces 응답: \(pageEntity.content.count)개")
+    #logDebug("🔍 [필터링] searchPlaces 응답: \(pageEntity.content.count)개")
 
     // 직접 마커 생성 (병합 없이)
     let spots = pageEntity.content.map { entity in
@@ -191,7 +220,7 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       )
     }
 
-    print("🔍 [필터링] 최종 spots: \(spots.count)개")
+    #logDebug("🔍 [필터링] 최종 spots: \(spots.count)개")
 
     return ExploreSpotPageEntity(
       spots: spots,
