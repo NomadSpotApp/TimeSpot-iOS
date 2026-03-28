@@ -147,6 +147,88 @@ public extension String {
     return self
   }
 
+  var stayableMinutesDisplayText: String {
+    let text = self
+      .replacingOccurrences(of: " 체류 가능", with: "")
+      .replacingOccurrences(of: "약 ", with: "")
+    let value = text.isEmpty ? "0분" : text
+    return "약 \(value)"
+  }
+
+  func walkMinutesDisplayText(
+    spotName: String,
+    subtitle: String,
+    distanceText: String
+  ) -> String {
+    let text = self
+      .replacingOccurrences(of: "\(spotName)에서 약 ", with: "")
+      .replacingOccurrences(of: "\(subtitle)에서 약 ", with: "")
+      .replacingOccurrences(of: "\(distanceText) ", with: "")
+      .components(separatedBy: "약 ")
+      .last?
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+
+    return (text?.isEmpty == false ? text! : "0분")
+  }
+
+  var normalizedURL: URL? {
+    let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return nil }
+
+    if let url = URL(string: trimmed) {
+      return url
+    }
+
+    let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+    return encoded.flatMap(URL.init(string:))
+  }
+
+  var minutesValue: Int {
+    Int(
+      replacingOccurrences(of: "약 ", with: "")
+        .replacingOccurrences(of: "분", with: "")
+    ) ?? 0
+  }
+
+  static func openingHoursText(status: String?, closing: String?) -> String {
+    switch (status?.nilIfEmpty, closing?.nilIfEmpty) {
+    case let (status?, closing?):
+      return "\(status)  \(closing)"
+    case let (status?, nil):
+      return status
+    case let (nil, closing?):
+      return closing
+    case (nil, nil):
+      return "영업 시간 정보 준비 중"
+    }
+  }
+
+  var formattedPlaceNameForDisplay: String {
+    var value = self
+
+    let patterns = [
+      #"(?<=[가-힣A-Za-z0-9])(서울역|용산역|청량리역|강릉역|수서역|부산역|대전역|동대구역)"#,
+      #"(?<=(서울역|용산역|청량리역|강릉역|수서역|부산역|대전역|동대구역))(?=[가-힣A-Za-z0-9])"#,
+      #"(?<=[가-힣A-Za-z0-9])(롯데아울렛|현대아울렛|신세계아울렛)"#
+    ]
+
+    for pattern in patterns {
+      value = value.replacingOccurrences(
+        of: pattern,
+        with: pattern.contains("(?=") ? " " : " $1",
+        options: .regularExpression
+      )
+    }
+
+    value = value.replacingOccurrences(
+      of: #"\s+"#,
+      with: " ",
+      options: .regularExpression
+    )
+
+    return value.trimmingCharacters(in: .whitespacesAndNewlines)
+  }
+
   var nilIfEmpty: String? {
     isEmpty ? nil : self
   }
