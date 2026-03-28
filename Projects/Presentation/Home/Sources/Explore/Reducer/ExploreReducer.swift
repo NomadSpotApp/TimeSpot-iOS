@@ -448,7 +448,11 @@ extension ExploreReducer {
           }
           state.isSpotCardVisible = true
         } else {
-          state.isSpotCardVisible = false
+          clearSelectedSpot(state: &state)
+          state.searchMarkerLat = nil
+          state.searchMarkerLon = nil
+          state.pendingSelectFirstSpotFromNextPage = false
+          return .cancel(id: CancelID.searchPlaces)
         }
         return .none
 

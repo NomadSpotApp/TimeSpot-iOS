@@ -146,14 +146,22 @@ private extension ExploreListView {
     Button {
       store.send(.delegate(.presentExploreMapAtCurrentLocation))
     } label: {
-      Text("지도보기")
-        .pretendardCustomFont(textStyle: .body2Bold)
-        .foregroundStyle(.staticWhite)
-        .frame(width: 120, height: 44)
-        .background(.orange700)
-        .clipShape(RoundedRectangle(cornerRadius: 22))
-        .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 4)
-        .shadow(color: .black.opacity(0.1), radius: 24, x: 0, y: 8)
+      HStack(alignment: .center, spacing: 4) {
+        Image(asset: .locationBadge)
+          .resizable()
+          .scaledToFit()
+          .frame(width: 16, height: 16)
+
+        Text("지도보기")
+          .pretendardCustomFont(textStyle: .body2Bold)
+          .foregroundStyle(.staticWhite)
+      }
+      .padding(.horizontal, 15)
+      .padding(.vertical, 10)
+      .background(.orange800)
+      .clipShape(RoundedRectangle(cornerRadius: 22))
+      .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 4)
+      .shadow(color: .black.opacity(0.1), radius: 24, x: 0, y: 8)
     }
     .padding(.bottom, 40)
   }
