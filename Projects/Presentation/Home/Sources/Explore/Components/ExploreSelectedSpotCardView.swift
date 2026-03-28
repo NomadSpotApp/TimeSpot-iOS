@@ -15,6 +15,7 @@ struct ExploreSelectedSpotCardView: View {
   let currentOffset: CGFloat
   let adjacentOffset: CGFloat?
   let cardOpacity: Double
+  let onCardTap: () -> Void
   let onRouteTap: () -> Void
   let onDragChanged: (DragGesture.Value) -> Void
   let onDragEnded: (DragGesture.Value) -> Void
@@ -105,6 +106,8 @@ struct ExploreSelectedSpotCardView: View {
 
         spotImage(for: spot)
       }
+      .contentShape(Rectangle())
+      .onTapGesture(perform: onCardTap)
       .padding(.horizontal, 16)
       .padding(.top, 16)
       .padding(.bottom, 20)

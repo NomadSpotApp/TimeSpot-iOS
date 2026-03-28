@@ -44,6 +44,14 @@ public struct HomeCoordinatorView: View {
               removal: .move(edge: .leading).combined(with: .opacity)
             ))
 
+        case .exploreDetail(let exploreDetailStore):
+          ExploreDetailView(store: exploreDetailStore)
+            .navigationBarBackButtonHidden()
+            .transition(.asymmetric(
+              insertion: .move(edge: .trailing).combined(with: .opacity),
+              removal: .move(edge: .leading).combined(with: .opacity)
+            ))
+
         case .profile(let profileStore):
           ProfileCoordinatorView(store: profileStore)
             .navigationBarBackButtonHidden()
