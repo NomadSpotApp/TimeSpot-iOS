@@ -15,6 +15,7 @@ import AsyncMoya
 public enum PlaceService {
   case fetchPlaces(body: PlaceRequest)
   case searchPlaces(body: PlaceSearchRequest)
+  case detailPlaces(body: PlaceDetailRequest)
 }
 
 
@@ -31,6 +32,8 @@ extension PlaceService: BaseTargetType {
         return PlaceAPI.fetchPlace.description
       case .searchPlaces:
         return PlaceAPI.searchPlace.description
+      case .detailPlaces:
+        return PlaceAPI.detailPlace.description
     }
   }
 
@@ -40,9 +43,7 @@ extension PlaceService: BaseTargetType {
 
   public var method: Moya.Method {
     switch self {
-      case .fetchPlaces:
-        return .get
-      case .searchPlaces:
+      case .fetchPlaces, .searchPlaces, .detailPlaces:
         return .get
     }
   }
@@ -52,6 +53,8 @@ extension PlaceService: BaseTargetType {
       case .fetchPlaces(let body):
         return body.toDictionary
       case .searchPlaces(let body):
+        return body.toDictionary
+      case .detailPlaces(let body):
         return body.toDictionary
     }
   }
