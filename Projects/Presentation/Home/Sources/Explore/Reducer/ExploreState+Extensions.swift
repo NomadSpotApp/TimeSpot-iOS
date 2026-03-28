@@ -33,8 +33,7 @@ extension ExploreReducer.State {
 
   var filteredMapSpots: [ExploreMapSpot] {
     spots.filter { spot in
-      hasVisibleMarkerContent(spot)
-        && (selectedCategory == .all || spot.category == selectedCategory)
+      spot.hasDetail && matchesCurrentFilters(spot)
     }
   }
 
@@ -118,6 +117,8 @@ extension ExploreReducer.State: Hashable {
     hasher.combine(currentLocation?.coordinate.longitude)
     hasher.combine(isLocationPermissionDenied)
     hasher.combine(locationError)
+    hasher.combine(mapCenterLat)
+    hasher.combine(mapCenterLon)
     hasher.combine(spots)
     hasher.combine(isLoadingRoute)
     hasher.combine(routeError)

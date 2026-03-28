@@ -72,6 +72,9 @@ private extension ExploreView {
       },
       onMapTapped: {
         store.send(.view(.spotCardChanged(nil)))
+      },
+      onCameraIdle: { coordinate in
+        store.send(.view(.mapCenterChanged(coordinate)))
       }
     )
     .ignoresSafeArea(.all)
@@ -114,7 +117,7 @@ private extension ExploreView {
           adjacentOffset: store.state.adjacentCardOffset(cardTravelDistance: cardTravelDistance),
           cardOpacity: store.state.cardOpacity(cardTravelDistance: cardTravelDistance),
           onCardTap: {
-            store.send(.delegate(.presentExplorerDetail))
+            store.send(.view(.detailTapped))
           },
           onRouteTap: {},
           onDragChanged: { value in
