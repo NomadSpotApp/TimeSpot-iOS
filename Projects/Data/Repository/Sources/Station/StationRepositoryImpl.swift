@@ -27,14 +27,14 @@ public final class StationRepositoryImpl: StationInterface, @unchecked Sendable 
   }
 
   public func fetchStations(
-    lat: Double,
-    lng: Double,
+    userLat: Double,
+    userLon: Double,
     page: Int,
     size: Int
   ) async throws -> StationListEntity {
     let body: StationRequest = .init(
-      lat: lat,
-      lng: lng,
+      userLat: userLat,
+      userLon: userLon,
       page: page,
       size: size,
       sort: "stationName,ASC"
