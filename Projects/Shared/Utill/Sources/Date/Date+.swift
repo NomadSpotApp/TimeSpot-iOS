@@ -139,6 +139,15 @@ public extension Date {
     dateFormatter.dateFormat = "a h시 m분"
     return dateFormatter.string(from: date)
   }
+
+  func formattedReturnDeadlineText(addingMinutes minutes: Int) -> String {
+    let deadline = Calendar.current.date(byAdding: .minute, value: minutes, to: self) ?? self
+
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.dateFormat = "a h:mm"
+    return formatter.string(from: deadline)
+  }
 }
 
 public extension Calendar {

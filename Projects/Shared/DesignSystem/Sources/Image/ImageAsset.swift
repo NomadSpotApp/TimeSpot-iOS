@@ -45,6 +45,7 @@ public enum ImageAsset: String {
   case etcPin
   case foodPin
   case gamePin
+  case spotPin
 
   case onBoardingLogo1
   case onBoardingLogo2
