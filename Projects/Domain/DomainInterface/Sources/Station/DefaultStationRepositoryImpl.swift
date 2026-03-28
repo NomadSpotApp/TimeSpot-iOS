@@ -12,8 +12,8 @@ final public class DefaultStationRepositoryImpl: StationInterface {
   public init() {}
 
   public func fetchStations(
-    lat: Double,
-    lng: Double,
+    userLat: Double,
+    userLon: Double,
     page: Int,
     size: Int
   ) async throws -> StationListEntity {

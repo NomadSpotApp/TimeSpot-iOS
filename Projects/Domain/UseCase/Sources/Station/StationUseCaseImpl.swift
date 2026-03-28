@@ -16,14 +16,14 @@ public struct StationUseCaseImpl: StationInterface {
   public init() {}
 
   public func fetchStations(
-    lat: Double,
-    lng: Double,
+    userLat: Double,
+    userLon: Double,
     page: Int,
     size: Int
   ) async throws -> StationListEntity {
     try await repository.fetchStations(
-      lat: lat,
-      lng: lng,
+      userLat: userLat,
+      userLon: userLon,
       page: page,
       size: size
     )

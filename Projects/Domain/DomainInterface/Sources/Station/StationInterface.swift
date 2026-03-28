@@ -11,8 +11,8 @@ import WeaveDI
 
 public protocol StationInterface: Sendable {
   func fetchStations(
-    lat: Double,
-    lng: Double,
+    userLat: Double,
+    userLon: Double,
     page: Int,
     size: Int
   ) async throws -> StationListEntity
