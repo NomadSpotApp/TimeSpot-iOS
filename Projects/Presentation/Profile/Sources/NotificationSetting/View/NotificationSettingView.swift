@@ -56,7 +56,7 @@ extension NotificationSettingView {
   fileprivate func notificationOptionMenuView() -> some View {
     VStack(spacing: 0) {
       Spacer()
-        .frame(height: 48)
+        .frame(height: 16)
 
       if store.isLoading {
         NotificationSettingSkeletonView()

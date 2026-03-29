@@ -69,7 +69,7 @@ extension ProfileView {
     VStack(alignment: .leading) {
       VStack {
         Spacer()
-          .frame(height: 12)
+          .frame(height: 16)
         
         HStack {
           Text("\(store.profileEntity?.nickname ?? "사용자")님")
