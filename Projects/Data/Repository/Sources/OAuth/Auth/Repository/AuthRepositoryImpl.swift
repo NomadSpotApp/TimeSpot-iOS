@@ -110,4 +110,12 @@ final public class AuthRepositoryImpl: AuthInterface, @unchecked Sendable {
     AuthSessionManager.shared.updateCredential(with: tokens)
   }
 
+  // MARK: -  알림을 위한 token 등록
+  public func registerNotification(
+    with deviceToken: String
+  ) async throws -> RegisterNotificationEntity {
+    let dto: RegisterNotificationDTO = try await provider.request(.registerNotification(deviceToken: deviceToken))
+    return dto.data.toDomain()
+  }
+
 }

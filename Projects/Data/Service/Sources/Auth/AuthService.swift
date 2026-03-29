@@ -18,6 +18,7 @@ public enum AuthService {
   case refresh(refreshToken: String)
   case logout
   case withDraw
+  case registerNotification(deviceToken: String)
 
 }
 
@@ -27,7 +28,7 @@ extension AuthService: BaseTargetType {
 
   public var domain: TimeSpotDomain {
     switch self {
-      case .login, .refresh, .logout:
+      case .login, .refresh, .logout, .registerNotification:
         return .auth
 
       case .withDraw:
@@ -45,6 +46,8 @@ extension AuthService: BaseTargetType {
         return AuthAPI.logout.description
       case .withDraw:
         return AuthAPI.withDraw.description
+      case .registerNotification:
+        return AuthAPI.registerNotification.description
     }
   }
 
@@ -54,7 +57,7 @@ extension AuthService: BaseTargetType {
 
   public var method: Moya.Method {
     switch self {
-      case .login, .refresh, .logout:
+      case .login, .refresh, .logout, .registerNotification:
         return .post
       case .withDraw:
         return .delete
@@ -69,12 +72,14 @@ extension AuthService: BaseTargetType {
         return refreshToken.toDictionary(key: "refreshToken")
       case .logout, .withDraw:
         return nil
+      case .registerNotification(let deviceToken):
+        return deviceToken.toDictionary(key: "deviceToken")
     }
   }
 
   public var headers: [String : String]? {
     switch self {
-      case .logout, .withDraw:
+      case .logout, .withDraw, .registerNotification:
         return APIHeader.baseHeader
       default:
         return APIHeader.notAccessTokenHeader
