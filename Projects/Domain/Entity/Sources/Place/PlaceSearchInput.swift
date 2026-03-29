@@ -20,6 +20,7 @@ public struct PlaceSearchInput: Equatable {
   public let mapLon: Double?
   public let page: Int
   public let size: Int
+  public let sort: [String]
 
   public init(
     userLat: Double,
@@ -32,7 +33,8 @@ public struct PlaceSearchInput: Equatable {
     mapLat: Double? = nil,
     mapLon: Double? = nil,
     page: Int = 0,
-    size: Int = 10
+    size: Int = 200,
+    sort: [String] = ["MAP_NEAREST"]
   ) {
     self.userLat = userLat
     self.userLon = userLon
@@ -45,5 +47,6 @@ public struct PlaceSearchInput: Equatable {
     self.mapLon = mapLon
     self.page = page
     self.size = size
+    self.sort = sort
   }
 }

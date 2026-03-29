@@ -119,7 +119,8 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       mapLat: userSession.travelStationLat,
       mapLon: userSession.travelStationLng,
       page: 0,
-      size: 30  // 더 많은 데이터 로딩
+      size: 200,
+      sort: ["MAP_NEAREST"]
     )
 
     let pageEntity = try await repository.searchPlaces(searchInput)
@@ -168,7 +169,8 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       mapLat: mapLat,
       mapLon: mapLon,
       page: page,
-      size: 10
+      size: 200,
+      sort: ["MAP_NEAREST"]
     )
 
     return try await repository.searchPlaces(input)
@@ -257,7 +259,8 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       statusText: "",
       closingText: "",
       distanceText: "",
-      walkTimeText: ""
+      walkTimeText: "",
+      address: entity.address
     )
   }
 
@@ -304,7 +307,8 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       statusText: entity.isOpen ? "영업 중" : "영업 종료",
       closingText: closingText,
       distanceText: distanceText,
-      walkTimeText: walkTimeText
+      walkTimeText: walkTimeText,
+      address: entity.address
     )
   }
 
