@@ -96,7 +96,6 @@ private extension ExploreListView {
 
   var isFilteringLocally: Bool {
     !store.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-      || store.selectedCategory != .all
   }
 
   var shouldShowLoadMore: Bool {
@@ -109,9 +108,8 @@ private extension ExploreListView {
 
     return sourceSpots.filter { spot in
       let hasDetail = spot.hasDetail
-      let matchesCategory = store.selectedCategory == .all || spot.category == store.selectedCategory
       let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
-      return hasDetail && matchesCategory && matchesQuery
+      return hasDetail && matchesQuery
     }
   }
 

@@ -152,7 +152,14 @@ public extension Date {
 
 public extension Calendar {
   func remainingTimeComponents(from currentTime: Date, to targetTime: Date) -> DateComponents {
-    let components = dateComponents([.hour, .minute], from: currentTime, to: targetTime)
+    // targetTime이 currentTime보다 이전이면 다음날로 간주
+    var adjustedTargetTime = targetTime
+    if targetTime < currentTime {
+      // 다음 날 같은 시간으로 조정
+      adjustedTargetTime = date(byAdding: .day, value: 1, to: targetTime) ?? targetTime
+    }
+
+    let components = dateComponents([.hour, .minute], from: currentTime, to: adjustedTargetTime)
     return DateComponents(hour: max(components.hour ?? 0, 0), minute: max(components.minute ?? 0, 0))
   }
 }
