@@ -15,14 +15,14 @@ public struct ExploreHelpers {
 
   // MARK: - State Management
 
-  public static func resetPagination(state: inout ExploreReducer.State) {
+  public static func resetPagination(state: inout ExploreFeature.State) {
     state.currentPage = 0
     state.hasNextPage = true
     state.pendingSelectFirstSpotFromNextPage = false
   }
 
   public static func resetSearchContext(
-    state: inout ExploreReducer.State,
+    state: inout ExploreFeature.State,
     clearMarker: Bool = true,
     preserveSearchText: Bool = false,
     preserveSelectedCategory: Bool = false
@@ -42,7 +42,7 @@ public struct ExploreHelpers {
     }
   }
 
-  public static func clearSelectedSpot(state: inout ExploreReducer.State) {
+  public static func clearSelectedSpot(state: inout ExploreFeature.State) {
     state.isSpotCardVisible = false
     state.cardDragOffset = 0
     state.cardBaseOffset = 0
@@ -56,11 +56,11 @@ public struct ExploreHelpers {
 
   // MARK: - Data Calculations
 
-  public static func currentKeyword(state: ExploreReducer.State) -> String {
+  public static func currentKeyword(state: ExploreFeature.State) -> String {
     return state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
-  public static func currentCategory(state: ExploreReducer.State) -> ExploreCategory? {
+  public static func currentCategory(state: ExploreFeature.State) -> ExploreCategory? {
     return state.selectedCategory == .all ? nil : state.selectedCategory
   }
 
@@ -72,7 +72,7 @@ public struct ExploreHelpers {
     return abs(lhs - rhs) < tolerance
   }
 
-  public static func isResolvingSelectedMarkerDetail(state: ExploreReducer.State) -> Bool {
+  public static func isResolvingSelectedMarkerDetail(state: ExploreFeature.State) -> Bool {
     let selectedSpotID = state.userSession.selectedExploreSpotID
     guard !selectedSpotID.isEmpty else { return false }
 
@@ -86,7 +86,7 @@ public struct ExploreHelpers {
 
   // MARK: - Filtered Data
 
-  public static func filteredSpots(state: ExploreReducer.State) -> [ExploreMapSpot] {
+  public static func filteredSpots(state: ExploreFeature.State) -> [ExploreMapSpot] {
     let query = currentKeyword(state: state)
     let filtered = state.spots.filter { spot in
       let hasDetail = spot.hasDetail
@@ -117,7 +117,7 @@ public struct ExploreHelpers {
     }
   }
 
-  public static func syncSelectedSpot(state: inout ExploreReducer.State) {
+  public static func syncSelectedSpot(state: inout ExploreFeature.State) {
     guard let selectedSpotID = state.userSession.selectedExploreSpotID.nilIfEmpty else {
       return
     }
@@ -128,7 +128,7 @@ public struct ExploreHelpers {
     }
   }
 
-  public static func syncSelectionWithFilters(state: inout ExploreReducer.State) {
+  public static func syncSelectionWithFilters(state: inout ExploreFeature.State) {
     guard let selectedSpotID = state.userSession.selectedExploreSpotID.nilIfEmpty else {
       return
     }
@@ -147,7 +147,7 @@ public struct ExploreHelpers {
     }
   }
 
-  public static func filteredCardSpots(state: ExploreReducer.State) -> [ExploreMapSpot] {
+  public static func filteredCardSpots(state: ExploreFeature.State) -> [ExploreMapSpot] {
     let query = currentKeyword(state: state)
     let filtered = state.spots.filter { spot in
       let hasDetail = spot.hasDetail
@@ -178,7 +178,7 @@ public struct ExploreHelpers {
     }
   }
 
-  public static func currentCardSpots(state: ExploreReducer.State) -> [ExploreMapSpot] {
+  public static func currentCardSpots(state: ExploreFeature.State) -> [ExploreMapSpot] {
     return filteredCardSpots(state: state)
   }
 }

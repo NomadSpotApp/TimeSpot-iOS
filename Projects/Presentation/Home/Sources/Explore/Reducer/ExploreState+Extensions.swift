@@ -10,7 +10,7 @@ import CoreLocation
 import ComposableArchitecture
 import Entity
 
-extension ExploreReducer.State {
+extension ExploreFeature.State {
   var trimmedSearchText: String {
     searchText.trimmingCharacters(in: .whitespacesAndNewlines)
   }
@@ -110,7 +110,7 @@ extension ExploreReducer.State {
 
 // MARK: - ExploreReducer.State + Hashable
 
-extension ExploreReducer.State: Hashable {
+extension ExploreFeature.State: Hashable {
   public func hash(into hasher: inout Hasher) {
     hasher.combine(locationPermissionStatus)
     hasher.combine(currentLocation?.coordinate.latitude)
@@ -129,7 +129,7 @@ extension ExploreReducer.State: Hashable {
 
 // MARK: - ExploreReducer.AsyncAction + Equatable
 
-extension ExploreReducer.AsyncAction {
+extension ExploreFeature.AsyncAction {
   public static func == (lhs: Self, rhs: Self) -> Bool {
     switch (lhs, rhs) {
     case (.requestLocationPermission, .requestLocationPermission),

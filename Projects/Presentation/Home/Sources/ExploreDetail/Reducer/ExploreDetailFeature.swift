@@ -10,6 +10,8 @@ import ComposableArchitecture
 import DesignSystem
 import Entity
 import UseCase
+import Utill
+import MapKit
 
 @Reducer
 public struct ExploreDetailFeature {
@@ -217,5 +219,177 @@ extension ExploreDetailFeature.State: Hashable {
     hasher.combine(isLoading)
     hasher.combine(errorMessage)
     hasher.combine(userSession)
+  }
+}
+
+// MARK: - State Computed Properties
+extension ExploreDetailFeature.State {
+
+  var imageCards: [URL?] {
+    let urls = placeDetail?.imageURL.compactMap { urlString -> URL? in
+      // Google Places API URL에 대한 특별한 처리
+      if urlString.contains("places.googleapis.com") {
+        return URL(string: urlString.trimmingCharacters(in: .whitespacesAndNewlines))
+      }
+      return urlString.normalizedURL
+    } ?? []
+
+    if !urls.isEmpty {
+      return urls
+    }
+    return [nil, nil]
+  }
+
+  var placeNameText: String {
+    placeDetail?.name ?? ""
+  }
+
+  var categoryText: String {
+    placeDetail?.category ?? ""
+  }
+
+  var distanceText: String {
+    if let placeDetail = placeDetail {
+      return "\(placeDetail.distanceToStation)m"
+    }
+    return ""
+  }
+
+  var returnDeadlineText: String {
+    if isVisitUnavailable {
+      return "방문 불가능해요"
+    }
+
+    if let leaveTime = placeDetail?.leaveTime,
+       let formatted = formattedDeadlineTime(from: leaveTime) {
+      return formatted
+    }
+
+    return Date().formattedReturnDeadlineText(addingMinutes: stayableMinutesValue) + "분"
+  }
+
+  var stayableMinutesValue: Int {
+    remainingStayableMinutes
+  }
+
+  var remainingStayableMinutes: Int {
+    let originalMinutes = placeDetail?.stayableMinutes ?? 0
+    let elapsedMinutes = elapsedMinutesSincePlacesFetched
+    return max(originalMinutes - elapsedMinutes, 0)
+  }
+
+  var elapsedMinutesSincePlacesFetched: Int {
+    guard let fetchedAt = userSession.explorePlacesFetchedAt else {
+      return 0
+    }
+
+    return max(Int(Date().timeIntervalSince(fetchedAt) / 60), 0)
+  }
+
+  var isVisitUnavailable: Bool {
+    remainingStayableMinutes <= 0
+  }
+
+  var returnDeadlineSuffixText: String {
+    isVisitUnavailable ? "" : " 에는 역으로 출발해야 합니다."
+  }
+
+  var openingHoursText: String {
+    let weekdayText = summarizedOpeningHours(from: placeDetail?.weekday ?? [])
+    let weekendText = summarizedOpeningHours(from: placeDetail?.weekend ?? [])
+
+    switch (weekdayText.isEmpty, weekendText.isEmpty) {
+    case (false, false):
+      return "평일 \(weekdayText), 주말 \(weekendText)"
+    case (false, true):
+      return "평일 \(weekdayText)"
+    case (true, false):
+      return "주말 \(weekendText)"
+    case (true, true):
+      return "영업 시간 정보 준비 중"
+    }
+  }
+
+  var phoneNumberText: String {
+    placeDetail?.phoneNumber.nilIfEmpty ?? "전화번호 정보 준비 중"
+  }
+
+  var addressText: String {
+    placeDetail?.address.nilIfEmpty ?? "주소 정보 준비 중"
+  }
+
+  var stayableMinutesText: String {
+    "약 \(remainingStayableMinutes)분"
+  }
+
+  var walkMinutesText: String {
+    if let placeDetail = placeDetail {
+      return "\(placeDetail.timeToStation)분"
+    }
+    return "0분"
+  }
+
+  var mapCoordinate: CLLocationCoordinate2D {
+    if let placeDetail = placeDetail {
+      return CLLocationCoordinate2D(
+        latitude: placeDetail.stationLat,
+        longitude: placeDetail.stationLon
+      )
+    }
+
+    return CLLocationCoordinate2D(
+      latitude: userSession.travelStationLat ?? 37.5666805,
+      longitude: userSession.travelStationLng ?? 126.9784147
+    )
+  }
+
+  var mapRegion: MKCoordinateRegion {
+    MKCoordinateRegion(
+      center: mapCoordinate,
+      span: MKCoordinateSpan(latitudeDelta: 0.0035, longitudeDelta: 0.0035)
+    )
+  }
+
+  // MARK: - Private Helper Methods
+
+  private func summarizedOpeningHours(from values: [String]) -> String {
+    let normalized = values
+      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+
+    guard !normalized.isEmpty else {
+      return ""
+    }
+
+    let extractedTimes = normalized.map { value in
+      guard let separatorIndex = value.firstIndex(of: ":") else {
+        return value
+      }
+      return value[value.index(after: separatorIndex)...]
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    let uniqueTimes = Array(Set(extractedTimes))
+
+    if uniqueTimes.count == 1, let first = extractedTimes.first {
+      return first
+    }
+
+    return normalized.joined(separator: ", ")
+  }
+
+  private func formattedDeadlineTime(from leaveTime: String) -> String? {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+
+    guard let date = formatter.date(from: leaveTime) else {
+      return nil
+    }
+
+    let outputFormatter = DateFormatter()
+    outputFormatter.locale = Locale(identifier: "ko_KR")
+    outputFormatter.dateFormat = "a h:mm분"
+    return outputFormatter.string(from: date)
   }
 }
