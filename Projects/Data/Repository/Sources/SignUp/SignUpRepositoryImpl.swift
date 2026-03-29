@@ -10,6 +10,7 @@ import DomainInterface
 import Model
 import Entity
 import Service
+import Foundations
 
 @preconcurrency import AsyncMoya
 
@@ -33,6 +34,8 @@ final public class SignUpRepositoryImpl: SignUpInterface {
       mapApi: input.mapType.type
     )
     let dto: LoginDTOModel = try await provider.request(.signUp(body: body))
-    return dto.data.toDomain()
+    let entity = dto.data.toDomain()
+    APIHeader.updateAccessToken(entity.token.accessToken)
+    return entity
   }
 }

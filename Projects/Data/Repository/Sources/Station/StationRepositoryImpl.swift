@@ -12,6 +12,7 @@ import Entity
 import Service
 
 import AsyncMoya
+import Foundation
 
 public final class StationRepositoryImpl: StationInterface, @unchecked Sendable {
   private let authorizedProvider: MoyaProvider<StationService>
@@ -26,14 +27,14 @@ public final class StationRepositoryImpl: StationInterface, @unchecked Sendable 
   }
 
   public func fetchStations(
-    lat: Double,
-    lng: Double,
+    userLat: Double,
+    userLon: Double,
     page: Int,
     size: Int
   ) async throws -> StationListEntity {
     let body: StationRequest = .init(
-      lat: lat,
-      lng: lng,
+      userLat: userLat,
+      userLon: userLon,
       page: page,
       size: size,
       sort: "stationName,ASC"
@@ -46,16 +47,36 @@ public final class StationRepositoryImpl: StationInterface, @unchecked Sendable 
     stationID: Int
   ) async throws -> FavoriteStationMutationEntity {
     let body: AddFavoriteStationRequest = .init(stationID: stationID)
-    let dto: FavoriteStationMutationDTOModel = try await authorizedProvider.request(.addFavoriteStation(body: body))
+    let response = try await authorizedProvider.requestResponse(.addFavoriteStation(body: body))
+    let dto = try JSONDecoder().decode(FavoriteStationMutationDTOModel.self, from: response.data)
+
+    guard 200..<300 ~= response.statusCode else {
+      throw NSError(
+        domain: "StationFavoriteError",
+        code: dto.code,
+        userInfo: [NSLocalizedDescriptionKey: dto.message]
+      )
+    }
+
     return dto.toDomain()
   }
 
   public func deleteFavoriteStation(
-    stationID: Int
+    favoriteID: Int
   ) async throws -> FavoriteStationMutationEntity {
-    let dto: FavoriteStationMutationDTOModel = try await authorizedProvider.request(
-      .deleteFavoriteStation(deleteStationId: stationID)
+    let response = try await authorizedProvider.requestResponse(
+      .deleteFavoriteStation(favoriteID: favoriteID)
     )
+    let dto = try JSONDecoder().decode(FavoriteStationMutationDTOModel.self, from: response.data)
+
+    guard 200..<300 ~= response.statusCode else {
+      throw NSError(
+        domain: "StationFavoriteError",
+        code: dto.code,
+        userInfo: [NSLocalizedDescriptionKey: dto.message]
+      )
+    }
+
     return dto.toDomain()
   }
 }

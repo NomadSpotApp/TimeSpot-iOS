@@ -202,6 +202,8 @@ extension HomeFeature {
       state.$userSession.withLock {
         $0.travelID = String(row.stationID)
         $0.travelStationName = row.stationName
+        $0.travelStationLat = row.lat
+        $0.travelStationLng = row.lng
       }
       return .merge(
         .cancel(id: TrainStationFeature.CancelID.checkAccessToken),
@@ -255,9 +257,12 @@ extension HomeFeature {
 
     case .departureTimeChanged(let date):
       state.currentTime = now
-      state.departureTime = date
+      state.departureTime = date.normalizedDepartureTime(from: state.currentTime)
       state.departureTimePickerVisible = false
       state.isDepartureTimeSet = true
+      state.$userSession.withLock {
+        $0.remainingMinutes = state.remainingTotalMinutes
+      }
       guard state.shouldShowDepartureWarningToast else {
         return .none
       }
@@ -385,6 +390,9 @@ extension HomeFeature {
       state.$userSession.withLock {
         $0.travelID = ""
         $0.travelStationName = ""
+        $0.travelStationLat = nil
+        $0.travelStationLng = nil
+        $0.remainingMinutes = 0
       }
       return .none
     }
@@ -392,12 +400,16 @@ extension HomeFeature {
 }
 
 extension HomeFeature.State {
+  var maxDepartureTime: Date {
+    Calendar.current.date(byAdding: .day, value: 1, to: currentTime) ?? currentTime
+  }
+
   var remainingTotalMinutes: Int {
     (remainingTime.hour ?? 0) * 60 + (remainingTime.minute ?? 0)
   }
 
   var isStationReady: Bool {
-    hasSelectedStation || selectedStation == .seoul
+    hasSelectedStation
   }
 
   var isExploreNearbyEnabled: Bool {
@@ -430,6 +442,31 @@ extension HomeFeature.State {
 
   var remainingMinutesText: String {
     String(format: "%02d", remainingTime.minute ?? 0)
+  }
+}
+
+private extension Date {
+  func normalizedDepartureTime(from currentTime: Date) -> Date {
+    let calendar = Calendar.current
+    let currentDateComponents = calendar.dateComponents([.year, .month, .day], from: currentTime)
+    let selectedTimeComponents = calendar.dateComponents([.hour, .minute], from: self)
+
+    var normalizedComponents = DateComponents()
+    normalizedComponents.year = currentDateComponents.year
+    normalizedComponents.month = currentDateComponents.month
+    normalizedComponents.day = currentDateComponents.day
+    normalizedComponents.hour = selectedTimeComponents.hour
+    normalizedComponents.minute = selectedTimeComponents.minute
+
+    guard let normalizedDate = calendar.date(from: normalizedComponents) else {
+      return self
+    }
+
+    if normalizedDate < currentTime {
+      return calendar.date(byAdding: .day, value: 1, to: normalizedDate) ?? normalizedDate
+    }
+
+    return normalizedDate
   }
 }
 

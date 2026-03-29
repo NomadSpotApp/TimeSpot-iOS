@@ -82,9 +82,16 @@ extension SettingView {
             store.send(.view(.mapTypeSelected(mapType)))
           } label: {
             if store.userSession.mapType == mapType {
-              Label(mapType.description, systemImage: "checkmark")
-                .pretendardCustomFont(textStyle: .bodyMedium)
-                .foregroundStyle(.gray800)
+              HStack(spacing: 8) {
+                Image(asset: .rowCheck)
+                  .resizable()
+                  .scaledToFit()
+                  .frame(width: 24, height: 24)
+
+                Text(mapType.description)
+                  .pretendardCustomFont(textStyle: .bodyMedium)
+                  .foregroundStyle(.gray800)
+              }
             } else {
               Text(mapType.description)
                 .pretendardCustomFont(textStyle: .bodyMedium)
@@ -107,11 +114,17 @@ extension SettingView {
   private var accountSettingsSection: some View {
     settingsSection {
       SettingMenuRowView(
-        title: "서비스 이용 약관"
+        title: "서비스 이용 약관",
+        action: {
+          store.send(.delegate(.presentServicePolicy))
+        }
       )
 
       SettingMenuRowView(
-        title: "개인정보 처리방침"
+        title: "개인정보 처리방침",
+        action: {
+          store.send(.delegate(.presentPrivacyPolicy))
+        }
       )
 
       SettingMenuRowView(

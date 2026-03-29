@@ -15,6 +15,12 @@ public struct UserSession: Equatable, Hashable {
   public var mapType: ExternalMapType
   public var travelID: String
   public var travelStationName: String
+  public var travelStationLat: Double?
+  public var travelStationLng: Double?
+  public var remainingMinutes: Int
+  public var selectedExploreSpotID: String
+  public var selectedExplorePlaceID: String
+  public var explorePlacesFetchedAt: Date?
 
   public init(
     name: String = "",
@@ -23,7 +29,13 @@ public struct UserSession: Equatable, Hashable {
     authCode: String = "",
     mapType: ExternalMapType = .appleMap,
     travelID: String = "",
-    travelStationName: String = ""
+    travelStationName: String = "",
+    travelStationLat: Double? = nil,
+    travelStationLng: Double? = nil,
+    remainingMinutes: Int = 0,
+    selectedExploreSpotID: String = "",
+    selectedExplorePlaceID: String = "",
+    explorePlacesFetchedAt: Date? = nil
   ) {
     self.name = name
     self.email = email
@@ -32,6 +44,12 @@ public struct UserSession: Equatable, Hashable {
     self.mapType = mapType
     self.travelID = travelID
     self.travelStationName = travelStationName
+    self.travelStationLat = travelStationLat
+    self.travelStationLng = travelStationLng
+    self.remainingMinutes = remainingMinutes
+    self.selectedExploreSpotID = selectedExploreSpotID
+    self.selectedExplorePlaceID = selectedExplorePlaceID
+    self.explorePlacesFetchedAt = explorePlacesFetchedAt
   }
 }
 

@@ -24,20 +24,29 @@ public struct StationListEntity: Equatable, Hashable {
 }
 
 public struct StationSummaryEntity: Equatable, Hashable, Identifiable {
+  public let favoriteID: Int?
   public let stationID: Int
   public let name: String
   public let lines: [String]
+  public let lat: Double?
+  public let lng: Double?
 
   public var id: Int { stationID }
 
   public init(
+    favoriteID: Int? = nil,
     stationID: Int,
     name: String,
-    lines: [String]
+    lines: [String],
+    lat: Double? = nil,
+    lng: Double? = nil
   ) {
+    self.favoriteID = favoriteID
     self.stationID = stationID
     self.name = name
     self.lines = lines
+    self.lat = lat
+    self.lng = lng
   }
 }
 

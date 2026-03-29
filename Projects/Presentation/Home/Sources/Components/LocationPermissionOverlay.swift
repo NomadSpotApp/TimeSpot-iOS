@@ -78,7 +78,6 @@ extension LocationPermissionOverlay {
             LocationPermissionOverlay.openSettings()
         },
         onRetryButtonTapped: {
-            print("Retry tapped")
         }
     )
 }
