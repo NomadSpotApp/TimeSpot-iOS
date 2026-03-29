@@ -114,11 +114,17 @@ extension SettingView {
   private var accountSettingsSection: some View {
     settingsSection {
       SettingMenuRowView(
-        title: "서비스 이용 약관"
+        title: "서비스 이용 약관",
+        action: {
+          store.send(.delegate(.presentServicePolicy))
+        }
       )
 
       SettingMenuRowView(
-        title: "개인정보 처리방침"
+        title: "개인정보 처리방침",
+        action: {
+          store.send(.delegate(.presentPrivacyPolicy))
+        }
       )
 
       SettingMenuRowView(
