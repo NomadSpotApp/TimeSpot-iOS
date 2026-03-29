@@ -1,5 +1,5 @@
 //
-//  ExploreReducer.swift
+//  ExploreFeature.swift
 //  Home
 //
 //  Created by wonji suh on 2026-03-12
@@ -14,9 +14,10 @@ import UseCase
 import Entity
 import LogMacro
 import Utill
+import IdentifiedCollections
 
 @Reducer
-public struct ExploreReducer: Sendable {
+public struct ExploreFeature: Sendable {
   public init() {}
 
   enum CancelID: Hashable {
@@ -33,7 +34,6 @@ public struct ExploreReducer: Sendable {
     public var isLocationPermissionDenied: Bool = false
     public var locationError: String?
     public var searchText: String = ""
-    public var spots: [ExploreMapSpot] = []
     public var isLoadingPlaces: Bool = false
     public var hasRequestedPlaces: Bool = false
     public var hasFetchedPlacesWithCurrentLocation: Bool = false
@@ -46,6 +46,7 @@ public struct ExploreReducer: Sendable {
     public var mapCenterLon: Double?
     @Presents public var alert: AlertState<Alert>?
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
+    public var spots: [ExploreMapSpot] = []
 
     // 길찾기 관련 상태
     public var selectedDestination: Destination?
@@ -61,6 +62,7 @@ public struct ExploreReducer: Sendable {
     public var cardDragOffset: CGFloat = 0
     public var cardBaseOffset: CGFloat = 0
     public var isCardTransitioning: Bool = false
+
 
     public init() {}
   }
@@ -132,6 +134,7 @@ public struct ExploreReducer: Sendable {
     case resetCameraFlag
     case completeCardSwipe(next: Bool)
     case finishCardTransition
+    // 네이버 이미지 검색 완료
   }
 
   public enum AsyncAction: Equatable {
@@ -154,8 +157,8 @@ public struct ExploreReducer: Sendable {
 
   @Dependency(\.getRouteUseCase) var getRouteUseCase
   @Dependency(\.placeUseCase) var placeUseCase
-  let locationUseCase = LocationUseCaseImpl()
-  let cameraUseCase = CameraUseCaseImpl()
+  @Dependency(\.locationUseCase) var locationUseCase
+  @Dependency(\.cameraUseCase) var cameraUseCase
 
   public var body: some ReducerOf<Self> {
     Reduce { state, action in
@@ -180,7 +183,7 @@ public struct ExploreReducer: Sendable {
   }
 }
 
-extension ExploreReducer {
+extension ExploreFeature {
 
   private func handleViewAction(
     state: inout State,
@@ -405,6 +408,7 @@ extension ExploreReducer {
         state.returnToCurrentLocationTrigger = cameraResult.newTrigger
         print("🟢 [CurrentLocationButton] CameraUseCase 처리 완료")
         return .none
+
     }
   }
 
@@ -703,6 +707,7 @@ extension ExploreReducer {
         state.cardDragOffset = 0
         state.isCardTransitioning = false
         return .none
+
     }
   }
 
@@ -891,6 +896,7 @@ extension ExploreReducer {
           await send(.inner(.routeSearchResponse(routeResult)))
         }
         .cancellable(id: CancelID.searchRoute, cancelInFlight: true)
+
     }
   }
 
@@ -948,7 +954,7 @@ extension ExploreReducer {
   }
 }
 
-private extension ExploreReducer.State {
+private extension ExploreFeature.State {
   var remainingSelectedSpotMinutes: Int {
     guard let selectedSpot else {
       return 0

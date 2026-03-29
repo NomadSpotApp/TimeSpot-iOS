@@ -47,10 +47,14 @@ public struct ExploreListView: View {
           ScrollView(showsIndicators: false) {
             LazyVStack(spacing: 12) {
               ForEach(filteredSpots) { spot in
-                ExploreSpotListCardView(spot: spot)
+                ExploreSpotListCardView(spot: spot, store: store)
                   .onAppear {
                     guard shouldShowLoadMore else { return }
-                    guard spot.id == filteredSpots.last?.id else { return }
+
+                    // 간단하게 마지막 3개 아이템 중 하나면 로드
+                    let lastFewSpots = filteredSpots.suffix(3)
+                    guard lastFewSpots.contains(where: { $0.id == spot.id }) else { return }
+
                     store.send(.view(.loadNextPage))
                   }
               }
@@ -60,6 +64,7 @@ public struct ExploreListView: View {
                   .frame(maxWidth: .infinity)
                   .padding(.vertical, 16)
               }
+
 
               // 플로팅 버튼 공간
               Spacer(minLength: 80)

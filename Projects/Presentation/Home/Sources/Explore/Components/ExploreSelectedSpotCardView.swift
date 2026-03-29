@@ -9,10 +9,13 @@ import DesignSystem
 import Entity
 import Kingfisher
 import Utill
+import ComposableArchitecture
+import LogMacro
 
 struct ExploreSelectedSpotCardView: View {
   let currentSpot: ExploreMapSpot
   let adjacentSpot: ExploreMapSpot?
+  let store: StoreOf<ExploreFeature>
   let currentOffset: CGFloat
   let adjacentOffset: CGFloat?
   let cardOpacity: Double
@@ -38,6 +41,10 @@ struct ExploreSelectedSpotCardView: View {
         .onChanged(onDragChanged)
         .onEnded(onDragEnded)
     )
+    .onAppear {
+    }
+    .onChange(of: currentSpot.id) { _ in
+    }
   }
 
   private func cardContent(for spot: ExploreMapSpot) -> some View {
@@ -145,19 +152,25 @@ struct ExploreSelectedSpotCardView: View {
 
   @ViewBuilder
   private func spotImage(for spot: ExploreMapSpot) -> some View {
-    if let url = imageURL(for: spot) {
-      KFImage(url)
-        .placeholder {
-          imagePlaceholder()
-        }
-        .cancelOnDisappear(true)
-        .fade(duration: 0.2)
-        .resizable()
-        .scaledToFill()
-        .frame(width: 92, height: 112)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-    } else {
-      imagePlaceholder()
+    Group {
+      if let url = imageURL(for: spot) {
+        KFImage(url)
+          .placeholder {
+            imagePlaceholder()
+          }
+          .cacheMemoryOnly(false)
+          .diskCacheExpiration(.days(7))
+          .memoryCacheExpiration(.seconds(300))
+          .loadDiskFileSynchronously()
+          .cancelOnDisappear(true)
+          .fade(duration: 0.2)
+          .resizable()
+          .scaledToFill()
+          .frame(width: 92, height: 112)
+          .clipShape(RoundedRectangle(cornerRadius: 16))
+      } else {
+        imagePlaceholder()
+      }
     }
   }
 
@@ -190,17 +203,18 @@ struct ExploreSelectedSpotCardView: View {
   }
 
   private func imageURL(for spot: ExploreMapSpot) -> URL? {
-    guard let imageURL = spot.imageURL?.trimmingCharacters(in: .whitespacesAndNewlines),
-          !imageURL.isEmpty else {
-      return nil
+    // 1. 기존 spot.imageURL이 있으면 우선 사용
+    if let imageURL = spot.imageURL?.trimmingCharacters(in: .whitespacesAndNewlines),
+       !imageURL.isEmpty {
+      if let url = URL(string: imageURL) {
+        return url
+      }
+      let encoded = imageURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+      return encoded.flatMap(URL.init(string:))
     }
 
-    if let url = URL(string: imageURL) {
-      return url
-    }
 
-    let encoded = imageURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-    return encoded.flatMap(URL.init(string:))
+    return nil
   }
 
   private func imagePlaceholder() -> some View {
@@ -214,4 +228,5 @@ struct ExploreSelectedSpotCardView: View {
     }
     .frame(width: 92, height: 112)
   }
+
 }

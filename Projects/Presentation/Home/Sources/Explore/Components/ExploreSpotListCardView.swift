@@ -9,9 +9,12 @@ import DesignSystem
 import Entity
 import Kingfisher
 import Utill
+import ComposableArchitecture
+import LogMacro
 
 struct ExploreSpotListCardView: View {
   let spot: ExploreMapSpot
+  let store: StoreOf<ExploreListFeature>
 
   var body: some View {
     HStack(alignment: .top, spacing: 14) {
@@ -86,6 +89,10 @@ struct ExploreSpotListCardView: View {
       RoundedRectangle(cornerRadius: 22)
         .stroke(.enableColor, lineWidth: 1)
     }
+    .onAppear {
+    }
+    .onChange(of: spot.id) { _ in
+    }
   }
 
   @ViewBuilder
@@ -145,6 +152,10 @@ struct ExploreSpotListCardView: View {
         .placeholder {
           imagePlaceholder()
         }
+        .cacheMemoryOnly(false)
+        .diskCacheExpiration(.days(7))
+        .memoryCacheExpiration(.seconds(300))
+        .loadDiskFileSynchronously()
         .cancelOnDisappear(true)
         .fade(duration: 0.2)
         .resizable()
@@ -157,17 +168,18 @@ struct ExploreSpotListCardView: View {
   }
 
   private func imageURL(for spot: ExploreMapSpot) -> URL? {
-    guard let imageURL = spot.imageURL?.trimmingCharacters(in: .whitespacesAndNewlines),
-          !imageURL.isEmpty else {
-      return nil
+    // 1. 기존 spot.imageURL이 있으면 우선 사용
+    if let imageURL = spot.imageURL?.trimmingCharacters(in: .whitespacesAndNewlines),
+       !imageURL.isEmpty {
+      if let url = URL(string: imageURL) {
+        return url
+      }
+      let encoded = imageURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+      return encoded.flatMap(URL.init(string:))
     }
 
-    if let url = URL(string: imageURL) {
-      return url
-    }
 
-    let encoded = imageURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-    return encoded.flatMap(URL.init(string:))
+    return nil
   }
 
   private func imagePlaceholder() -> some View {
@@ -181,4 +193,5 @@ struct ExploreSpotListCardView: View {
     }
     .frame(width: 92, height: 112)
   }
+
 }

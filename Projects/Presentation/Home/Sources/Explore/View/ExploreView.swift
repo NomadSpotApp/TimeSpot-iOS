@@ -15,7 +15,7 @@ import DesignSystem
 import Entity
 
 public struct ExploreView: View {
-  @Bindable var store: StoreOf<ExploreReducer>
+  @Bindable var store: StoreOf<ExploreFeature>
   @Environment(\.dismiss) private var dismiss
 
   private var cardTravelDistance: CGFloat {
@@ -26,7 +26,7 @@ public struct ExploreView: View {
     (UIScreen.main.bounds.width - 32) / 2
   }
 
-  public init(store: StoreOf<ExploreReducer>) {
+  public init(store: StoreOf<ExploreFeature>) {
     self.store = store
   }
 
@@ -113,6 +113,7 @@ private extension ExploreView {
         ExploreSelectedSpotCardView(
           currentSpot: selectedSpot,
           adjacentSpot: store.state.adjacentSpot(cardTravelDistance: cardTravelDistance),
+          store: store,
           currentOffset: store.cardBaseOffset + store.cardDragOffset,
           adjacentOffset: store.state.adjacentCardOffset(cardTravelDistance: cardTravelDistance),
           cardOpacity: store.state.cardOpacity(cardTravelDistance: cardTravelDistance),
