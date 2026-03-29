@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import LogMacro
 
 struct CustomConfirmationPopup: View {
   private let title: String
@@ -20,6 +21,7 @@ struct CustomConfirmationPopup: View {
   private let onPolicyTap: () -> Void
   @State private var isChecked = false
   @State private var isContentVisible = false
+  @LogD private var logger: Logger = .init()
 
   init(
     title: String,
@@ -193,10 +195,10 @@ struct CustomConfirmationPopup: View {
   .customConfirmationPopup(
     item: .withdrawAccount(
       onConfirm: {
-        print("탈퇴하기 선택")
+        // 탈퇴하기 선택 - 프리뷰용 로그 제거
       },
       onCancel: {
-        print("취소 선택")
+        // 취소 선택 - 프리뷰용 로그 제거
       }
     )
   )
@@ -216,10 +218,10 @@ struct CustomConfirmationPopup: View {
     cancelTitle: "취소",
     isDestructive: true,
     onConfirm: {
-      print("탈퇴하기 선택")
+      // 탈퇴하기 선택 - 프리뷰용 로그 제거
     },
     onCancel: {
-      print("취소 선택")
+      // 취소 선택 - 프리뷰용 로그 제거
     }
   )
 }
