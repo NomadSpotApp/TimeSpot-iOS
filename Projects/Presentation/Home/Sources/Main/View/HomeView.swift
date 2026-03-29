@@ -149,7 +149,7 @@ extension HomeView {
         Image(asset: .profile)
           .resizable()
           .scaledToFit()
-          .frame(width: 56, height: 56)
+          .frame(width: 48, height: 48)
       }
       .buttonStyle(.plain)
     }

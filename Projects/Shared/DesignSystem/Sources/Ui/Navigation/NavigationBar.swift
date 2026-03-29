@@ -31,7 +31,7 @@ public struct CustomNavigationBackBar: View {
         Image(asset: .leftArrow)
           .resizable()
           .scaledToFit()
-          .frame(width: 60, height: 60)
+          .frame(width: 48, height: 48)
           .contentShape(Rectangle())
           .onTapGesture {
             buttonAction()

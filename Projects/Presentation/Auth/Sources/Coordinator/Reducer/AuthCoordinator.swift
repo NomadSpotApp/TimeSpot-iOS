@@ -100,6 +100,9 @@ extension AuthCoordinator {
         state.routes.push(.web(.init(url: "https://www.notion.so/329f94ae438b807d95dcd0f5f8abf66a?source=copy_link")))
         return .none
 
+      case .routeAction(id: _, action: .web(.backToRoot)):
+        return .send(.view(.backAction))
+
       default:
         return .none
     }

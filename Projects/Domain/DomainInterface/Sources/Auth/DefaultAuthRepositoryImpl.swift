@@ -53,4 +53,14 @@ final public class DefaultAuthRepositoryImpl: AuthInterface {
   public func updateSessionCredential(with tokens: AuthTokens) {
     // Mock 구현체에서는 아무것도 하지 않음 (테스트/프리뷰용)
   }
+
+  public func registerNotification(
+    with deviceToken: String
+  ) async throws -> RegisterNotificationEntity {
+    return RegisterNotificationEntity(
+      userId: nil,
+      deviceToken: deviceToken,
+      isActive: true
+    )
+  }
 }
