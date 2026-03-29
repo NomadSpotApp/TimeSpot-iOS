@@ -37,7 +37,7 @@ public struct ExploreDetailView: View {
               dismiss()
             }, title: "")
             .padding(.horizontal, 16)
-            .offset(y: -34)
+            .offset(y: -24)
           }
 
           ScrollView(.vertical) {
@@ -63,10 +63,8 @@ public struct ExploreDetailView: View {
                   locationMapSection()
                     .padding(.top, 24)
 
-                  if !store.isVisitUnavailable {
-                    routeButtonSection()
-                      .padding(.top, 24)
-                  }
+                  routeButtonSection()
+                    .padding(.top, 24)
                 }
               }
             }
@@ -98,9 +96,6 @@ private extension ExploreDetailView {
   @ViewBuilder
   func exploreSpotNameTitle() -> some View {
     VStack(alignment: .leading) {
-      Spacer()
-        .frame(height: 4)
-
       HStack(spacing: 8) {
         Text(store.placeNameText.formattedPlaceNameForDisplay)
           .pretendardCustomFont(textStyle: .heading1)

@@ -311,8 +311,7 @@ extension ExploreListFeature {
           }
         } else {
           state.bufferedSpots = pageEntity.spots
-          state.spots = []
-          revealNextChunk(state: &state)
+          state.spots = pageEntity.spots  // 카테고리 변경 시 모든 데이터 바로 표시
           state.currentPage = requestedPage + 1
           state.hasNextPage = pageEntity.hasNextPage
         }
@@ -362,9 +361,8 @@ private extension ExploreListFeature {
 
     return spots.filter { spot in
       let hasDetail = spot.hasDetail
-      let matchesCategory = state.selectedCategory == .all || spot.category == state.selectedCategory
       let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
-      return hasDetail && matchesCategory && matchesQuery
+      return hasDetail && matchesQuery
     }
   }
 
