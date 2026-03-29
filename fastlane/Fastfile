@@ -44,6 +44,7 @@ platform :ios do
       app_identifier: ["io.TimeSpot.co"]
     )
 
+    ipa_path = nil
     # Change to project root directory
     Dir.chdir("..") do
       puts "📁 Current directory: #{Dir.pwd}"

@@ -1,0 +1,79 @@
+//
+//  PlaceRepositoryImpl.swift
+//  Repository
+//
+//  Created by Wonji Suh  on 3/27/26.
+//
+
+import DomainInterface
+import Model
+import Entity
+
+import Service
+import Dependencies
+import LogMacro
+
+import AsyncMoya
+
+public final class PlaceRepositoryImpl: PlaceInterface, @unchecked Sendable {
+  private let provider: MoyaProvider<PlaceService>
+
+  public init(
+    provider: MoyaProvider<PlaceService> = MoyaProvider<PlaceService>.authorized,
+  ) {
+    self.provider = provider
+  }
+
+  // MARK: - 장소 관련 api
+  public func fetchPlaces(
+    _ input: PlaceInput
+  ) async throws -> [PlaceEntity] {
+    let body: PlaceRequest = .init(
+      userLat: input.userLat,
+      userLon: input.userLon,
+      mapLat: input.mapLat,
+      mapLon: input.mapLon,
+      stationId: input.stationId,
+      remainingMinutes: input.remainingMinutes
+    )
+    let dto: PlaceDTOModel = try await provider.request(.fetchPlaces(body: body))
+
+    return dto.data.map { $0.toDomainForFetchPlaces() }
+  }
+
+  public func searchPlaces(
+    _ input: PlaceSearchInput
+  ) async throws -> PlaceSearchPageEntity {
+    let body: PlaceSearchRequest = .init(
+      userLat: input.userLat,
+      userLon: input.userLon,
+      stationId: input.stationId,
+      remainingMinutes: input.remainingMinutes,
+      keyword: input.keyword,
+      category: input.category,
+      sortBy: input.sortBy,
+      mapLat: input.mapLat,
+      mapLon: input.mapLon,
+      page: input.page,
+      size: input.size,
+      sort: ["MAP_NEAREST"]
+    )
+    let dto: PlaceSearchDTOModel = try await provider.request(.searchPlaces(body: body))
+    return dto.data.toDomain()
+  }
+
+  public func detailPlaces(
+    _ input: PlaceDetailInput
+  ) async throws -> PlaceDetailEntity {
+    let body: PlaceDetailRequest = .init(
+      placeId: input.placeId,
+      stationId: input.stationId,
+      userLat: input.userLat,
+      userLon: input.userLon,
+      remainingMinutes: input.remainingMinutes
+    )
+
+    let dto: PlaceDetailDTOModel = try await provider.request(.detailPlaces(body: body))
+    return dto.data.toDomain()
+  }
+}

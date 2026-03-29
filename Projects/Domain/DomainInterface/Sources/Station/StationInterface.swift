@@ -11,8 +11,8 @@ import WeaveDI
 
 public protocol StationInterface: Sendable {
   func fetchStations(
-    lat: Double,
-    lng: Double,
+    userLat: Double,
+    userLon: Double,
     page: Int,
     size: Int
   ) async throws -> StationListEntity
@@ -22,7 +22,7 @@ public protocol StationInterface: Sendable {
   ) async throws -> FavoriteStationMutationEntity
 
   func deleteFavoriteStation(
-    stationID: Int
+    favoriteID: Int
   ) async throws -> FavoriteStationMutationEntity
 }
 

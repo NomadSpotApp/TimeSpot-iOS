@@ -7,6 +7,7 @@
 
 import ComposableArchitecture
 import TCACoordinators
+import Web
 
 @Reducer
 public struct ProfileCoordinator {
@@ -119,6 +120,17 @@ extension ProfileCoordinator {
       case .routeAction(id: _, action: .notification(.delegate(.presentBack))):
         return .send(.view(.backAction))
 
+      case .routeAction(id: _, action: .setting(.delegate(.presentPrivacyPolicy))):
+        state.routes.push(.web(.init(url: "https://www.notion.so/329f94ae438b807d95dcd0f5f8abf66a?source=copy_link")))
+        return .none
+
+      case .routeAction(id: _, action: .setting(.delegate(.presentServicePolicy))):
+        state.routes.push(.web(.init(url: "https://www.notion.so/329f94ae438b804d99a3f8ba2c761e15?source=copy_link")))
+        return .none
+
+      case .routeAction(id: _, action: .web(.backToRoot)):
+        return .send(.view(.backAction))
+
       default:
         return .none
     }
@@ -178,10 +190,11 @@ extension ProfileCoordinator {
     case setting(SettingFeature)
     case withDraw(WithDrawFeature)
     case notification(NotificationSettingFeature)
+    case web(WebFeature)
   }
 }
 
-// MARK: - AuthScreen State Equatable & Hashable
+// MARK: - ProfileScreen State Equatable & Hashable
 extension ProfileCoordinator.ProfileScreen.State: Equatable {}
 extension ProfileCoordinator.ProfileScreen.State: Hashable {}
 

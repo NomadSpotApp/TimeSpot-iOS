@@ -8,6 +8,8 @@
 import ComposableArchitecture
 import TCACoordinators
 import Profile
+import CoreLocation
+import Entity
 
 @Reducer
 public struct HomeCoordinator {
@@ -49,6 +51,8 @@ public struct HomeCoordinator {
     case presentProfile
     case presentProfileWithAnimation
     case presentExplore
+    case presentExploreList(ExploreFeature.State)
+    case presentExploreDetail
   }
 
   // MARK: - NavigationAction
@@ -97,6 +101,58 @@ extension HomeCoordinator {
 
       case .routeAction(id: _, action: .home(.delegate(.presentAuth))):
         return .send(.navigation(.presentAuth))
+
+      case let .routeAction(id: id, action: .explore(.delegate(.presentExploreList))):
+        guard state.routes.indices.contains(id) else {
+          return .none
+        }
+
+        switch state.routes[id] {
+        case let .push(.explore(exploreState)):
+          return .send(.inner(.presentExploreList(exploreState)))
+        default:
+          return .none
+        }
+
+      case let .routeAction(id: id, action: .explore(.delegate(.presentExplorerDetail))):
+        guard state.routes.indices.contains(id) else {
+          return .none
+        }
+
+        switch state.routes[id] {
+        case .push(.explore):
+          return .send(.inner(.presentExploreDetail))
+        default:
+          return .none
+        }
+
+      case let .routeAction(id: id, action: .exploreList(.delegate(.presentExploreMapAtCurrentLocation))):
+        guard state.routes.indices.contains(id) else {
+          return .none
+        }
+
+        let exploreIndex = id - 1
+        guard exploreIndex >= 0,
+              state.routes.indices.contains(exploreIndex) else {
+          return .send(.view(.backAction))
+        }
+
+        switch state.routes[exploreIndex] {
+        case .push(.explore):
+          state.routes.goBack()
+          return .send(
+            .router(
+              .routeAction(
+                id: exploreIndex,
+                action: .explore(.view(.returnToCurrentLocation))
+              )
+            )
+          )
+
+        default:
+          return .send(.view(.backAction))
+        }
+
 
       case .routeAction(id: _, action: .profile(.navigation(.presentRoot))):
         return .send(.view(.backAction))
@@ -159,7 +215,44 @@ extension HomeCoordinator {
       return .none
 
     case .presentExplore:
-      state.routes.push(.explore(.init()))
+      var exploreState = ExploreFeature.State()
+      if let lat = exploreState.userSession.travelStationLat,
+         let lng = exploreState.userSession.travelStationLng {
+        exploreState.selectedDestination = Destination(
+          name: exploreState.userSession.travelStationName,
+          coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng)
+        )
+      }
+      state.routes.push(.explore(exploreState))
+      return .none
+
+    case let .presentExploreList(exploreState):
+      var exploreListState = ExploreListFeature.State()
+      exploreListState.searchText = exploreState.searchText
+      exploreListState.selectedCategory = exploreState.selectedCategory
+      exploreListState.currentLocation = exploreState.currentLocation?.coordinate
+      exploreListState.markerLat = exploreState.mapCenterLat ?? exploreState.searchMarkerLat
+      exploreListState.markerLon = exploreState.mapCenterLon ?? exploreState.searchMarkerLon
+
+      let hasFullyLoadedMarkerData =
+        !exploreState.spots.isEmpty
+        && exploreState.spots.allSatisfy(\.hasDetail)
+
+      if hasFullyLoadedMarkerData {
+        exploreListState.bufferedSpots = exploreState.spots
+        exploreListState.spots = Array(
+          exploreState.spots.prefix(ExploreListFeature.State.pageChunkSize)
+        )
+        exploreListState.currentPage = exploreState.currentPage
+        exploreListState.hasNextPage = exploreState.hasNextPage
+        exploreListState.hasLoadedInitialPage = true
+      }
+
+      state.routes.push(.exploreList(exploreListState))
+      return .none
+
+    case .presentExploreDetail:
+      state.routes.push(.exploreDetail(.init()))
       return .none
     }
   }
@@ -170,7 +263,9 @@ extension HomeCoordinator {
   @Reducer
   public enum HomeScreen {
     case home(HomeFeature)
-    case explore(ExploreReducer)
+    case explore(ExploreFeature)
+    case exploreList(ExploreListFeature)
+    case exploreDetail(ExploreDetailFeature)
     case profile(ProfileCoordinator)
   }
 }

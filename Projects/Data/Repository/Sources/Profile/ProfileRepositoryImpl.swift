@@ -82,6 +82,23 @@ public class ProfileRepositoryImpl: ProfileInterface, @unchecked Sendable {
     let dto: LoginDTOModel = try await provider.request(.editProfile(body: body))
     return dto.data.toDomain()
   }
+
+  public func fetchNotificationSettings() async throws -> NotificationEntity {
+    let dto: ProfileNotificationDTO = try await provider.request(.fetchNotification)
+    return dto.data.toDomain()
+  }
+
+  public func editNotificationSettings(
+    notificationSettings: [NotificationOption]
+  ) async throws -> NotificationEntity {
+    let options: [NotificationOption] = [.fiveMinutesBefore, .tenMinutesBefore, .fifteenMinutesBefore]
+    let body = EditNotificationRequest(
+      options: options,
+      enabledOptions: Set(notificationSettings)
+    )
+    let dto: ProfileNotificationDTO = try await provider.request(.editNotification(body: body))
+    return dto.data.toDomain()
+  }
 }
 
 private struct ProfileErrorResponseDTO: Decodable {

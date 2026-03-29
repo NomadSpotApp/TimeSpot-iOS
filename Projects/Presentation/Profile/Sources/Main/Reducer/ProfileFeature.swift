@@ -14,6 +14,10 @@ import UseCase
 
 @Reducer
 public struct ProfileFeature {
+  private enum Constants {
+    static let historyPageSize = 50
+  }
+
   public init() {}
 
   @ObservableState
@@ -160,7 +164,11 @@ extension ProfileFeature {
         }
         return .run { [travelHistorySort = state.travelHistorySort] send in
           let result = await Result {
-            try await historyUseCase.myHistory(page: page, size: 10, sort: travelHistorySort)
+            try await historyUseCase.myHistory(
+              page: page,
+              size: Constants.historyPageSize,
+              sort: travelHistorySort
+            )
           }
           .mapError(ProfileError.from)
           await send(.inner(.fetchMyHistoryResponse(result, reset: reset)))
