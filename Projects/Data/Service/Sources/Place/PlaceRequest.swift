@@ -43,7 +43,9 @@ public struct PlaceSearchRequest: Encodable {
   public let sortBy: String
   public let mapLat: Double?
   public let mapLon: Double?
-  public let pageable: PageableRequest
+  public let page: Int
+  public let size: Int
+  public let sort: [String]
 
   public init(
     userLat: Double,
@@ -55,7 +57,9 @@ public struct PlaceSearchRequest: Encodable {
     sortBy: String = "STATION_NEAREST",
     mapLat: Double? = nil,
     mapLon: Double? = nil,
-    pageable: PageableRequest = .init()
+    page: Int = 0,
+    size: Int = 200,
+    sort: [String] = ["MAP_NEAREST"]
   ) {
     self.userLat = userLat
     self.userLon = userLon
@@ -66,7 +70,9 @@ public struct PlaceSearchRequest: Encodable {
     self.sortBy = sortBy
     self.mapLat = mapLat
     self.mapLon = mapLon
-    self.pageable = pageable
+    self.page = page
+    self.size = size
+    self.sort = sort
   }
 }
 
@@ -76,7 +82,7 @@ public struct PageableRequest: Encodable, Equatable {
 
   public init(
     page: Int = 0,
-    size: Int = 10
+    size: Int = 200
   ) {
     self.page = page
     self.size = size

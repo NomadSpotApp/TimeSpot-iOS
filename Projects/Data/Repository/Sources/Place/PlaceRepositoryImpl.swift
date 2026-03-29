@@ -54,7 +54,9 @@ public final class PlaceRepositoryImpl: PlaceInterface, @unchecked Sendable {
       sortBy: input.sortBy,
       mapLat: input.mapLat,
       mapLon: input.mapLon,
-      pageable: .init(page: input.page, size: input.size)
+      page: input.page,
+      size: input.size,
+      sort: ["MAP_NEAREST"]
     )
     let dto: PlaceSearchDTOModel = try await provider.request(.searchPlaces(body: body))
     return dto.data.toDomain()
