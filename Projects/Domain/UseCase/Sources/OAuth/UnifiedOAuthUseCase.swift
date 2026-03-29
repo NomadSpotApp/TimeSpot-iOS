@@ -15,7 +15,6 @@ import LogMacro
 
 /// 통합 OAuth UseCase - 로그인/회원가입 플로우를 하나로 통합
 public struct UnifiedOAuthUseCase {
-  @LogD private var logger: Logger = .init()
   @Dependency(\.authRepository) private var authRepository: AuthInterface
   @Dependency(\.appleOAuthProvider) private var appleProvider: AppleOAuthProviderInterface
   @Dependency(\.googleOAuthProvider) private var googleProvider: GoogleOAuthProviderInterface
@@ -87,7 +86,7 @@ public extension UnifiedOAuthUseCase {
       token: payload.idToken
     )
 
-    logger.debug("애플 코드 \(payload.authorizationCode ?? "")")
+    #logDebug("애플 코드", "\(payload.authorizationCode ?? "")")
 
     self.$userSession.withLock {
       $0.name = savedAppleUserName ?? ""

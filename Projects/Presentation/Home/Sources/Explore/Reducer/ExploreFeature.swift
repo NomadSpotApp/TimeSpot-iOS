@@ -18,8 +18,6 @@ import IdentifiedCollections
 
 @Reducer
 public struct ExploreFeature: Sendable {
-  @LogD private var logger: Logger = .init()
-
   public init() {}
 
   enum CancelID: Hashable {
@@ -374,7 +372,7 @@ extension ExploreFeature {
         return .none
 
       case .returnToCurrentLocation:
-        logger.debug("🟡 [CurrentLocationButton] CameraUseCase 사용")
+        #logDebug("🟡 [CurrentLocationButton] CameraUseCase 사용")
 
         // CameraUseCase를 통한 스팟 클리어 처리
         let clearResult = cameraUseCase.clearSelectedSpotForLocationReturn(
@@ -408,7 +406,7 @@ extension ExploreFeature {
         }
 
         state.returnToCurrentLocationTrigger = cameraResult.newTrigger
-        logger.debug("🟢 [CurrentLocationButton] CameraUseCase 처리 완료")
+        #logDebug("🟢 [CurrentLocationButton] CameraUseCase 처리 완료")
         return .none
 
     }

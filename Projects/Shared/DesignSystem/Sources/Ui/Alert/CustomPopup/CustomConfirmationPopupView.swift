@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import LogMacro
 
 struct CustomConfirmationPopup: View {
   private let title: String
@@ -21,7 +20,6 @@ struct CustomConfirmationPopup: View {
   private let onPolicyTap: () -> Void
   @State private var isChecked = false
   @State private var isContentVisible = false
-  @LogD private var logger: Logger = .init()
 
   init(
     title: String,

@@ -13,8 +13,6 @@ import Foundations
 import LogMacro
 
 final class KeychainTokenProvider: TokenProviding, @unchecked Sendable {
-  @LogD private var logger: Logger = .init()
-
   private enum Constants {
     static let cachedAccessTokenKey = "cached_access_token"
   }
@@ -66,7 +64,7 @@ final class KeychainTokenProvider: TokenProviding, @unchecked Sendable {
       do {
         try await keychainManager.saveAccessToken(token)
       } catch {
-        logger.error("Failed to save access token: \(error)")
+        #logError("Failed to save access token", "\(error)")
         // 저장 실패 시 캐시도 초기화
         TokenCache.shared.token = nil
         UserDefaults.standard.removeObject(forKey: Constants.cachedAccessTokenKey)
