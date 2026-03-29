@@ -21,6 +21,7 @@ public struct ExploreMapSpot: Identifiable {
   public let closingText: String
   public let distanceText: String
   public let walkTimeText: String
+  public let address: String
 
   public init(
     id: String,
@@ -34,7 +35,8 @@ public struct ExploreMapSpot: Identifiable {
     statusText: String,
     closingText: String,
     distanceText: String,
-    walkTimeText: String
+    walkTimeText: String,
+    address: String
   ) {
     self.id = id
     self.name = name
@@ -48,6 +50,7 @@ public struct ExploreMapSpot: Identifiable {
     self.closingText = closingText
     self.distanceText = distanceText
     self.walkTimeText = walkTimeText
+    self.address = address
   }
 }
 
@@ -66,6 +69,7 @@ extension ExploreMapSpot: Equatable {
     && lhs.closingText == rhs.closingText
     && lhs.distanceText == rhs.distanceText
     && lhs.walkTimeText == rhs.walkTimeText
+    && lhs.address == rhs.address
   }
 }
 
@@ -84,6 +88,7 @@ extension ExploreMapSpot: Hashable {
     hasher.combine(closingText)
     hasher.combine(distanceText)
     hasher.combine(walkTimeText)
+    hasher.combine(address)
   }
 }
 
