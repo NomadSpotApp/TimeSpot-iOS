@@ -11,11 +11,12 @@ let project = Project.makeAppModule(
   product: .staticFramework,
   settings:  .settings(),
   dependencies: [
+    .SPM.composableArchitecture,
+    .SPM.tcaCoordinator,
+    .Domain(implements: .UseCase),
+    .Shared(implements: .DesignSystem),
+    .Presentation(implements: .Web)
 
-  .Domain(implements: .UseCase),
-  .Shared(implements: .DesignSystem),
-  .SPM.composableArchitecture,
-  .SPM.tcaCoordinator,
   ],
   sources: ["Sources/**"]
 )
