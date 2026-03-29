@@ -37,16 +37,13 @@ public struct ExploreDetailView: View {
               dismiss()
             }, title: "")
             .padding(.horizontal, 16)
-            .offset(y: -30)
-          } else {
-            Spacer()
-              .frame(height: 24)
+            .offset(y: -34)
           }
 
           ScrollView(.vertical) {
             Group {
               if store.isLoading && store.placeDetail == nil {
-                skeletonContent()
+                ExploreDetailSkeletonView()
               } else {
                 VStack(alignment: .leading) {
                   exploreSpotNameTitle()
@@ -57,10 +54,8 @@ public struct ExploreDetailView: View {
                   stayInfoSection()
                     .padding(.top, 24)
 
-                  if !isVisitUnavailable {
-                    returnDeadlineSection()
-                      .padding(.top, 24)
-                  }
+                  returnDeadlineSection()
+                    .padding(.top, 24)
 
                   placeInfoSection()
                     .padding(.top, 29)
@@ -68,7 +63,7 @@ public struct ExploreDetailView: View {
                   locationMapSection()
                     .padding(.top, 24)
 
-                  if !isVisitUnavailable {
+                  if !store.isVisitUnavailable {
                     routeButtonSection()
                       .padding(.top, 24)
                   }
@@ -85,6 +80,9 @@ public struct ExploreDetailView: View {
     }
     .onAppear {
       store.send(.view(.onAppear))
+    }
+    .refreshable {
+      // 캐시된 이미지 다시 확인
     }
     .onChange(of: store.shouldDismiss) { _, shouldDismiss in
       guard shouldDismiss else { return }
@@ -104,12 +102,12 @@ private extension ExploreDetailView {
         .frame(height: 4)
 
       HStack(spacing: 8) {
-        Text(placeNameText.formattedPlaceNameForDisplay)
+        Text(store.placeNameText.formattedPlaceNameForDisplay)
           .pretendardCustomFont(textStyle: .heading1)
           .foregroundStyle(.staticBlack)
           .lineLimit(2)
 
-        Text(categoryText)
+        Text(store.categoryText)
           .pretendardCustomFont(textStyle: .body2Regular)
           .foregroundStyle(.gray700)
 
@@ -122,8 +120,8 @@ private extension ExploreDetailView {
   func imageSection() -> some View {
     ScrollView(.horizontal, showsIndicators: false) {
       HStack(spacing: 12) {
-        ForEach(imageCards.indices, id: \.self) { index in
-          spotImageCard(for: imageCards[index], index: index)
+        ForEach(store.imageCards.indices, id: \.self) { index in
+          spotImageCard(for: store.imageCards[index], index: index)
         }
       }
     }
@@ -133,7 +131,7 @@ private extension ExploreDetailView {
   func stayInfoSection() -> some View {
     HStack(spacing: 0) {
       metricColumn(
-        value: stayableMinutesText,
+        value: store.stayableMinutesText,
         title: "체류시간",
         valueColor: .orange800
       )
@@ -141,7 +139,7 @@ private extension ExploreDetailView {
       divider
 
       metricColumn(
-        value: walkMinutesText,
+        value: store.walkMinutesText,
         title: "도보",
         valueColor: .gray830
       )
@@ -149,7 +147,7 @@ private extension ExploreDetailView {
       divider
 
       metricColumn(
-        value: distanceText,
+        value: store.distanceText,
         title: "거리",
         valueColor: .gray830
       )
@@ -178,16 +176,16 @@ private extension ExploreDetailView {
           HStack {
             Text("최종 복귀 시간")
               .pretendardCustomFont(textStyle: .body2Bold)
-              .foregroundStyle(.gray700)
+              .foregroundStyle(.staticBlack)
 
             Spacer()
           }
 
           (
-            Text(returnDeadlineText)
-              .foregroundStyle(isVisitUnavailable ? .gray700 : .orange800)
+            Text(store.returnDeadlineText)
+              .foregroundStyle(store.isVisitUnavailable ? .gray700 : .orange800)
             +
-            Text(returnDeadlineSuffixText).foregroundStyle(.gray800)
+            Text(store.returnDeadlineSuffixText).foregroundStyle(.gray800)
           )
           .pretendardCustomFont(textStyle: .body2Medium)
           .lineSpacing(2)
@@ -221,19 +219,19 @@ private extension ExploreDetailView {
         infoRow(
           icon: "clock.fill",
           title: "영업 시간",
-          content: openingHoursText
+          content: store.openingHoursText
         )
 
         infoRow(
           icon: "phone.fill",
           title: "전화번호",
-          content: phoneNumberText
+          content: store.phoneNumberText
         )
 
         infoRow(
           icon: "location.fill",
           title: "주소",
-          content: addressText
+          content: store.addressText
         )
       }
     }
@@ -242,8 +240,8 @@ private extension ExploreDetailView {
   @ViewBuilder
   func locationMapSection() -> some View {
     GeometryReader { proxy in
-      Map(initialPosition: .region(mapRegion), interactionModes: .all) {
-        Annotation(placeNameText, coordinate: mapCoordinate) {
+      Map(initialPosition: .region(store.mapRegion), interactionModes: .all) {
+        Annotation(store.placeNameText, coordinate: store.mapCoordinate) {
           Image(asset: .spotPin)
             .resizable()
             .scaledToFit()
@@ -261,9 +259,9 @@ private extension ExploreDetailView {
   func routeButtonSection() -> some View {
     CustomButton(
       action: {},
-      title: isVisitUnavailable ? "방문 불가능" : "경로 확인하기",
+      title: store.isVisitUnavailable ? "방문 불가능" : "경로 확인하기",
       config: CustomButtonConfig.create(),
-      isEnable: !isVisitUnavailable
+      isEnable: !store.isVisitUnavailable
     )
   }
 
@@ -319,174 +317,24 @@ private extension ExploreDetailView {
       .frame(width: 1, height: 34)
   }
 
-  var stayableMinutesText: String {
-    "약 \(remainingStayableMinutes)분"
-  }
+  // All computed properties moved to ExploreDetailFeature.State extension
 
-  var walkMinutesText: String {
-    if let placeDetail = store.placeDetail {
-      return "\(placeDetail.timeToStation)분"
-    }
-    return "0분"
-  }
-
-  var imageCards: [URL?] {
-    let urls = store.placeDetail?.imageURL.compactMap(\.normalizedURL) ?? []
-    if !urls.isEmpty {
-      return urls
-    }
-    return [nil, nil]
-  }
-
-  var placeNameText: String {
-    store.placeDetail?.name ?? ""
-  }
-
-  var categoryText: String {
-    store.placeDetail?.category ?? ""
-  }
-
-  var distanceText: String {
-    if let placeDetail = store.placeDetail {
-      return "\(placeDetail.distanceToStation)m"
-    }
-    return ""
-  }
-
-  var returnDeadlineText: String {
-    if isVisitUnavailable {
-      return "방문 불가능해요"
-    }
-
-    if let leaveTime = store.placeDetail?.leaveTime,
-       let formatted = formattedDeadlineTime(from: leaveTime) {
-      return formatted
-    }
-
-    return Date().formattedReturnDeadlineText(addingMinutes: stayableMinutesValue) + "분"
-  }
-
-  var stayableMinutesValue: Int {
-    remainingStayableMinutes
-  }
-
-  var remainingStayableMinutes: Int {
-    let originalMinutes = store.placeDetail?.stayableMinutes ?? 0
-    let elapsedMinutes = elapsedMinutesSincePlacesFetched
-    return max(originalMinutes - elapsedMinutes, 0)
-  }
-
-  var elapsedMinutesSincePlacesFetched: Int {
-    guard let fetchedAt = store.userSession.explorePlacesFetchedAt else {
-      return 0
-    }
-
-    return max(Int(Date().timeIntervalSince(fetchedAt) / 60), 0)
-  }
-
-  var isVisitUnavailable: Bool {
-    remainingStayableMinutes <= 0
-  }
-
-  var returnDeadlineSuffixText: String {
-    isVisitUnavailable ? "" : " 출발해야 해"
-  }
-
-  var openingHoursText: String {
-    let weekdayText = summarizedOpeningHours(from: store.placeDetail?.weekday ?? [])
-    let weekendText = summarizedOpeningHours(from: store.placeDetail?.weekend ?? [])
-
-    switch (weekdayText.isEmpty, weekendText.isEmpty) {
-    case (false, false):
-      return "평일 \(weekdayText), 주말 \(weekendText)"
-    case (false, true):
-      return "평일 \(weekdayText)"
-    case (true, false):
-      return "주말 \(weekendText)"
-    case (true, true):
-      return "영업 시간 정보 준비 중"
-    }
-  }
-
-  func summarizedOpeningHours(from values: [String]) -> String {
-    let normalized = values
-      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-      .filter { !$0.isEmpty }
-
-    guard !normalized.isEmpty else {
-      return ""
-    }
-
-    let extractedTimes = normalized.map { value in
-      guard let separatorIndex = value.firstIndex(of: ":") else {
-        return value
-      }
-      return value[value.index(after: separatorIndex)...]
-        .trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    let uniqueTimes = Array(Set(extractedTimes))
-
-    if uniqueTimes.count == 1, let first = extractedTimes.first {
-      return first
-    }
-
-    return normalized.joined(separator: ", ")
-  }
-
-  var phoneNumberText: String {
-    (store.placeDetail?.phoneNumber)?.nilIfEmpty ?? "전화번호 정보 준비 중"
-  }
-
-  var addressText: String {
-    (store.placeDetail?.address)?.nilIfEmpty ?? "주소 정보 준비 중"
-  }
-
-  var mapRegion: MKCoordinateRegion {
-    MKCoordinateRegion(
-      center: mapCoordinate,
-      span: MKCoordinateSpan(latitudeDelta: 0.0035, longitudeDelta: 0.0035)
-    )
-  }
-
-  var mapCoordinate: CLLocationCoordinate2D {
-    if let placeDetail = store.placeDetail {
-      return CLLocationCoordinate2D(
-        latitude: placeDetail.stationLat,
-        longitude: placeDetail.stationLon
-      )
-    }
-
-    return CLLocationCoordinate2D(
-      latitude: store.userSession.travelStationLat ?? 37.5666805,
-      longitude: store.userSession.travelStationLng ?? 126.9784147
-    )
-  }
-
-  func formattedDeadlineTime(from value: String) -> String? {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-
-    guard let date = formatter.date(from: value) else {
-      return nil
-    }
-
-    let outputFormatter = DateFormatter()
-    outputFormatter.locale = Locale(identifier: "ko_KR")
-    outputFormatter.dateFormat = "a h:mm분"
-    return outputFormatter.string(from: date)
-  }
+  // Helper function moved to ExploreDetailFeature.State extension
 
   @ViewBuilder
   func spotImageCard(for url: URL?, index: Int) -> some View {
     Group {
       if let url {
+        // Google Places API 이미지 로드 (제한적 네트워크 허용)
         KFImage(url)
           .placeholder {
             imagePlaceholder()
           }
-          .cancelOnDisappear(true)
+          .setProcessor(DownsamplingImageProcessor(size: CGSize(width: 280, height: 180)))
+          .loadDiskFileSynchronously()
+          .memoryCacheExpiration(.seconds(1800))
+          .diskCacheExpiration(.days(7)) // 더 긴 캐시 (할당량 절약)
+          .requestModifier(rateLimitedImageModifier)
           .fade(duration: 0.2)
           .resizable()
           .scaledToFill()
@@ -509,6 +357,50 @@ private extension ExploreDetailView {
     }
   }
 
+  // Rate Limiting을 고려한 Google Places API 이미지용 요청 modifier
+  private var rateLimitedImageModifier: AnyModifier {
+    AnyModifier { request in
+      var modifiedRequest = request
+      modifiedRequest.timeoutInterval = 45.0 // 더 긴 타임아웃
+      modifiedRequest.setValue("TimeSpot-iOS/1.0", forHTTPHeaderField: "User-Agent")
+      modifiedRequest.setValue("image/*", forHTTPHeaderField: "Accept")
+      // Rate limiting 방지를 위해 캐시 우선 사용
+      modifiedRequest.cachePolicy = .returnCacheDataElseLoad
+
+      return modifiedRequest
+    }
+  }
+
+  // 캐시된 이미지만 클리어 (네트워크 요청 없음)
+  private func forceReloadImages() {
+    let urls = store.imageCards.compactMap { $0 }
+    for url in urls {
+      KingfisherManager.shared.cache.removeImage(forKey: url.absoluteString)
+    }
+  }
+
+  // Rate Limit을 고려한 제한적 프리페칭 (첫 번째 이미지만)
+  private func prefetchImagesWithRateLimit() {
+    let urls = store.imageCards.compactMap { $0 }
+    guard !urls.isEmpty else { return }
+
+    // 첫 번째 이미지만 프리페치 (Rate Limit 방지)
+    let limitedUrls = Array(urls.prefix(1))
+
+    let prefetcher = ImagePrefetcher(
+      urls: limitedUrls,
+      options: [
+        .processor(DownsamplingImageProcessor(size: CGSize(width: 280, height: 180))),
+        .requestModifier(rateLimitedImageModifier),
+        .backgroundDecode,
+        .diskCacheExpiration(.days(1)),
+        .memoryCacheExpiration(.seconds(1800))
+      ]
+    )
+
+    prefetcher.start()
+  }
+
   func imagePlaceholder() -> some View {
     ZStack {
       RoundedRectangle(cornerRadius: 20)
@@ -519,158 +411,22 @@ private extension ExploreDetailView {
         .foregroundStyle(.gray500)
     }
   }
-}
 
-private extension ExploreDetailView {
-  @ViewBuilder
-  func skeletonContent() -> some View {
-    VStack(alignment: .leading, spacing: 0) {
-      RoundedRectangle(cornerRadius: 4)
-        .fill(.gray200)
-        .frame(width: 84, height: 14)
-        .skeletonShimmer()
-        .padding(.top, 12)
-
-      HStack(spacing: 12) {
-        RoundedRectangle(cornerRadius: 20)
-          .fill(.gray200)
-          .frame(height: 180)
-          .frame(maxWidth: .infinity)
-          .skeletonShimmer()
-
-        RoundedRectangle(cornerRadius: 20)
-          .fill(.gray200)
-          .frame(width: 84, height: 180)
-          .skeletonShimmer()
-      }
-      .padding(.top, 24)
-
-      HStack(spacing: 0) {
-        skeletonMetricColumn()
-        divider
-        skeletonMetricColumn()
-        divider
-        skeletonMetricColumn()
-      }
-      .padding(.horizontal, 8)
-      .padding(.vertical, 16)
-      .background(.staticWhite)
-      .clipShape(RoundedRectangle(cornerRadius: 16))
-      .overlay {
-        RoundedRectangle(cornerRadius: 16)
-          .stroke(.gray300, lineWidth: 1)
-      }
-      .padding(.top, 24)
-
+  func loadingPlaceholder() -> some View {
+    ZStack {
       RoundedRectangle(cornerRadius: 20)
         .fill(.gray200)
-        .frame(height: 84)
-        .skeletonShimmer()
-        .padding(.top, 24)
 
-      VStack(alignment: .leading, spacing: 16) {
-        RoundedRectangle(cornerRadius: 4)
-          .fill(.gray200)
-          .frame(width: 64, height: 14)
-          .skeletonShimmer()
+      VStack(spacing: 8) {
+        ProgressView()
+          .progressViewStyle(CircularProgressViewStyle(tint: .gray600))
+          .scaleEffect(0.8)
 
-        skeletonInfoRow(lineWidth: 180)
-        skeletonInfoRow(lineWidth: 120)
-        skeletonInfoRow(lineWidth: 200)
+        Text("로딩 중...")
+          .pretendardCustomFont(textStyle: .body2Regular)
+          .foregroundStyle(.gray600)
       }
-      .padding(.top, 24)
-
-      RoundedRectangle(cornerRadius: 20)
-        .fill(.gray200)
-        .frame(height: 180)
-        .skeletonShimmer()
-        .padding(.top, 24)
-
-      Capsule()
-        .fill(.gray200)
-        .frame(height: 56)
-        .skeletonShimmer()
-        .padding(.top, 24)
     }
   }
 
-  @ViewBuilder
-  func skeletonMetricColumn() -> some View {
-    VStack(spacing: 8) {
-      RoundedRectangle(cornerRadius: 4)
-        .fill(.gray200)
-        .frame(width: 46, height: 16)
-        .skeletonShimmer()
-
-      RoundedRectangle(cornerRadius: 4)
-        .fill(.gray200)
-        .frame(width: 34, height: 12)
-        .skeletonShimmer()
-    }
-    .frame(maxWidth: .infinity)
-  }
-
-  @ViewBuilder
-  func skeletonInfoRow(lineWidth: CGFloat) -> some View {
-    HStack(alignment: .top, spacing: 10) {
-      Circle()
-        .fill(.gray200)
-        .frame(width: 20, height: 20)
-        .skeletonShimmer()
-
-      VStack(alignment: .leading, spacing: 6) {
-        RoundedRectangle(cornerRadius: 4)
-          .fill(.gray200)
-          .frame(width: 56, height: 12)
-          .skeletonShimmer()
-
-        RoundedRectangle(cornerRadius: 4)
-          .fill(.gray200)
-          .frame(width: lineWidth, height: 14)
-          .skeletonShimmer()
-      }
-
-      Spacer(minLength: 0)
-    }
-  }
-}
-
-private extension View {
-  func skeletonShimmer() -> some View {
-    modifier(ExploreDetailSkeletonShimmerModifier())
-  }
-}
-
-private struct ExploreDetailSkeletonShimmerModifier: ViewModifier {
-  @State private var isAnimating = false
-
-  func body(content: Content) -> some View {
-    content
-      .overlay {
-        GeometryReader { geometry in
-          LinearGradient(
-            colors: [
-              .white.opacity(0),
-              .white.opacity(0.28),
-              .white.opacity(0)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          )
-          .frame(width: geometry.size.width * 0.55)
-          .offset(x: isAnimating ? geometry.size.width * 1.25 : -geometry.size.width * 0.8)
-        }
-        .clipped()
-      }
-      .mask(content)
-      .onAppear {
-        guard !isAnimating else { return }
-        withAnimation(
-          .easeInOut(duration: 1.0)
-            .repeatForever(autoreverses: false)
-        ) {
-          isAnimating = true
-        }
-      }
-  }
 }

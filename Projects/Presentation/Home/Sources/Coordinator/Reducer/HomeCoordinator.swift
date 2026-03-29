@@ -51,7 +51,7 @@ public struct HomeCoordinator {
     case presentProfile
     case presentProfileWithAnimation
     case presentExplore
-    case presentExploreList(ExploreReducer.State)
+    case presentExploreList(ExploreFeature.State)
     case presentExploreDetail
   }
 
@@ -215,7 +215,7 @@ extension HomeCoordinator {
       return .none
 
     case .presentExplore:
-      var exploreState = ExploreReducer.State()
+      var exploreState = ExploreFeature.State()
       if let lat = exploreState.userSession.travelStationLat,
          let lng = exploreState.userSession.travelStationLng {
         exploreState.selectedDestination = Destination(
@@ -263,7 +263,7 @@ extension HomeCoordinator {
   @Reducer
   public enum HomeScreen {
     case home(HomeFeature)
-    case explore(ExploreReducer)
+    case explore(ExploreFeature)
     case exploreList(ExploreListFeature)
     case exploreDetail(ExploreDetailFeature)
     case profile(ProfileCoordinator)

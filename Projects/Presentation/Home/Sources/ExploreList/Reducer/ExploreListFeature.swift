@@ -12,6 +12,7 @@ import ComposableArchitecture
 import Entity
 import UseCase
 import Utill
+import IdentifiedCollections
 
 public enum ExploreListSort: String, CaseIterable, Equatable {
   case stationNearest = "STATION_NEAREST"
@@ -55,6 +56,7 @@ public struct ExploreListFeature {
     public var hasLoadedInitialPage: Bool = false
     @Shared(.inMemory("UserSession")) public var userSession: UserSession = .empty
 
+
     public init() {}
   }
 
@@ -75,6 +77,8 @@ public struct ExploreListFeature {
     case categoryTapped(ExploreCategory)
     case sortTapped(ExploreListSort)
     case loadNextPage
+    // Explore에서 데이터 동기화
+    case syncSpotsFromExplore([ExploreMapSpot], currentPage: Int, hasNextPage: Bool)
   }
 
 
@@ -88,6 +92,7 @@ public struct ExploreListFeature {
   public enum InnerAction: Equatable {
     case searchPlacesResponse(ExploreSpotPageEntity, append: Bool, requestedPage: Int)
     case searchPlacesFailed(String)
+    case forceResetLoading
   }
 
   //MARK: - NavigationAction
@@ -143,8 +148,13 @@ extension ExploreListFeature {
 
       case .categoryTapped(let category):
         state.selectedCategory = category
+        state.currentPage = 0
+        state.hasNextPage = true
         state.lastTriggeredLoadSpotID = nil
-        return .none
+        return .merge(
+          .cancel(id: CancelID.searchPlaces),
+          .send(.async(.searchPlaces(page: 0, append: false)))
+        )
 
       case .sortTapped(let sort):
         state.selectedSort = sort
@@ -159,40 +169,49 @@ extension ExploreListFeature {
 
       case .loadNextPage:
         guard !state.isLoading else {
-          print("⏸️ [ExploreList] loadNextPage skipped: already loading")
-          return .none
+          // 5초 후 강제 리셋 (무한 로딩 방지)
+          return .run { send in
+            try await Task.sleep(nanoseconds: 5_000_000_000) // 5초
+            await send(.inner(.forceResetLoading))
+          }
         }
 
         let visibleSpots = filteredSpots(from: state.spots, state: state)
         let bufferedVisibleSpots = filteredSpots(from: state.bufferedSpots, state: state)
         let currentLastSpotID = visibleSpots.last?.id
 
-        guard state.lastTriggeredLoadSpotID != currentLastSpotID else {
-          print("⏸️ [ExploreList] loadNextPage skipped: duplicate trigger for lastVisibleSpotID=\(currentLastSpotID ?? "nil")")
-          return .none
+        // 버퍼가 완전히 소진되지 않았을 때만 중복 체크
+        let isBufferExhausted = visibleSpots.count >= bufferedVisibleSpots.count
+
+        if !isBufferExhausted {
+          guard state.lastTriggeredLoadSpotID != currentLastSpotID else {
+            return .none
+          }
         }
 
         if visibleSpots.count < bufferedVisibleSpots.count {
           state.lastTriggeredLoadSpotID = currentLastSpotID
-          print(
-            "📦 [ExploreList] reveal buffered chunk: lastVisibleSpotID=\(currentLastSpotID ?? "nil"), visible=\(visibleSpots.count), bufferedVisible=\(bufferedVisibleSpots.count), rawShown=\(state.spots.count), rawBuffered=\(state.bufferedSpots.count)"
-          )
           revealNextVisibleChunk(state: &state)
           return .none
         }
 
         guard state.hasNextPage else {
-          print(
-            "⏹️ [ExploreList] loadNextPage skipped: no next page, lastVisibleSpotID=\(currentLastSpotID ?? "nil"), visible=\(visibleSpots.count), bufferedVisible=\(bufferedVisibleSpots.count)"
-          )
           return .none
         }
 
         state.lastTriggeredLoadSpotID = currentLastSpotID
-        print(
-          "🌐 [ExploreList] request next page: page=\(state.currentPage), lastVisibleSpotID=\(currentLastSpotID ?? "nil"), visible=\(visibleSpots.count), bufferedVisible=\(bufferedVisibleSpots.count)"
-        )
         return .send(.async(.searchPlaces(page: state.currentPage, append: true)))
+
+
+      case .syncSpotsFromExplore(let spots, let currentPage, let hasNextPage):
+        // Explore에서 전달받은 데이터로 동기화
+        state.bufferedSpots = spots
+        state.spots = []
+        revealNextChunk(state: &state)
+        state.currentPage = currentPage
+        state.hasNextPage = hasNextPage
+        state.hasLoadedInitialPage = true
+        return .none
     }
   }
 
@@ -255,6 +274,7 @@ extension ExploreListFeature {
           }
         }
         .cancellable(id: CancelID.searchPlaces, cancelInFlight: true)
+
     }
   }
 
@@ -274,44 +294,37 @@ extension ExploreListFeature {
   ) -> Effect<Action> {
     switch action {
       case let .searchPlacesResponse(pageEntity, append, requestedPage):
+        // 무조건 로딩 해제 (중복 데이터여도)
         state.isLoading = false
 
         if append {
           let existingSpotIDs = Set(state.bufferedSpots.map(\.id))
           let uniqueNewSpots = pageEntity.spots.filter { !existingSpotIDs.contains($0.id) }
-          let duplicateSpotIDs = pageEntity.spots
-            .map(\.id)
-            .filter { existingSpotIDs.contains($0) }
 
-          print(
-            "📥 [ExploreList] append response: requestedPage=\(requestedPage), responseCount=\(pageEntity.spots.count), uniqueNew=\(uniqueNewSpots.count), duplicates=\(duplicateSpotIDs.count), firstID=\(pageEntity.spots.first?.id ?? "nil"), lastID=\(pageEntity.spots.last?.id ?? "nil"), hasNextPage=\(pageEntity.hasNextPage)"
-          )
+          // 중복 데이터만 있어도 페이지는 업데이트
+          state.currentPage = requestedPage + 1
+          state.hasNextPage = pageEntity.hasNextPage
 
-          if uniqueNewSpots.isEmpty {
-            let duplicatePreview = Array(duplicateSpotIDs.prefix(10)).joined(separator: ", ")
-            print(
-              "⚠️ [ExploreList] append response contained no new spots. duplicateIDs(prefix10)=[\(duplicatePreview)]"
-            )
+          if !uniqueNewSpots.isEmpty {
+            state.bufferedSpots.append(contentsOf: uniqueNewSpots)
+            revealNextChunk(state: &state)
           }
-
-          state.bufferedSpots.append(contentsOf: uniqueNewSpots)
-          revealNextChunk(state: &state)
-          print("🔄 [무한스크롤] 버퍼 총: \(state.bufferedSpots.count)개, 화면 노출: \(state.spots.count)개")
         } else {
-          print(
-            "📥 [ExploreList] initial response: requestedPage=\(requestedPage), responseCount=\(pageEntity.spots.count), firstID=\(pageEntity.spots.first?.id ?? "nil"), lastID=\(pageEntity.spots.last?.id ?? "nil"), hasNextPage=\(pageEntity.hasNextPage)"
-          )
           state.bufferedSpots = pageEntity.spots
           state.spots = []
           revealNextChunk(state: &state)
-          print("🆕 [새로고침] 버퍼 총: \(state.bufferedSpots.count)개, 화면 노출: \(state.spots.count)개")
+          state.currentPage = requestedPage + 1
+          state.hasNextPage = pageEntity.hasNextPage
         }
 
-        state.currentPage = requestedPage + 1
-        state.hasNextPage = pageEntity.hasNextPage
         return .none
 
       case .searchPlacesFailed:
+        state.isLoading = false
+        return .none
+
+
+      case .forceResetLoading:
         state.isLoading = false
         return .none
     }
@@ -399,7 +412,8 @@ private extension ExploreListFeature {
         statusText: place.isOpen ? "영업 중" : "영업 종료",
         closingText: closingText,
         distanceText: distanceText,
-        walkTimeText: walkTimeText
+        walkTimeText: walkTimeText,
+        address: place.address
       )
     }
   }
