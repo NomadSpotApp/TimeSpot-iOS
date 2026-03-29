@@ -51,8 +51,6 @@ public final class AppDIManager {
     // MARK: - 장소
       .register(PlaceInterface.self) { PlaceRepositoryImpl() }
 
-
-
       .configure()
   }
 }
