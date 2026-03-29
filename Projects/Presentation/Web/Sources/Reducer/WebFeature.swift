@@ -14,7 +14,7 @@ public struct WebFeature {
   public init() {}
 
   @ObservableState
-  public struct State: Equatable {
+  public struct State: Equatable, Hashable {
     var url: String = ""
 
     public init(url: String) {
@@ -34,11 +34,5 @@ public struct WebFeature {
           return .none
       }
     }
-  }
-}
-
-extension WebReducer.State: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(url)
   }
 }

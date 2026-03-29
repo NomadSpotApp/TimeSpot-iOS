@@ -28,9 +28,11 @@ public struct WebView: View {
         Spacer()
           .frame(height: 8)
 
-        CustomNavigationBackBar {
+        CustomNavigationBackBar(buttonAction: {
           store.send(.backToRoot)
-        }
+        }, title: "")
+        .padding(.horizontal, 16)
+
 
         Spacer()
           .frame(height: 20)

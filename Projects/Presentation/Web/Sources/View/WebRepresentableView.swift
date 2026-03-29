@@ -10,8 +10,6 @@ import WebKit
 
 import DesignSystem
 
-import SDWebImageSwiftUI
-
 
 public struct WebRepresentableView: UIViewRepresentable {
 
@@ -102,24 +100,24 @@ public struct WebRepresentableView: UIViewRepresentable {
     let containerView = UIView()
     containerView.backgroundColor = .clear
 
-    // SwiftUI AnimatedImage를 UIKit에 임베드
-    let animatedImageView = UIHostingController(rootView:
-      AnimatedImage(name: "DDDLoding.gif", isAnimating: .constant(true))
-        .resizable()
-        .scaledToFit()
+    // SwiftUI ProgressView를 UIKit에 임베드
+    let progressView = UIHostingController(rootView:
+      ProgressView()
+        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+        .scaleEffect(1.5)
         .frame(width: 200, height: 200)
     )
 
-    animatedImageView.view.backgroundColor = .clear
-    animatedImageView.view.translatesAutoresizingMaskIntoConstraints = false
+    progressView.view.backgroundColor = .clear
+    progressView.view.translatesAutoresizingMaskIntoConstraints = false
 
-    containerView.addSubview(animatedImageView.view)
+    containerView.addSubview(progressView.view)
 
     NSLayoutConstraint.activate([
-      animatedImageView.view.topAnchor.constraint(equalTo: containerView.topAnchor),
-      animatedImageView.view.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
-      animatedImageView.view.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-      animatedImageView.view.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+      progressView.view.topAnchor.constraint(equalTo: containerView.topAnchor),
+      progressView.view.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+      progressView.view.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+      progressView.view.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
     ])
 
     return containerView
@@ -162,9 +160,12 @@ public struct WebRepresentableView: UIViewRepresentable {
       DispatchQueue.main.async { [weak self] in
         guard let self = self, let loadingIndicator = self.loadingIndicator else { return }
 
-        UIView.animate(withDuration: 0.3, animations: {
-          loadingIndicator.alpha = 0
-        })
+        // 로딩을 2초 더 표시한 후 숨김
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+          UIView.animate(withDuration: 0.5, animations: {
+            loadingIndicator.alpha = 0
+          })
+        }
       }
     }
   }

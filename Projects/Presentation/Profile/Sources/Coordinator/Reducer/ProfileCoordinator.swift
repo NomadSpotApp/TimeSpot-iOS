@@ -194,7 +194,7 @@ extension ProfileCoordinator {
   }
 }
 
-// MARK: - AuthScreen State Equatable & Hashable
+// MARK: - ProfileScreen State Equatable & Hashable
 extension ProfileCoordinator.ProfileScreen.State: Equatable {}
 extension ProfileCoordinator.ProfileScreen.State: Hashable {}
 
