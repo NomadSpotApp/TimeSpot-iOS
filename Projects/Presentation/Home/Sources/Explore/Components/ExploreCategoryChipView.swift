@@ -72,7 +72,7 @@ struct ExploreCategoryChipView: View {
         .scaledToFit()
         .frame(width: 16, height: 16)
     case .shopping:
-      Image(asset: isSelected ? .tapFood : .food)
+      Image(asset: isSelected ? .tapShopping : .shopping)
         .resizable()
         .scaledToFit()
         .frame(width: 16, height: 16)
