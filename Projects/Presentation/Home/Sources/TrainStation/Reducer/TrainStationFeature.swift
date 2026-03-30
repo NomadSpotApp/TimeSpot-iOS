@@ -319,5 +319,18 @@ extension TrainStationFeature {
   }
 }
 
-extension TrainStationFeature.State: Hashable {}
+extension TrainStationFeature.State: Hashable {
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(searchText)
+    hasher.combine(shouldShowFavoriteSection)
+    hasher.combine(selectedStation)
+    hasher.combine(selectedStationID)
+    hasher.combine(favoriteRows)
+    hasher.combine(nearbyRows)
+    hasher.combine(majorRows)
+    hasher.combine(isLoading)
+    hasher.combine(errorMessage)
+    hasher.combine(userSession)
+  }
+}
 
