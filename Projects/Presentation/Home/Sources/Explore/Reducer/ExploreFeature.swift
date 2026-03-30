@@ -20,10 +20,10 @@ import IdentifiedCollections
 public struct ExploreFeature: Sendable {
   public init() {}
 
+
   enum CancelID: Hashable {
     case startLocationUpdates
     case fetchPlaces
-    case searchPlaces
     case searchRoute
   }
 
@@ -33,11 +33,12 @@ public struct ExploreFeature: Sendable {
     public var currentLocation: CLLocation?
     public var isLocationPermissionDenied: Bool = false
     public var locationError: String?
+    public var placeError: PlaceError?
     public var searchText: String = ""
     public var isLoadingPlaces: Bool = false
     public var hasRequestedPlaces: Bool = false
     public var hasFetchedPlacesWithCurrentLocation: Bool = false
-    public var currentPage: Int = 0
+    public var currentPage: Int = 1
     public var hasNextPage: Bool = true
     public var pendingSelectFirstSpotFromNextPage: Bool = false
     public var searchMarkerLat: Double?
@@ -114,19 +115,9 @@ public struct ExploreFeature: Sendable {
     case locationPermissionStatusChanged(CLAuthorizationStatus)
     case locationUpdated(CLLocation)
     case locationUpdateFailed(String)
-    case fetchPlacesResponse(ExploreSpotPageEntity, usedCurrentLocation: Bool)
-    case fetchPlacesFailed(String, usedCurrentLocation: Bool)
-    case searchPlacesResponse(
-      ExploreSpotPageEntity,
-      append: Bool,
-      requestedPage: Int,
-      requestedKeyword: String,
-      requestedCategory: ExploreCategory?,
-      requestedMarkerLat: Double?,
-      requestedMarkerLon: Double?,
-      usedCurrentLocation: Bool
-    )
-    case searchPlacesFailed(String)
+    case fetchPlacesInitialResponse(ExploreSpotPageEntity, usedCurrentLocation: Bool)
+    case fetchPlacesPageResponse(ExploreSpotPageEntity, request: FetchPlacesRequest)
+    case fetchPlacesFailed(PlaceError, usedCurrentLocation: Bool)
     // 길찾기 관련 액션
     case routeSearchStarted(Destination)
     case routeSearchResponse(Result<RouteInfo, DirectionError>)
@@ -134,7 +125,6 @@ public struct ExploreFeature: Sendable {
     case resetCameraFlag
     case completeCardSwipe(next: Bool)
     case finishCardTransition
-    // 네이버 이미지 검색 완료
   }
 
   public enum AsyncAction: Equatable {
@@ -143,9 +133,7 @@ public struct ExploreFeature: Sendable {
     case startLocationUpdates
     case stopLocationUpdates
     case requestCurrentLocation
-    case fetchPlaces
-    case searchPlaces(page: Int, append: Bool)
-    // 길찾기 관련 액션
+    case fetchPlaces(page: Int, append: Bool)
     case searchRoute(from: CLLocationCoordinate2D, to: Destination)
   }
 
@@ -219,7 +207,7 @@ extension ExploreFeature {
           let currentStatus = await locationUseCase.getAuthorizationStatus()
           await send(.inner(.locationPermissionStatusChanged(currentStatus)))
           },
-          .send(.async(.fetchPlaces))
+          .send(.async(.fetchPlaces(page: 1, append: false)))
         )
 
       case .onDisappear:
@@ -262,7 +250,7 @@ extension ExploreFeature {
           state.searchMarkerLat = nil
           state.searchMarkerLon = nil
           state.pendingSelectFirstSpotFromNextPage = false
-          return .cancel(id: CancelID.searchPlaces)
+          return .cancel(id: CancelID.fetchPlaces)
         }
 
         state.$userSession.withLock {
@@ -281,8 +269,8 @@ extension ExploreFeature {
         ExploreHelpers.resetSearchContext(state: &state, clearMarker: false)
 
         return .merge(
-          .cancel(id: CancelID.searchPlaces),
-          .send(.async(.fetchPlaces))
+          .cancel(id: CancelID.fetchPlaces),
+          .send(.async(.fetchPlaces(page: 1, append: false)))
         )
 
       case .detailTapped:
@@ -312,7 +300,7 @@ extension ExploreFeature {
           state.searchMarkerLat = nil
           state.searchMarkerLon = nil
           state.pendingSelectFirstSpotFromNextPage = false
-          return .cancel(id: CancelID.searchPlaces)
+          return .cancel(id: CancelID.fetchPlaces)
         }
         return .none
 
@@ -320,7 +308,7 @@ extension ExploreFeature {
         guard !state.isCardTransitioning else {
           return .none
         }
-        let limitedOffset = max(min(offset, CardHelpers.cardTravelDistance), -CardHelpers.cardTravelDistance)
+        let limitedOffset = max(min(offset, UIScreen.cardTravelDistance), -UIScreen.cardTravelDistance)
         state.cardDragOffset = limitedOffset
         return .none
 
@@ -329,11 +317,11 @@ extension ExploreFeature {
           return .none
         }
 
-        if translationWidth > CardHelpers.cardSwipeThreshold {
+        if translationWidth > UIScreen.cardSwipeThreshold {
           return .send(.inner(.completeCardSwipe(next: false)))
         }
 
-        if translationWidth < -CardHelpers.cardSwipeThreshold {
+        if translationWidth < -UIScreen.cardSwipeThreshold {
           return .send(.inner(.completeCardSwipe(next: true)))
         }
 
@@ -345,7 +333,7 @@ extension ExploreFeature {
           return .none
         }
         state.pendingSelectFirstSpotFromNextPage = true
-        return .send(.async(.searchPlaces(page: state.currentPage, append: true)))
+        return .send(.async(.fetchPlaces(page: state.currentPage, append: true)))
 
       case .mapCenterChanged(let coordinate):
         state.mapCenterLat = coordinate.latitude
@@ -460,8 +448,8 @@ extension ExploreFeature {
           ExploreHelpers.resetSearchContext(state: &state, clearMarker: false)
           return .merge(
             .cancel(id: CancelID.fetchPlaces),
-            .cancel(id: CancelID.searchPlaces),
-            .send(.async(.fetchPlaces))
+            .cancel(id: CancelID.fetchPlaces),
+            .send(.async(.fetchPlaces(page: 1, append: false)))
           )
         }
         return .none
@@ -470,41 +458,22 @@ extension ExploreFeature {
         #logDebug(" [ExploreReducer] 위치 업데이트 실패: \(error)")
         return .none
 
-      case .fetchPlacesResponse(let entities, let usedCurrentLocation):
+      case .fetchPlacesInitialResponse(let pageEntity, let usedCurrentLocation):
         state.isLoadingPlaces = false
         state.hasRequestedPlaces = false
-        state.spots = entities.spots
-        state.currentPage = entities.currentPage
-        state.hasNextPage = entities.hasNextPage || ExploreHelpers.hasUnresolvedBaseSpots(entities.spots)
+        state.spots = pageEntity.spots
+        state.currentPage = pageEntity.currentPage
+        state.hasNextPage = pageEntity.hasNextPage || pageEntity.spots.contains { !$0.hasDetail }
         state.hasFetchedPlacesWithCurrentLocation = usedCurrentLocation
         state.$userSession.withLock {
           $0.explorePlacesFetchedAt = Date()
         }
         return .none
 
-      case .fetchPlacesFailed(let message, let usedCurrentLocation):
-        state.hasRequestedPlaces = false
-        ExploreHelpers.resetSearchContext(state: &state, clearMarker: false)
-        if usedCurrentLocation {
-          state.hasFetchedPlacesWithCurrentLocation = false
-        }
-        #logDebug(" [ExploreReducer] 장소 조회 실패: \(message)")
-        state.spots = []
-        ExploreHelpers.clearSelectedSpot(state: &state)
-        return .none
-
-      case .searchPlacesResponse(
-        let pageEntity,
-        let append,
-        let requestedPage,
-        let requestedKeyword,
-        let requestedCategory,
-        let requestedMarkerLat,
-        let requestedMarkerLon,
-        let usedCurrentLocation
-      ):
+      case .fetchPlacesPageResponse(let pageEntity, let request):
         state.isLoadingPlaces = false
         state.hasRequestedPlaces = false
+
         let previousDetailedCount = state.spots.filter(\.hasDetail).count
         let currentKeyword = ExploreHelpers.currentKeyword(state: state)
         let currentCategory = ExploreHelpers.currentCategory(state: state)
@@ -519,47 +488,47 @@ extension ExploreFeature {
           currentMarkerLon = state.mapCenterLon ?? state.userSession.travelStationLng
         }
 
-        guard requestedPage == 0 || append else {
+        guard request.page == 0 || request.append else {
           return .none
         }
 
-        if requestedMarkerLat != nil || requestedMarkerLon != nil {
-          guard ExploreHelpers.isSameCoordinate(requestedMarkerLat, currentMarkerLat),
-                ExploreHelpers.isSameCoordinate(requestedMarkerLon, currentMarkerLon) else {
+        if request.markerLat != nil || request.markerLon != nil {
+          guard CLLocationCoordinate2D.isSameCoordinate(request.markerLat, currentMarkerLat),
+                CLLocationCoordinate2D.isSameCoordinate(request.markerLon, currentMarkerLon) else {
             return .none
           }
         } else {
-          guard requestedKeyword == currentKeyword,
-                requestedCategory == currentCategory,
-                requestedMarkerLat == currentMarkerLat,
-                requestedMarkerLon == currentMarkerLon else {
+          guard request.keyword == currentKeyword,
+                request.category == currentCategory,
+                request.markerLat == currentMarkerLat,
+                request.markerLon == currentMarkerLon else {
             return .none
           }
         }
 
-        state.hasFetchedPlacesWithCurrentLocation = usedCurrentLocation
+        state.hasFetchedPlacesWithCurrentLocation = request.usedCurrentLocation
         let newSpots = pageEntity.spots
         let mergedSpots: [ExploreMapSpot]
-        if append {
+        if request.append {
           let existingSpotIDs = Set(state.spots.map(\.id))
           let uniqueNewSpots = newSpots.filter { !existingSpotIDs.contains($0.id) }
           mergedSpots = state.spots + uniqueNewSpots
         } else {
           mergedSpots = newSpots
         }
-        state.currentPage = requestedPage + 1
+        state.currentPage = request.page + 1
         state.$userSession.withLock {
           $0.explorePlacesFetchedAt = Date()
         }
         let newDetailedCount = newSpots.filter(\.hasDetail).count
         let gainedMoreDetail = newDetailedCount > previousDetailedCount
         let shouldKeepBootstrappingDetails =
-          requestedMarkerLat == nil
-          && requestedMarkerLon == nil
-          && requestedKeyword.isEmpty
-          && requestedCategory == nil
-          && ExploreHelpers.hasUnresolvedBaseSpots(newSpots)
-          && (requestedPage == 0 || gainedMoreDetail)
+          request.markerLat == nil
+          && request.markerLon == nil
+          && request.keyword.isEmpty
+          && request.category == nil
+          && newSpots.contains { !$0.hasDetail }
+          && (request.page == 0 || gainedMoreDetail)
 
         state.hasNextPage = pageEntity.hasNextPage || shouldKeepBootstrappingDetails
         let firstNewSpotID = newSpots.first(where: \.hasDetail)?.id
@@ -597,7 +566,7 @@ extension ExploreFeature {
            state.searchMarkerLat != nil,
            !state.spots.contains(where: { $0.id == selectedSpotID && $0.hasDetail }),
            state.hasNextPage {
-          return .send(.async(.searchPlaces(page: state.currentPage, append: true)))
+          return .send(.async(.fetchPlaces(page: state.currentPage, append: true)))
         }
 
         if let selectedSpotID,
@@ -610,19 +579,20 @@ extension ExploreFeature {
         if wasPendingNextPage {
           return .send(.inner(.finishCardTransition))
         }
-
         return .none
 
-      case .searchPlacesFailed(let message):
-        state.isLoadingPlaces = false
+      case .fetchPlacesFailed(let error, let usedCurrentLocation):
+        state.placeError = error
         state.hasRequestedPlaces = false
-        let wasPendingNextPage = state.pendingSelectFirstSpotFromNextPage
-        state.pendingSelectFirstSpotFromNextPage = false
-        #logDebug(" [ExploreReducer] 장소 검색 실패: \(message)")
-        if wasPendingNextPage {
-          return .send(.inner(.finishCardTransition))
+        ExploreHelpers.resetSearchContext(state: &state, clearMarker: false)
+        if usedCurrentLocation {
+          state.hasFetchedPlacesWithCurrentLocation = false
         }
+        #logDebug(" [ExploreReducer] 장소 조회 실패: \(error.localizedDescription)")
+        state.spots = []
+        ExploreHelpers.clearSelectedSpot(state: &state)
         return .none
+
 
       // 길찾기 관련 액션
       case .routeSearchStarted(let destination):
@@ -660,12 +630,12 @@ extension ExploreFeature {
 
         let currentSelectedID = state.selectedSpot?.id ?? state.userSession.selectedExploreSpotID
         let currentIndex = cardSpots.firstIndex(where: { $0.id == currentSelectedID }) ?? 0
-        let entryOffset: CGFloat = next ? CardHelpers.cardTravelDistance : -CardHelpers.cardTravelDistance
+        let entryOffset: CGFloat = next ? UIScreen.cardTravelDistance : -UIScreen.cardTravelDistance
         let isAtEnd = next && currentIndex == cardSpots.count - 1
         let isAtStart = !next && currentIndex == 0
 
         state.isCardTransitioning = true
-        state.cardDragOffset = next ? -CardHelpers.cardTravelDistance : CardHelpers.cardTravelDistance
+        state.cardDragOffset = next ? -UIScreen.cardTravelDistance : UIScreen.cardTravelDistance
 
         if isAtEnd {
           if state.hasNextPage {
@@ -772,13 +742,41 @@ extension ExploreFeature {
           }
         }
 
-      case .fetchPlaces:
-        guard Int(state.userSession.travelID) != nil,
-              state.userSession.travelStationLat != nil,
-              state.userSession.travelStationLng != nil,
-              !state.isLoadingPlaces,
-              !state.hasRequestedPlaces else {
-          return .none
+      case .fetchPlaces(let page, let append):
+        // 초기 로딩인 경우와 페이지네이션인 경우를 구분
+        let isInitialLoad = page == 1 && !append
+        #logDebug("🔍 [fetchPlaces] page=\(page), append=\(append), isInitialLoad=\(isInitialLoad)")
+
+        if isInitialLoad {
+          // 초기 로딩 조건
+          let travelIDExists = Int(state.userSession.travelID) != nil
+          let stationLatExists = state.userSession.travelStationLat != nil
+          let stationLngExists = state.userSession.travelStationLng != nil
+          let notLoading = !state.isLoadingPlaces
+          let notRequested = !state.hasRequestedPlaces
+
+          #logDebug("🚀 [초기로딩 조건] travelID=\(travelIDExists), stationLat=\(stationLatExists), stationLng=\(stationLngExists), notLoading=\(notLoading), notRequested=\(notRequested)")
+
+          guard travelIDExists, stationLatExists, stationLngExists, notLoading, notRequested else {
+            #logDebug("🚨 [초기로딩 조건 실패] - 페이지네이션으로 전환")
+            return .none
+          }
+
+          #logDebug("🚀 [초기로딩 시작] fetchInitialExploreSpots 호출 (size=200)")
+        } else {
+          // 페이지네이션 조건
+          let travelIDExists = Int(state.userSession.travelID) != nil
+          let notLoading = !state.isLoadingPlaces
+          let notRequested = !state.hasRequestedPlaces
+
+          #logDebug("🔍 [페이지네이션 조건] travelID=\(travelIDExists), notLoading=\(notLoading), notRequested=\(notRequested)")
+
+          guard travelIDExists, notLoading, notRequested else {
+            #logDebug("🚨 [페이지네이션 조건 실패] - 요청 취소")
+            return .none
+          }
+
+          #logDebug("🔍 [페이지네이션 시작] searchExploreSpots 호출 (size=10)")
         }
 
         state.isLoadingPlaces = true
@@ -790,93 +788,80 @@ extension ExploreFeature {
         let userLat = state.currentLocation?.coordinate.latitude ?? fallbackLat
         let userLon = state.currentLocation?.coordinate.longitude ?? fallbackLng
 
-        return .run { send in
-          let result = await Result {
-            try await placeUseCase.fetchInitialExploreSpots(
-              userSession: userSession,
-              userLat: userLat,
-              userLon: userLon
-            )
-          }
-
-          switch result {
-          case .success(let entities):
-            await send(.inner(.fetchPlacesResponse(entities, usedCurrentLocation: usedCurrentLocation)))
-          case .failure(let error):
-            await send(.inner(.fetchPlacesFailed(error.localizedDescription, usedCurrentLocation: usedCurrentLocation)))
-          }
-        }
-        .cancellable(id: CancelID.fetchPlaces, cancelInFlight: true)
-
-      case .searchPlaces(let page, let append):
-        guard Int(state.userSession.travelID) != nil,
-              !state.isLoadingPlaces,
-              !state.hasRequestedPlaces else {
-          return .none
-        }
-
-        state.isLoadingPlaces = true
-        state.hasRequestedPlaces = true
-        let userSession = state.userSession
-        let fallbackLat = state.userSession.travelStationLat ?? 0
-        let fallbackLng = state.userSession.travelStationLng ?? 0
-        let userLat = state.currentLocation?.coordinate.latitude ?? fallbackLat
-        let userLon = state.currentLocation?.coordinate.longitude ?? fallbackLng
-        let rawKeyword = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let isResolvingSelectedMarkerDetail = ExploreHelpers.isResolvingSelectedMarkerDetail(state: state)
-        let mapLat = isResolvingSelectedMarkerDetail
-          ? (state.searchMarkerLat ?? state.userSession.travelStationLat ?? fallbackLat)
-          : (state.mapCenterLat ?? state.userSession.travelStationLat ?? fallbackLat)
-        let mapLon = isResolvingSelectedMarkerDetail
-          ? (state.searchMarkerLon ?? state.userSession.travelStationLng ?? fallbackLng)
-          : (state.mapCenterLon ?? state.userSession.travelStationLng ?? fallbackLng)
-        let requestedMarkerLat = mapLat
-        let requestedMarkerLon = mapLon
-        let keyword = isResolvingSelectedMarkerDetail ? nil : rawKeyword.nilIfEmpty
-        let category: ExploreCategory? = isResolvingSelectedMarkerDetail
-          ? nil
-          : (state.selectedCategory == .all ? nil : state.selectedCategory)
-        let sortBy = "MAP_NEAREST"
-        let usedCurrentLocation = state.currentLocation != nil
-        let baseSpots = state.spots
-
-        return .run { send in
-          let result = await Result {
-            try await placeUseCase.searchExploreSpots(
-              baseSpots: baseSpots,
-              userSession: userSession,
-              userLat: userLat,
-              userLon: userLon,
-              keyword: keyword,
-              category: category,
-              sortBy: sortBy,
-              mapLat: mapLat,
-              mapLon: mapLon,
-              page: page
-            )
-          }
-
-          switch result {
-          case .success(let entity):
-            await send(
-              .inner(
-                .searchPlacesResponse(
-                  entity,
-                  append: append,
-                  requestedPage: page,
-                  requestedKeyword: rawKeyword,
-                  requestedCategory: category,
-                  requestedMarkerLat: requestedMarkerLat,
-                  requestedMarkerLon: requestedMarkerLon,
-                  usedCurrentLocation: usedCurrentLocation
-                )
+        if isInitialLoad {
+          // 초기 로딩: fetchInitialExploreSpots 사용
+          #logDebug("✅ [실제 호출] fetchInitialExploreSpots (size=200)")
+          return .run { send in
+            let result = await Result {
+              try await placeUseCase.fetchInitialExploreSpots(
+                userSession: userSession,
+                userLat: userLat,
+                userLon: userLon
               )
-            )
-          case .failure(let error):
-            await send(.inner(.searchPlacesFailed(error.localizedDescription)))
+            }
+
+            switch result {
+            case .success(let entities):
+              await send(.inner(.fetchPlacesInitialResponse(entities, usedCurrentLocation: usedCurrentLocation)))
+            case .failure(let error):
+              await send(.inner(.fetchPlacesFailed(PlaceError.from(error), usedCurrentLocation: usedCurrentLocation)))
+            }
           }
+          .cancellable(id: CancelID.fetchPlaces, cancelInFlight: true)
+        } else {
+          // 페이지네이션: searchExploreSpots 사용
+          #logDebug("✅ [실제 호출] searchExploreSpots (size=10)")
+          let rawKeyword = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+          let isResolvingSelectedMarkerDetail = ExploreHelpers.isResolvingSelectedMarkerDetail(state: state)
+          let mapLat = isResolvingSelectedMarkerDetail
+            ? (state.searchMarkerLat ?? state.userSession.travelStationLat ?? fallbackLat)
+            : (state.mapCenterLat ?? state.userSession.travelStationLat ?? fallbackLat)
+          let mapLon = isResolvingSelectedMarkerDetail
+            ? (state.searchMarkerLon ?? state.userSession.travelStationLng ?? fallbackLng)
+            : (state.mapCenterLon ?? state.userSession.travelStationLng ?? fallbackLng)
+          let requestedMarkerLat = mapLat
+          let requestedMarkerLon = mapLon
+          let keyword = isResolvingSelectedMarkerDetail ? nil : rawKeyword.nilIfEmpty
+          let category: ExploreCategory? = isResolvingSelectedMarkerDetail
+            ? nil
+            : (state.selectedCategory == .all ? nil : state.selectedCategory)
+          let sortBy = "distanceFromStation,ASC"
+          let baseSpots = state.spots
+
+          return .run { send in
+            let result = await Result {
+              try await placeUseCase.searchExploreSpots(
+                baseSpots: baseSpots,
+                userSession: userSession,
+                userLat: userLat,
+                userLon: userLon,
+                keyword: keyword,
+                category: category,
+                sort: sortBy,
+                mapLat: mapLat,
+                mapLon: mapLon,
+                page: page
+              )
+            }
+
+            switch result {
+            case .success(let entity):
+              let request = FetchPlacesRequest(
+                page: page,
+                keyword: rawKeyword,
+                category: category,
+                markerLat: requestedMarkerLat,
+                markerLon: requestedMarkerLon,
+                append: append,
+                usedCurrentLocation: usedCurrentLocation
+              )
+              await send(.inner(.fetchPlacesPageResponse(entity, request: request)))
+            case .failure(let error):
+              await send(.inner(.fetchPlacesFailed(PlaceError.from(error), usedCurrentLocation: false)))
+            }
+          }
+          .cancellable(id: CancelID.fetchPlaces, cancelInFlight: true)
         }
-        .cancellable(id: CancelID.searchPlaces, cancelInFlight: true)
 
       // 길찾기 관련 액션
       case .searchRoute(let from, let destination):

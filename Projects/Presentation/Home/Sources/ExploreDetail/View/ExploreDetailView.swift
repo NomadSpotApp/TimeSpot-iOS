@@ -69,10 +69,11 @@ public struct ExploreDetailView: View {
               }
             }
             .padding(.horizontal, 16)
-            .padding(.bottom, 28)
           }
           .scrollIndicators(.hidden)
         }
+
+        Spacer()
 
       }
     }
@@ -86,7 +87,18 @@ public struct ExploreDetailView: View {
       guard shouldDismiss else { return }
       dismiss()
     }
+    .onChange(of: store.showLowStayTimeToast) { _, showToast in
+      if showToast {
+        ToastManager.shared.showWarning("체류시간이 10분 미만입니다")
+        store.send(.view(.hideLowStayTimeToast))
+      }
+    }
     .customAlert($store.scope(state: \.customAlert, action: \.scope.customAlert))
+    .toastOverlay(
+      position: .bottom,
+      horizontalPadding: 20,
+      bottomPadding: 100
+    )
   }
 }
 
@@ -254,7 +266,7 @@ private extension ExploreDetailView {
   func routeButtonSection() -> some View {
     CustomButton(
       action: {},
-      title: store.isVisitUnavailable ? "방문 불가능" : "경로 확인하기",
+      title: store.isVisitUnavailable ? "방문 불가" : "경로 확인하기",
       config: CustomButtonConfig.create(),
       isEnable: !store.isVisitUnavailable
     )

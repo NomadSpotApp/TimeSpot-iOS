@@ -136,10 +136,9 @@ extension ExploreFeature.AsyncAction {
          (.requestFullAccuracy, .requestFullAccuracy),
          (.startLocationUpdates, .startLocationUpdates),
          (.stopLocationUpdates, .stopLocationUpdates),
-         (.requestCurrentLocation, .requestCurrentLocation),
-         (.fetchPlaces, .fetchPlaces):
+         (.requestCurrentLocation, .requestCurrentLocation):
       return true
-    case (.searchPlaces(let lhsPage, let lhsAppend), .searchPlaces(let rhsPage, let rhsAppend)):
+    case (.fetchPlaces(let lhsPage, let lhsAppend), .fetchPlaces(let rhsPage, let rhsAppend)):
       return lhsPage == rhsPage && lhsAppend == rhsAppend
     case (.searchRoute(let lhsFrom, let lhsTo), .searchRoute(let rhsFrom, let rhsTo)):
       return lhsFrom.latitude == rhsFrom.latitude

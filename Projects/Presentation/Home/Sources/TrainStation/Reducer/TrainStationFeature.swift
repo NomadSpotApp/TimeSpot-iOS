@@ -9,6 +9,7 @@
 import Foundation
 import CoreLocation
 import ComposableArchitecture
+import IdentifiedCollections
 
 import DomainInterface
 import UseCase
@@ -34,9 +35,9 @@ public struct TrainStationFeature {
     var shouldShowFavoriteSection: Bool = false
     var selectedStation: Station
     var selectedStationID: Int?
-    var favoriteRows: [StationRowModel] = []
-    var nearbyRows: [StationRowModel] = []
-    var majorRows: [StationRowModel] = []
+    var favoriteRows: IdentifiedArrayOf<StationRowModel> = []
+    var nearbyRows: IdentifiedArrayOf<StationRowModel> = []
+    var majorRows: IdentifiedArrayOf<StationRowModel> = []
     var isLoading: Bool = false
     var errorMessage: String?
 
@@ -230,10 +231,23 @@ extension TrainStationFeature {
       state.shouldShowFavoriteSection = shouldShowFavoriteSection
       return .none
     case .fetchStationsResponse(let entity):
-      state.favoriteRows = makeFavoriteRows(entity.favoriteStations)
-      state.nearbyRows = makeNearbyRows(entity.nearbyStations)
-      state.majorRows = makeMajorRows(entity.stations.content)
-      applyFavoriteState(state: &state)
+      state.favoriteRows = StationRowModel.makeFavoriteRows(from: entity.favoriteStations)
+      state.nearbyRows = StationRowModel.makeNearbyRows(from: entity.nearbyStations)
+      state.majorRows = StationRowModel.makeMajorRows(from: entity.stations.content)
+
+      // Avoid overlapping access by copying to local variables
+      let favoriteRows = state.favoriteRows
+      var nearbyRows = state.nearbyRows
+      var majorRows = state.majorRows
+
+      StationRowModel.applyFavoriteState(
+        favoriteRows: favoriteRows,
+        nearbyRows: &nearbyRows,
+        majorRows: &majorRows
+      )
+
+      state.nearbyRows = nearbyRows
+      state.majorRows = majorRows
       state.isLoading = false
       return .none
     case .fetchStationsFailed(let message):
@@ -247,36 +261,46 @@ extension TrainStationFeature {
       return .none
     case .deleteFavoriteStationResponse(let stationID):
       state.favoriteRows.removeAll { $0.stationID == stationID }
-      state.nearbyRows = state.nearbyRows.map { row in
+
+      let updatedNearbyRows = state.nearbyRows.map { row in
         guard row.stationID == stationID else { return row }
-        return StationRowModel(
-          id: row.id,
+        let updatedEntity = StationEntity(
+          id: row.stationEntity.id,
           favoriteID: nil,
-          station: row.station,
-          stationID: row.stationID,
-          stationName: row.stationName,
-          badges: row.badges,
-          lat: row.lat,
-          lng: row.lng,
-          distanceText: row.distanceText,
+          station: row.stationEntity.station,
+          name: row.stationEntity.name,
+          badges: row.stationEntity.badges,
+          latitude: row.stationEntity.latitude,
+          longitude: row.stationEntity.longitude,
           isFavorite: false
         )
-      }
-      state.majorRows = state.majorRows.map { row in
-        guard row.stationID == stationID else { return row }
         return StationRowModel(
-          id: row.id,
-          favoriteID: nil,
-          station: row.station,
-          stationID: row.stationID,
-          stationName: row.stationName,
-          badges: row.badges,
-          lat: row.lat,
-          lng: row.lng,
+          stationEntity: updatedEntity,
           distanceText: row.distanceText,
-          isFavorite: false
+          rowType: "nearby"
         )
       }
+      state.nearbyRows = IdentifiedArray(uniqueElements: updatedNearbyRows)
+
+      let updatedMajorRows = state.majorRows.map { row in
+        guard row.stationID == stationID else { return row }
+        let updatedEntity = StationEntity(
+          id: row.stationEntity.id,
+          favoriteID: nil,
+          station: row.stationEntity.station,
+          name: row.stationEntity.name,
+          badges: row.stationEntity.badges,
+          latitude: row.stationEntity.latitude,
+          longitude: row.stationEntity.longitude,
+          isFavorite: false
+        )
+        return StationRowModel(
+          stationEntity: updatedEntity,
+          distanceText: row.distanceText,
+          rowType: "station"
+        )
+      }
+      state.majorRows = IdentifiedArray(uniqueElements: updatedMajorRows)
       return .none
     case .deleteFavoriteStationFailed(let message):
       state.errorMessage = message
@@ -287,116 +311,3 @@ extension TrainStationFeature {
 
 extension TrainStationFeature.State: Hashable {}
 
-private extension TrainStationFeature {
-  func makeFavoriteRows(_ stations: [StationSummaryEntity]) -> [StationRowModel] {
-    Array(
-      Dictionary(
-        stations.map { station in
-          (normalizedStationName(station.name), station)
-        },
-        uniquingKeysWith: { first, _ in first }
-      ).values
-    )
-    .sorted { normalizedStationName($0.name) < normalizedStationName($1.name) }
-    .map { station in
-      let normalizedName = normalizedStationName(station.name)
-      return StationRowModel(
-        id: "favorite-\(station.stationID)",
-        favoriteID: station.favoriteID ?? station.stationID,
-        station: Station(displayName: normalizedName),
-        stationID: station.stationID,
-        stationName: normalizedName,
-        badges: station.lines,
-        lat: station.lat,
-        lng: station.lng,
-        distanceText: nil,
-        isFavorite: true
-      )
-    }
-  }
-
-  func makeNearbyRows(_ stations: [StationSummaryEntity]) -> [StationRowModel] {
-    Array(stations.sorted { normalizedStationName($0.name) < normalizedStationName($1.name) }.prefix(3)).map { station in
-      let normalizedName = normalizedStationName(station.name)
-      return StationRowModel(
-        id: "nearby-\(station.stationID)",
-        favoriteID: nil,
-        station: Station(displayName: normalizedName),
-        stationID: station.stationID,
-        stationName: normalizedName,
-        badges: station.lines,
-        lat: station.lat,
-        lng: station.lng,
-        distanceText: "2.3km",
-        isFavorite: false
-      )
-    }
-  }
-
-  func makeMajorRows(_ stations: [StationSummaryEntity]) -> [StationRowModel] {
-    stations
-      .sorted { normalizedStationName($0.name) < normalizedStationName($1.name) }
-      .map { station in
-      let normalizedName = normalizedStationName(station.name)
-      return StationRowModel(
-        id: "station-\(station.stationID)",
-        favoriteID: nil,
-        station: Station(displayName: normalizedName),
-        stationID: station.stationID,
-        stationName: normalizedName,
-        badges: station.lines,
-        lat: station.lat,
-        lng: station.lng,
-        distanceText: nil,
-        isFavorite: false
-      )
-    }
-  }
-
-  func applyFavoriteState(state: inout State) {
-    let favoriteNameMap: [String: Int] = Dictionary(
-      uniqueKeysWithValues: state.favoriteRows.compactMap { row -> (String, Int)? in
-        let identifier = row.favoriteID ?? row.stationID
-        return (normalizedStationName(row.stationName), identifier)
-      }
-    )
-
-    state.nearbyRows = state.nearbyRows.map { row in
-      let favoriteID = favoriteNameMap[normalizedStationName(row.stationName)]
-      return StationRowModel(
-        id: row.id,
-        favoriteID: favoriteID,
-        station: row.station,
-        stationID: row.stationID,
-        stationName: row.stationName,
-        badges: row.badges,
-        lat: row.lat,
-        lng: row.lng,
-        distanceText: row.distanceText,
-        isFavorite: favoriteID != nil
-      )
-    }
-
-    state.majorRows = state.majorRows.map { row in
-      let favoriteID = favoriteNameMap[normalizedStationName(row.stationName)]
-      return StationRowModel(
-        id: row.id,
-        favoriteID: favoriteID,
-        station: row.station,
-        stationID: row.stationID,
-        stationName: row.stationName,
-        badges: row.badges,
-        lat: row.lat,
-        lng: row.lng,
-        distanceText: row.distanceText,
-        isFavorite: favoriteID != nil
-      )
-    }
-  }
-
-  func normalizedStationName(_ name: String) -> String {
-    name
-      .replacingOccurrences(of: "역", with: "")
-      .trimmingCharacters(in: .whitespacesAndNewlines)
-  }
-}

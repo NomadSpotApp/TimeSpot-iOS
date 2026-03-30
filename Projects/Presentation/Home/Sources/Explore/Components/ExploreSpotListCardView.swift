@@ -17,8 +17,11 @@ struct ExploreSpotListCardView: View {
   let store: StoreOf<ExploreListFeature>
 
   var body: some View {
-    HStack(alignment: .top, spacing: 14) {
-      VStack(alignment: .leading, spacing: 0) {
+    Button {
+      store.send(.view(.spotCardTapped(spot)))
+    } label: {
+      HStack(alignment: .top, spacing: 14) {
+        VStack(alignment: .leading, spacing: 0) {
         if !spot.badgeText.isEmpty {
           Text(spot.badgeText)
             .pretendardCustomFont(textStyle: .caption)
@@ -76,19 +79,22 @@ struct ExploreSpotListCardView: View {
           }
         }
 
+        Spacer(minLength: 0)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
 
       spotImage(for: spot)
+      }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 16)
+      .background(.staticWhite)
+      .clipShape(RoundedRectangle(cornerRadius: 22))
+      .overlay {
+        RoundedRectangle(cornerRadius: 22)
+          .stroke(.enableColor, lineWidth: 1)
+      }
     }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 16)
-    .background(.staticWhite)
-    .clipShape(RoundedRectangle(cornerRadius: 22))
-    .overlay {
-      RoundedRectangle(cornerRadius: 22)
-        .stroke(.enableColor, lineWidth: 1)
-    }
+    .buttonStyle(.plain)
     .onAppear {
     }
     .onChange(of: spot.id) { _ in
@@ -102,6 +108,7 @@ struct ExploreSpotListCardView: View {
         .font(.pretendardFontFamily(family: .SemiBold, size: 18))
         .foregroundStyle(.staticBlack)
         .lineLimit(titleLineLimit)
+        .minimumScaleFactor(0.7)
         .layoutPriority(1)
 
       if !spot.subtitle.isEmpty {

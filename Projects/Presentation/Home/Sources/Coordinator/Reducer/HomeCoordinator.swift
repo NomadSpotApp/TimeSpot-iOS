@@ -153,6 +153,8 @@ extension HomeCoordinator {
           return .send(.view(.backAction))
         }
 
+      case .routeAction(id: _, action: .exploreList(.delegate(.presentExploreDetail))):
+        return .send(.inner(.presentExploreDetail))
 
       case .routeAction(id: _, action: .profile(.navigation(.presentRoot))):
         return .send(.view(.backAction))
