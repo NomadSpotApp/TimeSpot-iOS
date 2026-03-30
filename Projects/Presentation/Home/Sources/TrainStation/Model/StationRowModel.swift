@@ -184,6 +184,43 @@ extension StationRowModel {
     return IdentifiedArray(uniqueElements: rows)
   }
 
+  // 비회원용 기본 주요 역 데이터
+  static func makeDefaultMajorStations() -> IdentifiedArrayOf<StationRowModel> {
+    let defaultStations = [
+      ("강남", 1, Station.gangnam, ["2호선", "신분당선"]),
+      ("홍대입구", 2, Station.hongdaeEntrance, ["2호선", "6호선", "공항철도"]),
+      ("신촌", 3, Station.sinchon, ["2호선"]),
+      ("이태원", 4, Station.itaewon, ["6호선"]),
+      ("명동", 5, Station.myeongdong, ["4호선"]),
+      ("건대입구", 6, Station.konkukUniversityEntrance, ["2호선", "7호선"]),
+      ("잠실", 7, Station.jamsil, ["2호선", "8호선"]),
+      ("종각", 8, Station.jonggak, ["1호선"]),
+      ("고속터미널", 9, Station.expressBusTerminal, ["3호선", "7호선", "9호선"]),
+      ("노원", 10, Station.nowon, ["4호선", "7호선"])
+    ]
+
+    let rows = defaultStations.map { (name, id, station, badges) in
+      let entity = StationEntity(
+        id: id,
+        favoriteID: nil,
+        station: station,
+        name: name,
+        badges: badges,
+        latitude: nil,
+        longitude: nil,
+        isFavorite: false
+      )
+
+      return StationRowModel(
+        stationEntity: entity,
+        distanceText: nil,
+        rowType: "station"
+      )
+    }
+
+    return IdentifiedArray(uniqueElements: rows)
+  }
+
   static func applyFavoriteState(
     favoriteRows: IdentifiedArrayOf<StationRowModel>,
     nearbyRows: inout IdentifiedArrayOf<StationRowModel>,

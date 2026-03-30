@@ -40,6 +40,7 @@ public struct TrainStationFeature {
     var majorRows: IdentifiedArrayOf<StationRowModel> = []
     var isLoading: Bool = false
     var errorMessage: String?
+    @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
 
     public init(
       selectedStation: Station = .seoul,
@@ -126,6 +127,13 @@ extension TrainStationFeature {
     switch action {
     case .onAppear:
       state.isLoading = true
+
+      // 비회원인 경우 즐겨찾기 섹션은 표시하지 않음
+      if state.userSession.isGuest {
+        state.shouldShowFavoriteSection = false
+        return .send(.async(.fetchStations))
+      }
+
       return .merge(
         .send(.async(.checkAccessToken)),
         .send(.async(.fetchStations))
@@ -137,7 +145,9 @@ extension TrainStationFeature {
       state.selectedStationID = row.stationID
       return .send(.delegate(.stationSelected(row)))
     case .favoriteButtonTapped(let row):
-      guard state.shouldShowFavoriteSection else { return .none }
+      // 비회원이거나 즐겨찾기 섹션이 비활성화된 경우 즐겨찾기 기능 사용 불가
+      guard state.shouldShowFavoriteSection && !state.userSession.isGuest else { return .none }
+
       if row.isFavorite {
         guard let favoriteID = row.favoriteID else { return .none }
         return .send(.async(.deleteFavoriteStation(favoriteID: favoriteID, stationID: row.stationID)))
@@ -251,8 +261,15 @@ extension TrainStationFeature {
       state.isLoading = false
       return .none
     case .fetchStationsFailed(let message):
-      state.errorMessage = message
       state.isLoading = false
+
+      // 비회원인 경우 기본 주요 역 데이터로 폴백
+      if state.userSession.isGuest {
+        state.majorRows = StationRowModel.makeDefaultMajorStations()
+        state.errorMessage = nil
+      } else {
+        state.errorMessage = message
+      }
       return .none
     case .addFavoriteStationResponse:
       return .send(.async(.fetchStations))

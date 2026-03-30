@@ -73,7 +73,7 @@ public struct LoginFeature {
     case presentPrivacyWeb
     case presentOnBoarding
     case presentMain
-    case presntGuestLookAround
+    case presentGuestLookAround
 
   }
 
@@ -221,7 +221,7 @@ extension LoginFeature {
       case .presentMain:
         return .none
 
-      case .presntGuestLookAround:
+      case .presentGuestLookAround:
         // 비회원으로 시작하기
         state.$userSession.withLock { userSession in
           userSession.isGuest = true
@@ -246,6 +246,10 @@ extension LoginFeature {
             state.loginEntity = loginEntity
             state.$selectedMapTypeStorage.withLock {
               $0 = loginEntity.mapType ?? .appleMap
+            }
+            
+            state.$userSession.withLock { userSession in
+              userSession.isGuest = false
             }
 
             if loginEntity.isNewUser {
