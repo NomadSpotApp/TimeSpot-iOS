@@ -201,7 +201,6 @@ extension ExploreFeature {
         state.isSpotCardVisible = false
         state.hasFetchedPlacesWithCurrentLocation = false
         ExploreHelpers.resetSearchContext(state: &state)
-        state.spots = []
         ExploreHelpers.syncSelectedSpot(state: &state)
         return .merge(
           .run { send in

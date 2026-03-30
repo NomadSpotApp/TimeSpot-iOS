@@ -62,7 +62,7 @@ private extension ExploreView {
       locationPermissionStatus: store.locationPermissionStatus,
       currentLocation: store.currentLocation,
       routeInfo: nil, // ExploreView에서는 경로 정보 표시 안함
-      destination: nil, // ExploreView에서는 목적지 마커 표시 안함
+      destination: store.selectedDestination, // 서울역 등 선택된 역 마커 표시
       spots: store.state.filteredMapSpots,
       selectedSpotID: store.userSession.selectedExploreSpotID.isEmpty
         ? nil
@@ -87,7 +87,7 @@ private extension ExploreView {
       stationName: store.userSession.travelStationName,
       searchText: store.searchText,
       selectedCategory: store.selectedCategory,
-      showCategories: false,  // 카테고리 숨김
+      showCategories: true,   // 카테고리 표시
       isSearchable: false,    // 검색창 아닌 텍스트로 표시
       onBackTap: { dismiss() },
       onSearchTextChanged: { store.send(.view(.searchTextChanged($0))) },

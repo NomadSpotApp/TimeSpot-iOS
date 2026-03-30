@@ -24,7 +24,7 @@ struct ExploreCategoryChipView: View {
     let searchRange = max(0, midPoint - 2)...min(characters.count - 1, midPoint + 2)
 
     // 이미 스페이스가 있는 위치 찾기
-    if let spaceIndex = searchRange.first(where: { characters[$0] == " " }) {
+    if searchRange.first(where: { characters[$0] == " " }) != nil {
       return text
     }
 

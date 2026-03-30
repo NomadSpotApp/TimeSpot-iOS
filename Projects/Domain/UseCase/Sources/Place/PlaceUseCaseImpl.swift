@@ -236,7 +236,7 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       coordinate: CLLocationCoordinate2D(latitude: entity.lat, longitude: entity.lon),
       hasDetail: false,
       imageURL: entity.imageURL,
-      badgeText: "",
+      badgeText: entity.stayableMinutes > 0 ? "\(entity.stayableMinutes)분 체류 가능" : "",
       subtitle: entity.category.title,
       statusText: "",
       closingText: "",
