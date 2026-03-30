@@ -61,8 +61,9 @@ private extension ExploreView {
     NaverMapComponent(
       locationPermissionStatus: store.locationPermissionStatus,
       currentLocation: store.currentLocation,
-      routeInfo: nil, // ExploreView에서는 경로 정보 표시 안함
-      destination: store.selectedDestination, // 서울역 등 선택된 역 마커 표시
+      routeInfo: nil,
+      destination: store.selectedDestination,
+      travelStation: nil,
       spots: store.state.filteredMapSpots,
       selectedSpotID: store.userSession.selectedExploreSpotID.isEmpty
         ? nil

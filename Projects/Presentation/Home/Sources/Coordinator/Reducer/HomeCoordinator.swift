@@ -166,6 +166,10 @@ extension HomeCoordinator {
         state.routes.push(.route(.init()))
         return .none
 
+      case .routeAction(id: _, action: .exploreDetail(.delegate(.presentRoute))):
+        state.routes.push(.route(.init()))
+        return .none
+
 
       default:
         return .none

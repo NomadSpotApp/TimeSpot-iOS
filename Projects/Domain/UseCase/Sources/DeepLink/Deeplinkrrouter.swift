@@ -93,18 +93,42 @@ public struct DeeplinkRouter: Sendable {
     }
 
   public  func extractDeepLink(from userInfo: [AnyHashable: Any]) -> String? {
+    #logDebug("🔍 푸시 알림 payload 분석 시작")
+    #logDebug("📱 Available keys: \(userInfo.keys)")
+
+    // 전체 payload 내용 출력 (디버깅용)
+    for (key, value) in userInfo {
+      #logDebug("📋 Key: \(key), Value: \(value), Type: \(type(of: value))")
+    }
+
     // 1) 단일 문자열 필드 우선
     let stringKeys = ["deeplink", "url"]
     for key in stringKeys {
-      if let url = userInfo[key] as? String { return url }
+      if let url = userInfo[key] as? String {
+        #logDebug("✅ 딥링크 발견 (단일): \(url)")
+        return url
+      }
     }
 
-    // 2) 중첩 객체에서 url 필드 찾기 (호환 키: deeplink, data, custom)
-    let containerKeys = ["deeplink", "data", "custom"]
+    // 2) 중첩 객체에서 url 필드 찾기 (customPayload 추가)
+    let containerKeys = ["deeplink", "data", "custom", "customPayload"]
     for key in containerKeys {
-      guard let container = userInfo[key] as? [String: Any],
-            let url = container["url"] as? String else { continue }
-      return url
+      if let container = userInfo[key] as? [String: Any] {
+        #logDebug("🔍 \(key) 컨테이너 내용: \(container)")
+
+        // url 또는 deeplink 필드 확인
+        for urlKey in ["url", "deeplink", "link"] {
+          if let url = container[urlKey] as? String {
+            #logDebug("✅ 딥링크 발견 (\(key).\(urlKey)): \(url)")
+            return url
+          }
+        }
+      }
+    }
+
+    // 3) APS 내부도 확인해보기
+    if let aps = userInfo["aps"] as? [String: Any] {
+      #logDebug("🔍 aps 내용: \(aps)")
     }
 
     #logDebug("❌ No deep link found in push notification")

@@ -31,11 +31,11 @@ public struct HomeView: View {
 
     enum TimeCapsule {
       static let height: CGFloat = 77
-      static let cornerRadius: CGFloat = 28
+      static let cornerRadius: CGFloat = 24
     }
 
     enum TimeDisplay {
-      static let cornerRadius: CGFloat = 36
+      static let cornerRadius: CGFloat = 28
     }
   }
 

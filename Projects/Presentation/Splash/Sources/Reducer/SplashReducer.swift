@@ -9,6 +9,8 @@
 import Foundation
 import ComposableArchitecture
 import UseCase
+import Entity
+import LogMacro
 
 
 @Reducer
@@ -19,9 +21,12 @@ public struct SplashReducer {
     static let tokenCheckDelay: Duration = .seconds(1.5)
   }
 
+  @ObservableState
   public struct State: Equatable {
     public var isCheckingToken = false
     public var hasValidToken = false
+    @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
+    @Shared(.appStorage("selectedMapType")) var selectedMapTypeStorage: ExternalMapType = .naverMap
 
     public init() {}
   }
@@ -44,6 +49,7 @@ public struct SplashReducer {
   //MARK: - AsyncAction 비동기 처리 액션
   public enum AsyncAction: Equatable {
     case checkToken
+    case syncMapType
   }
 
   //MARK: - 앱내에서 사용하는 액션
@@ -90,7 +96,10 @@ extension SplashReducer {
     switch action {
       case .onAppear:
         state.isCheckingToken = true
-        return .send(.async(.checkToken))
+        return .merge(
+          .send(.async(.syncMapType)),
+          .send(.async(.checkToken))
+        )
     }
   }
 
@@ -99,6 +108,14 @@ extension SplashReducer {
     action: AsyncAction
   ) -> Effect<Action> {
     switch action {
+      case .syncMapType:
+        // AppStorage에서 저장된 mapType을 UserSession에 동기화
+        state.$userSession.withLock {
+          $0.mapType = state.selectedMapTypeStorage
+        }
+        #logDebug("🗺️ [Splash] AppStorage mapType을 UserSession에 동기화: \(state.selectedMapTypeStorage)")
+        return .none
+
       case .checkToken:
         return .run { send in
           // 키체인에서 액세스 토큰 확인

@@ -16,6 +16,7 @@ import Utill
 public struct RouteView: View {
   @Bindable var store: StoreOf<RouteFeature>
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.openURL) private var openURL
 
   public init(store: StoreOf<RouteFeature>) {
     self.store = store
@@ -63,6 +64,7 @@ private extension RouteView {
   @ViewBuilder
   func naverMap() -> some View {
     let destination = makeDestination()
+    let travelStation = makeTravelStation()
     let routeInfo = store.routeInfo
 
     NaverMapComponent(
@@ -70,14 +72,11 @@ private extension RouteView {
       currentLocation: store.currentLocation,
       routeInfo: routeInfo,
       destination: destination,
-      spots: [], // 🚗 경로 모드에서는 spots 마커를 전달하지 않음
-      selectedSpotID: nil, // 🚗 경로 모드에서는 선택된 스팟 없음
+      travelStation: travelStation,
+      spots: [],
+      selectedSpotID: nil,
       returnToLocationTrigger: 0
     )
-    .onAppear {
-      #logDebug("🎯 [RouteView] routeInfo: \(routeInfo != nil ? "있음" : "nil")")
-      #logDebug("🎯 [RouteView] destination: \(destination?.name ?? "nil")")
-    }
   }
 
   private func makeDestination() -> Destination? {
@@ -86,6 +85,16 @@ private extension RouteView {
 
     return Destination(
       name: store.userSession.routeDestinationName.nilIfEmpty ?? "목적지",
+      coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng)
+    )
+  }
+
+  private func makeTravelStation() -> Destination? {
+    guard let lat = store.userSession.travelStationLat,
+          let lng = store.userSession.travelStationLng else { return nil }
+
+    return Destination(
+      name: store.userSession.travelStationName.nilIfEmpty ?? "출발역",
       coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng)
     )
   }
@@ -183,6 +192,7 @@ private extension RouteView {
   private func routeStartButton() -> some View {
     CustomButton(
       action: {
+        // TCA action 사용
         store.send(.view(.startNavigation))
       },
       title: "길찾기 시작",
@@ -191,6 +201,4 @@ private extension RouteView {
     )
     .padding(.horizontal, 16)
   }
-
-
 }
