@@ -77,6 +77,7 @@ public struct OnBoardingFeature {
   }
 
   @Dependency(\.signUpUseCase) var signUpUseCase
+  @Dependency(\.)
 
   public var body: some Reducer<State, Action> {
     BindingReducer()
@@ -156,8 +157,8 @@ extension OnBoardingFeature {
   ) -> Effect<Action> {
     switch action {
       case .signup:
-        // 비회원인 경우 API 통신 없이 바로 onBoardingCompleted로 이동
-        if state.userSession.isGuest {
+        // 비회원인 경우 (isGuest = true 또는 accessToken이 비어있음) API 통신 없이 바로 onBoardingCompleted로 이동
+        if state.userSession.isGuest || state.userSession.accessToken.isEmpty {
           return .send(.navigation(.onBoardingCompleted))
         }
 
