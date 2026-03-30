@@ -158,7 +158,6 @@ extension OnBoardingFeature {
       case .signup:
         // 비회원인 경우 API 통신 없이 바로 onBoardingCompleted로 이동
         if state.userSession.isGuest {
-          #logDebug("비회원 모드 - API 통신 건너뛰고 onBoardingCompleted로 이동")
           return .send(.navigation(.onBoardingCompleted))
         }
 
