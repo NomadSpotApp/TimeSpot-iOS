@@ -86,6 +86,8 @@ extension AuthCoordinator {
     action: IndexedRouterActionOf<AuthScreen>
   ) -> Effect<Action> {
     switch action {
+      case .routeAction(id: _, action: .login(.delegate(.presntGuestLookAround)))
+        return .send(.inner(.pushOnBoarding))
 
       case .routeAction(id: _, action: .login(.delegate(.presentOnBoarding))):
         return .send(.inner(.pushOnBoarding))
