@@ -7,19 +7,16 @@
 
 import Foundation
 
-public enum PlaceAPI: String, CaseIterable {
+public enum PlaceAPI {
   case fetchPlace
-  case searchPlace
-  case detailPlace
+  case detailPlace(placeId: Int)
 
   public var description: String {
     switch self {
       case .fetchPlace:
         return ""
-      case .searchPlace:
-        return "/search"
-      case .detailPlace:
-        return "/detail"
+      case .detailPlace(let placeId):
+        return "/\(placeId)"
     }
   }
 }

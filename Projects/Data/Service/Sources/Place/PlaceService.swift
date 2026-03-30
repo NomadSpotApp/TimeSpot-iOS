@@ -13,9 +13,8 @@ import Foundations
 import AsyncMoya
 
 public enum PlaceService {
-  case fetchPlaces(body: PlaceRequest)
-  case searchPlaces(body: PlaceSearchRequest)
-  case detailPlaces(body: PlaceDetailRequest)
+  case fetchPlace(body: FetchPlaceRequest)
+  case detailPlaces(placeId: Int, body: PlaceDetailRequest)
 }
 
 
@@ -28,12 +27,10 @@ extension PlaceService: BaseTargetType {
 
   public var urlPath: String {
     switch self {
-      case .fetchPlaces:
+      case .fetchPlace:
         return PlaceAPI.fetchPlace.description
-      case .searchPlaces:
-        return PlaceAPI.searchPlace.description
-      case .detailPlaces:
-        return PlaceAPI.detailPlace.description
+      case .detailPlaces(let placeId, _):
+        return PlaceAPI.detailPlace(placeId: placeId).description
     }
   }
 
@@ -43,18 +40,16 @@ extension PlaceService: BaseTargetType {
 
   public var method: Moya.Method {
     switch self {
-      case .fetchPlaces, .searchPlaces, .detailPlaces:
+      case .fetchPlace, .detailPlaces:
         return .get
     }
   }
 
   public var parameters: [String : Any]? {
     switch self {
-      case .fetchPlaces(let body):
+      case .fetchPlace(let body):
         return body.toDictionary
-      case .searchPlaces(let body):
-        return body.toDictionary
-      case .detailPlaces(let body):
+      case .detailPlaces(_, let body):
         return body.toDictionary
     }
   }

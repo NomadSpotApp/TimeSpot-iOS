@@ -12,19 +12,27 @@ import Entity
 public extension PlaceDetailDTOResponseModel {
   func toDomain() -> PlaceDetailEntity {
     PlaceDetailEntity(
+      placeId: placeId,
       name: name,
       category: category,
       address: address,
-      distanceToStation: distanceToStation,
-      timeToStation: timeToStation,
+      latitude: latitude,
+      longitude: longitude,
+      distanceFromStation: distanceFromStation,
+      walkTimeFromStation: walkTimeFromStation,
       stayableMinutes: stayableMinutes,
-      stationLat: stationLat,
-      stationLon: stationLon,
+      visitable: visitable,
+      stationLatitude: stationLatitude,
+      stationLongitude: stationLongitude,
       leaveTime: leaveTime,
-      imageURL: imageURL,
-      weekday: weekday,
-      weekend: weekend,
-      phoneNumber: phoneNumber
+      images: images,
+      useTime: useTime,
+      spendTime: spendTime,
+      useFee: useFee,
+      discountInfo: discountInfo,
+      accomCountCulture: accomCountCulture,
+      parkingCulture: parkingCulture,
+      placeType: placeType
     )
   }
 }

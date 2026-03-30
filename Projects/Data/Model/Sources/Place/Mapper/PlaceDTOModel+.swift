@@ -7,85 +7,102 @@
 
 
 import Foundation
-
 import Entity
+import LogMacro
 
 public extension PlaceResponseDTOModel {
   func toDomain() -> PlaceEntity {
-    return PlaceEntity(
-      placeId: placeID,
+    PlaceEntity(
+      placeId: Int(placeId) ?? 0,
       name: name ?? "",
       category: mapCategory(category),
-      lat: lat,
-      lon: lon,
+      lat: latitude,
+      lon: longitude,
       address: address ?? "",
-      imageURL: imageURL,
+      imageURL: imageUrl,
       stayableMinutes: stayableMinutes ?? 0,
-      isOpen: isOpen ?? false,
-      closingTime: closingTime
+      isOpen: isOpen ?? visitable,
+      closingTime: closingTime,
+      distanceFromUser: distanceFromUser,
+      distanceFromStation: distanceFromStation,
+      walkTimeFromStation: walkTimeFromStation,
+      visitable: visitable
     )
   }
 
   func toDomainForFetchPlaces() -> PlaceEntity {
-    return PlaceEntity(
-      placeId: placeID,
+    PlaceEntity(
+      placeId: Int(placeId) ?? 0,
       name: name ?? "",
       category: mapCategory(category),
-      lat: lon,
-      lon: lat,
+      lat: latitude,
+      lon: longitude,
       address: address ?? "",
-      imageURL: imageURL,
+      imageURL: imageUrl,
       stayableMinutes: stayableMinutes ?? 0,
-      isOpen: isOpen ?? false,
-      closingTime: closingTime
+      isOpen: isOpen ?? visitable,
+      closingTime: closingTime,
+      distanceFromUser: distanceFromUser,
+      distanceFromStation: distanceFromStation,
+      walkTimeFromStation: walkTimeFromStation,
+      visitable: visitable
     )
   }
 
   private func mapCategory(_ value: String) -> ExploreCategory {
-    switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+    let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+    Log.debug("🏷️ [카테고리 매핑] 서버값: '\(value)' → 정규화: '\(normalized)'")
+
+    let category: ExploreCategory
+    switch normalized {
     case "카페", "cafe":
-      return .cafe
+      category = .cafe
     case "음식점", "restaurant":
-      return .restaurant
+      category = .restaurant
     case "액티비티", "activity":
-      return .activity
-    case "쇼핑", "shopping", "etc", "기타":
-      return .etc
+      category = .activity
+    case "관광지", "tour", "tourism":
+      category = .etc  // 관광지를 etc로 매핑
+    case "문화시설", "culture", "cultural":
+      category = .etc  // 문화시설도 etc로 매핑
+    case "쇼핑", "shopping":
+      category = .shopping
+    case "기타":
+      category = .etc
     default:
-      return .etc
+      category = .etc
     }
+
+    Log.debug("🏷️ [카테고리 매핑] 결과: \(category)")
+    return category
   }
 }
 
 public extension PlaceSearchPageResponseDTO {
   func toDomain() -> PlaceSearchPageEntity {
-    PlaceSearchPageEntity(
-      pageable: PlacePageableResponseDTO(
-        pageNumber: number,
-        pageSize: size,
-        offset: number * size
-      ).toDomain(),
+    let sortEntity = sort.toDomain()
+    let pageable = PlacePageableEntity(
+      isUnpaged: false,
+      isPaged: true,
+      pageNumber: number,
+      pageSize: size,
+      offset: number * size,
+      sort: sortEntity
+    )
+
+    Log.debug("📄 [페이지 매핑] 서버 number=\(number), hasNext=\(hasNext), content.count=\(content.count)")
+
+    return PlaceSearchPageEntity(
+      pageable: pageable,
       isLastPage: !hasNext,
       numberOfElements: content.count,
-      isFirstPage: number == 0,
+      isFirstPage: number == 1,
       size: size,
-      content: content.map { $0.toDomain() },
-      page: number,
-      sort: PlaceSortResponseDTO().toDomain(),
+      content: content.map { $0.toDomainForFetchPlaces() },
+      page: number, // 서버와 클라이언트 모두 1-based 페이지 사용
+      sort: sortEntity,
       isEmpty: content.isEmpty
-    )
-  }
-}
-
-public extension PlacePageableResponseDTO {
-  func toDomain() -> PlacePageableEntity {
-    PlacePageableEntity(
-      isUnpaged: unpaged,
-      isPaged: paged,
-      pageNumber: pageNumber,
-      pageSize: pageSize,
-      offset: offset,
-      sort: sort.toDomain()
     )
   }
 }
