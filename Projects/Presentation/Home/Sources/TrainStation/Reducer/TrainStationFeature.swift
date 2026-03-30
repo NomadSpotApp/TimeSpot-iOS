@@ -261,15 +261,8 @@ extension TrainStationFeature {
       state.isLoading = false
       return .none
     case .fetchStationsFailed(let message):
+      state.errorMessage = message
       state.isLoading = false
-
-      // 비회원인 경우 기본 주요 역 데이터로 폴백
-      if state.userSession.isGuest {
-        state.majorRows = StationRowModel.makeDefaultMajorStations()
-        state.errorMessage = nil
-      } else {
-        state.errorMessage = message
-      }
       return .none
     case .addFavoriteStationResponse:
       return .send(.async(.fetchStations))
