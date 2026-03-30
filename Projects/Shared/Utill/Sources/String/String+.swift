@@ -232,4 +232,11 @@ public extension String {
   var nilIfEmpty: String? {
     isEmpty ? nil : self
   }
+
+  // MARK: - Station Utils
+  var normalizedStationName: String {
+    self
+      .replacingOccurrences(of: "역", with: "")
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+  }
 }

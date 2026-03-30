@@ -148,6 +148,30 @@ public extension Date {
     formatter.dateFormat = "a h:mm"
     return formatter.string(from: deadline)
   }
+
+  // MARK: - Departure Time Utils
+  func normalizedDepartureTime(from currentTime: Date) -> Date {
+    let calendar = Calendar.current
+    let currentDateComponents = calendar.dateComponents([.year, .month, .day], from: currentTime)
+    let selectedTimeComponents = calendar.dateComponents([.hour, .minute], from: self)
+
+    var normalizedComponents = DateComponents()
+    normalizedComponents.year = currentDateComponents.year
+    normalizedComponents.month = currentDateComponents.month
+    normalizedComponents.day = currentDateComponents.day
+    normalizedComponents.hour = selectedTimeComponents.hour
+    normalizedComponents.minute = selectedTimeComponents.minute
+
+    guard let normalizedDate = calendar.date(from: normalizedComponents) else {
+      return self
+    }
+
+    if normalizedDate < currentTime {
+      return calendar.date(byAdding: .day, value: 1, to: normalizedDate) ?? normalizedDate
+    }
+
+    return normalizedDate
+  }
 }
 
 public extension Calendar {
