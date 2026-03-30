@@ -32,9 +32,12 @@ public struct ExploreListView: View {
             stationName: store.userSession.travelStationName,
             searchText: store.searchText,
             selectedCategory: store.selectedCategory,
+            showCategories: true,   // 카테고리 표시
+            isSearchable: true,     // 검색 기능 활성화
             onBackTap: { dismiss() },
             onSearchTextChanged: { store.send(.view(.searchTextChanged($0))) },
-            onCategoryTap: { store.send(.view(.categoryTapped($0))) }
+            onCategoryTap: { store.send(.view(.categoryTapped($0))) },
+            onSearchBarTap: nil
           )
           .padding(.top, 8)
           .padding(.horizontal, 16)

@@ -47,8 +47,9 @@ struct ExploreSelectedSpotCardView: View {
     VStack(alignment: .leading, spacing: 0) {
       HStack(alignment: .top, spacing: 12) {
         VStack(alignment: .leading, spacing: 0) {
+          // 뱃지는 visitable 상태와 무관하게 항상 표시
           if !spot.badgeText.isEmpty {
-            Text(spot.badgeText)
+            Text(formatLongText(spot.badgeText))
               .pretendardCustomFont(textStyle: .caption)
               .foregroundStyle(.orange800)
               .padding(.horizontal, 8)
@@ -63,11 +64,13 @@ struct ExploreSelectedSpotCardView: View {
               .pretendardFont(family: .SemiBold, size: 18)
               .foregroundStyle(.staticBlack)
               .lineLimit(titleLineLimit(for: spot))
+              .minimumScaleFactor(0.7)
+              .truncationMode(.tail)
               .fixedSize(horizontal: false, vertical: true)
               .layoutPriority(1)
 
             if !spot.subtitle.isEmpty {
-              Text(spot.subtitle)
+              Text(formatLongText(spot.subtitle))
                 .pretendardCustomFont(textStyle: .caption)
                 .foregroundStyle(.gray650)
                 .lineLimit(1)
@@ -83,13 +86,13 @@ struct ExploreSelectedSpotCardView: View {
           if !spot.statusText.isEmpty || !spot.closingText.isEmpty {
             HStack(spacing: 12) {
               if !spot.statusText.isEmpty {
-                Text(spot.statusText)
+                Text(formatLongText(spot.statusText))
                   .pretendardCustomFont(textStyle: .body2Medium)
                   .foregroundStyle(.gray850)
               }
 
               if !spot.closingText.isEmpty {
-                Text(spot.closingText)
+                Text(formatLongText(spot.closingText))
                   .pretendardCustomFont(textStyle: .body2Regular)
                   .foregroundStyle(.gray750)
                   .lineLimit(1)
@@ -101,13 +104,13 @@ struct ExploreSelectedSpotCardView: View {
           if !spot.distanceText.isEmpty || !spot.walkTimeText.isEmpty {
             HStack(spacing: 8) {
               if !spot.distanceText.isEmpty {
-                Text(spot.distanceText)
+                Text(formatLongText(spot.distanceText))
                   .pretendardCustomFont(textStyle: .bodyBold)
                   .foregroundStyle(.gray830)
               }
 
               if !spot.walkTimeText.isEmpty {
-                Text(spot.walkTimeText)
+                Text(formatLongText(spot.walkTimeText))
                   .pretendardCustomFont(textStyle: .bodyRegular)
                   .foregroundStyle(.gray830)
                   .lineLimit(1)
@@ -172,31 +175,38 @@ struct ExploreSelectedSpotCardView: View {
   }
 
   private func titleLineLimit(for spot: ExploreMapSpot) -> Int {
-    spot.name.count > 7 ? 2 : 1
+    return 1 // 항상 한 줄로 표시
   }
 
   private func titleMinHeight(for spot: ExploreMapSpot) -> CGFloat {
-    spot.name.count > 7 ? 44 : 24
+    return 24 // 고정 높이
+  }
+
+  /// 10자 이상인 텍스트에 중간 스페이스 추가
+  private func formatLongText(_ text: String) -> String {
+    guard text.count > 10 else { return text }
+
+    let characters = Array(text)
+    let midPoint = characters.count / 2
+
+    // 중간점 근처에서 적절한 위치 찾기 (±2 범위 내)
+    let searchRange = max(0, midPoint - 2)...min(characters.count - 1, midPoint + 2)
+
+    // 이미 스페이스가 있는 위치 찾기
+    if let spaceIndex = searchRange.first(where: { characters[$0] == " " }) {
+      return text
+    }
+
+    // 스페이스가 없으면 중간에 스페이스 추가
+    let insertIndex = midPoint
+    var result = characters
+    result.insert(" ", at: insertIndex)
+
+    return String(result)
   }
 
   private func formattedDisplayName(for spot: ExploreMapSpot) -> String {
-    let formatted = spot.name.formattedPlaceNameForDisplay
-
-    guard spot.name.count > 7 else {
-      return formatted
-    }
-
-    let characters = Array(formatted)
-    let threshold = min(7, characters.count)
-
-    if let splitIndex = characters.indices.dropFirst(threshold).first(where: { characters[$0] == " " }) {
-      let left = String(characters[..<splitIndex])
-      let right = String(characters[characters.index(after: splitIndex)...])
-      return "\(left)\n\(right)"
-    }
-
-    let splitIndex = formatted.index(formatted.startIndex, offsetBy: threshold)
-    return "\(formatted[..<splitIndex])\n\(formatted[splitIndex...])"
+    return formatLongText(spot.name.formattedPlaceNameForDisplay)
   }
 
   private func imageURL(for spot: ExploreMapSpot) -> URL? {

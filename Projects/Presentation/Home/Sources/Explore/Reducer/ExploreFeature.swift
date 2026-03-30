@@ -141,6 +141,7 @@ public struct ExploreFeature: Sendable {
   public enum DelegateAction: Equatable {
     case presentExploreList
     case presentExplorerDetail
+    case presentRoute
   }
 
   @Dependency(\.getRouteUseCase) var getRouteUseCase
@@ -459,9 +460,11 @@ extension ExploreFeature {
         return .none
 
       case .fetchPlacesInitialResponse(let pageEntity, let usedCurrentLocation):
+        #logDebug("🎯 [fetchPlacesInitialResponse] pageEntity.spots.count: \(pageEntity.spots.count)")
         state.isLoadingPlaces = false
         state.hasRequestedPlaces = false
         state.spots = pageEntity.spots
+        #logDebug("🎯 [fetchPlacesInitialResponse] state.spots.count 설정 완료: \(state.spots.count)")
         state.currentPage = pageEntity.currentPage
         state.hasNextPage = pageEntity.hasNextPage || pageEntity.spots.contains { !$0.hasDetail }
         state.hasFetchedPlacesWithCurrentLocation = usedCurrentLocation
@@ -588,8 +591,9 @@ extension ExploreFeature {
         if usedCurrentLocation {
           state.hasFetchedPlacesWithCurrentLocation = false
         }
-        #logDebug(" [ExploreReducer] 장소 조회 실패: \(error.localizedDescription)")
+        #logDebug("🎯 [fetchPlacesFailed] 장소 조회 실패: \(error.localizedDescription)")
         state.spots = []
+        #logDebug("🎯 [fetchPlacesFailed] spots 초기화 완료")
         ExploreHelpers.clearSelectedSpot(state: &state)
         return .none
 
@@ -802,6 +806,7 @@ extension ExploreFeature {
 
             switch result {
             case .success(let entities):
+              #logDebug("🎯 [fetchPlaces SUCCESS] entities.spots.count: \(entities.spots.count), dispatch fetchPlacesInitialResponse")
               await send(.inner(.fetchPlacesInitialResponse(entities, usedCurrentLocation: usedCurrentLocation)))
             case .failure(let error):
               await send(.inner(.fetchPlacesFailed(PlaceError.from(error), usedCurrentLocation: usedCurrentLocation)))
@@ -904,6 +909,25 @@ extension ExploreFeature {
         return .none
 
       case .presentExplorerDetail:
+        return .none
+
+      case .presentRoute:
+        // 현재 선택된 스팟의 위도와 경도를 UserSession에 저장
+        if let selectedSpot = state.selectedSpot {
+          state.$userSession.withLock {
+            // 목적지 정보 저장
+            $0.routeDestinationLat = selectedSpot.coordinate.latitude
+            $0.routeDestinationLng = selectedSpot.coordinate.longitude
+            $0.routeDestinationName = selectedSpot.name
+
+            // 현재 위치도 함께 저장 (출발지)
+            if let currentLocation = state.currentLocation {
+              $0.routeStartLat = currentLocation.coordinate.latitude
+              $0.routeStartLng = currentLocation.coordinate.longitude
+            }
+          }
+          #logDebug("🛣️ [Route] 저장됨 - 목적지: \(selectedSpot.name), 위도: \(selectedSpot.coordinate.latitude), 경도: \(selectedSpot.coordinate.longitude)")
+        }
         return .none
     }
   }

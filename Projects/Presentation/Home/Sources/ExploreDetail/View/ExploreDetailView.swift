@@ -105,16 +105,39 @@ public struct ExploreDetailView: View {
 
 private extension ExploreDetailView {
 
+  /// 10자 이상인 텍스트에 중간 스페이스 추가
+  private func formatLongText(_ text: String) -> String {
+    guard text.count > 10 else { return text }
+
+    let characters = Array(text)
+    let midPoint = characters.count / 2
+
+    // 중간점 근처에서 적절한 위치 찾기 (±2 범위 내)
+    let searchRange = max(0, midPoint - 2)...min(characters.count - 1, midPoint + 2)
+
+    // 이미 스페이스가 있는 위치 찾기
+    if let spaceIndex = searchRange.first(where: { characters[$0] == " " }) {
+      return text
+    }
+
+    // 스페이스가 없으면 중간에 스페이스 추가
+    let insertIndex = midPoint
+    var result = characters
+    result.insert(" ", at: insertIndex)
+
+    return String(result)
+  }
+
   @ViewBuilder
   func exploreSpotNameTitle() -> some View {
     VStack(alignment: .leading) {
       HStack(spacing: 8) {
-        Text(store.placeNameText.formattedPlaceNameForDisplay)
+        Text(formatLongText(store.placeNameText.formattedPlaceNameForDisplay))
           .pretendardCustomFont(textStyle: .heading1)
           .foregroundStyle(.staticBlack)
           .lineLimit(2)
 
-        Text(store.categoryText)
+        Text(formatLongText(store.categoryText))
           .pretendardCustomFont(textStyle: .body2Regular)
           .foregroundStyle(.gray700)
 
@@ -138,7 +161,7 @@ private extension ExploreDetailView {
   func stayInfoSection() -> some View {
     HStack(spacing: 0) {
       metricColumn(
-        value: store.stayableMinutesText,
+        value: formatLongText(store.stayableMinutesText),
         title: "체류시간",
         valueColor: .orange800
       )
@@ -146,7 +169,7 @@ private extension ExploreDetailView {
       divider
 
       metricColumn(
-        value: store.walkMinutesText,
+        value: formatLongText(store.walkMinutesText),
         title: "도보",
         valueColor: .gray830
       )
@@ -154,7 +177,7 @@ private extension ExploreDetailView {
       divider
 
       metricColumn(
-        value: store.distanceText,
+        value: formatLongText(store.distanceText),
         title: "거리",
         valueColor: .gray830
       )
@@ -189,10 +212,10 @@ private extension ExploreDetailView {
           }
 
           (
-            Text(store.returnDeadlineText)
+            Text(formatLongText(store.returnDeadlineText))
               .foregroundStyle(store.isVisitUnavailable ? .gray700 : .orange800)
             +
-            Text(store.returnDeadlineSuffixText).foregroundStyle(.gray800)
+            Text(formatLongText(store.returnDeadlineSuffixText)).foregroundStyle(.gray800)
           )
           .pretendardCustomFont(textStyle: .body2Medium)
           .lineSpacing(2)
@@ -226,19 +249,19 @@ private extension ExploreDetailView {
         infoRow(
           icon: "clock.fill",
           title: "영업 시간",
-          content: store.openingHoursText
+          content: formatLongText(store.openingHoursText)
         )
 
         infoRow(
           icon: "phone.fill",
           title: "전화번호",
-          content: store.phoneNumberText
+          content: formatLongText(store.phoneNumberText)
         )
 
         infoRow(
           icon: "location.fill",
           title: "주소",
-          content: store.addressText
+          content: formatLongText(store.addressText)
         )
       }
     }
@@ -248,7 +271,7 @@ private extension ExploreDetailView {
   func locationMapSection() -> some View {
     GeometryReader { proxy in
       Map(initialPosition: .region(store.mapRegion), interactionModes: .all) {
-        Annotation(store.placeNameText, coordinate: store.mapCoordinate) {
+        Annotation(formatLongText(store.placeNameText), coordinate: store.mapCoordinate) {
           Image(asset: .spotPin)
             .resizable()
             .scaledToFit()
