@@ -12,9 +12,57 @@ struct ExploreSearchHeaderView: View {
   let stationName: String
   let searchText: String
   let selectedCategory: ExploreCategory
+  let showCategories: Bool
+  let isSearchable: Bool // 검색 가능 여부
   let onBackTap: () -> Void
-  let onSearchTextChanged: (String) -> Void
-  let onCategoryTap: (ExploreCategory) -> Void
+  let onSearchTextChanged: ((String) -> Void)?
+  let onCategoryTap: ((ExploreCategory) -> Void)?
+  let onSearchBarTap: (() -> Void)?
+
+  init(
+    stationName: String,
+    searchText: String = "",
+    selectedCategory: ExploreCategory = .all,
+    showCategories: Bool = false,
+    isSearchable: Bool = false,
+    onBackTap: @escaping () -> Void,
+    onSearchTextChanged: ((String) -> Void)? = nil,
+    onCategoryTap: ((ExploreCategory) -> Void)? = nil,
+    onSearchBarTap: (() -> Void)? = nil
+  ) {
+    self.stationName = stationName
+    self.searchText = searchText
+    self.selectedCategory = selectedCategory
+    self.showCategories = showCategories
+    self.isSearchable = isSearchable
+    self.onBackTap = onBackTap
+    self.onSearchTextChanged = onSearchTextChanged
+    self.onCategoryTap = onCategoryTap
+    self.onSearchBarTap = onSearchBarTap
+  }
+
+  /// 10자 이상인 텍스트에 중간 스페이스 추가
+  private func formatLongText(_ text: String) -> String {
+    guard text.count > 10 else { return text }
+
+    let characters = Array(text)
+    let midPoint = characters.count / 2
+
+    // 중간점 근처에서 적절한 위치 찾기 (±2 범위 내)
+    let searchRange = max(0, midPoint - 2)...min(characters.count - 1, midPoint + 2)
+
+    // 이미 스페이스가 있는 위치 찾기
+    if let spaceIndex = searchRange.first(where: { characters[$0] == " " }) {
+      return text
+    }
+
+    // 스페이스가 없으면 중간에 스페이스 추가
+    let insertIndex = midPoint
+    var result = characters
+    result.insert(" ", at: insertIndex)
+
+    return String(result)
+  }
 
   var body: some View {
     VStack(spacing: 0) {
@@ -23,8 +71,10 @@ struct ExploreSearchHeaderView: View {
         searchBar()
       }
 
-      categoryScrollView()
-        .padding(.top, 10)
+      if showCategories {
+        categoryScrollView()
+          .padding(.top, 10)
+      }
     }
   }
 
@@ -44,36 +94,54 @@ struct ExploreSearchHeaderView: View {
 
   @ViewBuilder
   private func searchBar() -> some View {
-    HStack(spacing: 8) {
-      Image(systemName: "magnifyingglass")
-        .font(.system(size: 16, weight: .medium))
-        .foregroundStyle(.gray600)
+    if isSearchable {
+      // 검색 가능한 TextField 형태
+      HStack(spacing: 8) {
+        Image(systemName: "magnifyingglass")
+          .font(.system(size: 16, weight: .medium))
+          .foregroundStyle(.gray600)
 
-      ZStack(alignment: .leading) {
-        if searchText.isEmpty {
-          Text("\(stationName)역")
-            .pretendardCustomFont(textStyle: .titleRegular)
-            .foregroundStyle(.gray600)
-        }
+        ZStack(alignment: .leading) {
+          if searchText.isEmpty {
+            Text("\(formatLongText(stationName))역")
+              .pretendardCustomFont(textStyle: .titleRegular)
+              .foregroundStyle(.gray600)
+          }
 
-        TextField(
-          "",
-          text: Binding(
-            get: { searchText },
-            set: onSearchTextChanged
+          TextField(
+            "",
+            text: Binding(
+              get: { searchText },
+              set: { newValue in
+                onSearchTextChanged?(newValue)
+              }
+            )
           )
-        )
-        .pretendardCustomFont(textStyle: .titleRegular)
-        .foregroundStyle(.staticBlack)
-        .textInputAutocapitalization(.never)
-        .autocorrectionDisabled()
+          .pretendardCustomFont(textStyle: .titleRegular)
+          .foregroundStyle(.staticBlack)
+          .textInputAutocapitalization(.never)
+          .autocorrectionDisabled()
+        }
       }
+      .padding(.horizontal, 24)
+      .frame(height: 48)
+      .background(.staticWhite)
+      .clipShape(RoundedRectangle(cornerRadius: 28))
+      .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+    } else {
+      HStack {
+        Text("\(formatLongText(stationName))역")
+          .pretendardFont(family: .Medium, size: 18)
+          .foregroundStyle(.staticBlack)
+
+        Spacer()
+      }
+      .padding(.horizontal, 24)
+      .frame(height: 48)
+      .background(.staticWhite)
+      .clipShape(RoundedRectangle(cornerRadius: 28))
+      .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
     }
-    .padding(.horizontal, 24)
-    .frame(height: 48)
-    .background(.staticWhite)
-    .clipShape(RoundedRectangle(cornerRadius: 18))
-    .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
   }
 
   @ViewBuilder
@@ -85,7 +153,7 @@ struct ExploreSearchHeaderView: View {
             ExploreCategoryChipView(
               category: category,
               isSelected: selectedCategory == category,
-              action: { onCategoryTap(category) }
+              action: { onCategoryTap?(category) }
             )
             .id(category)
           }

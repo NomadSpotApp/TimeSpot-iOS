@@ -13,12 +13,35 @@ struct ExploreCategoryChipView: View {
   let isSelected: Bool
   let action: () -> Void
 
+  /// 10자 이상인 텍스트에 중간 스페이스 추가
+  private func formatLongText(_ text: String) -> String {
+    guard text.count > 10 else { return text }
+
+    let characters = Array(text)
+    let midPoint = characters.count / 2
+
+    // 중간점 근처에서 적절한 위치 찾기 (±2 범위 내)
+    let searchRange = max(0, midPoint - 2)...min(characters.count - 1, midPoint + 2)
+
+    // 이미 스페이스가 있는 위치 찾기
+    if let spaceIndex = searchRange.first(where: { characters[$0] == " " }) {
+      return text
+    }
+
+    // 스페이스가 없으면 중간에 스페이스 추가
+    let insertIndex = midPoint
+    var result = characters
+    result.insert(" ", at: insertIndex)
+
+    return String(result)
+  }
+
   var body: some View {
     Button(action: action) {
       HStack(spacing: 4) {
         categoryIcon
 
-        Text(category.title)
+        Text(formatLongText(category.title))
           .pretendardCustomFont(textStyle: .body2Medium)
           .foregroundStyle(isSelected ? .staticBlack : .gray700)
       }

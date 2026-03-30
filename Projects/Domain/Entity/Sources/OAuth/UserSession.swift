@@ -22,6 +22,13 @@ public struct UserSession: Equatable, Hashable {
   public var selectedExplorePlaceID: String
   public var explorePlacesFetchedAt: Date?
 
+  // MARK: - Route 관련 위치 정보
+  public var routeStartLat: Double?  // 현재 위치 (출발지) 위도
+  public var routeStartLng: Double?  // 현재 위치 (출발지) 경도
+  public var routeDestinationLat: Double?  // 목적지 위도
+  public var routeDestinationLng: Double?  // 목적지 경도
+  public var routeDestinationName: String  // 목적지 이름
+
   public init(
     name: String = "",
     email: String = "",
@@ -35,7 +42,12 @@ public struct UserSession: Equatable, Hashable {
     remainingMinutes: Int = 0,
     selectedExploreSpotID: String = "",
     selectedExplorePlaceID: String = "",
-    explorePlacesFetchedAt: Date? = nil
+    explorePlacesFetchedAt: Date? = nil,
+    routeStartLat: Double? = nil,
+    routeStartLng: Double? = nil,
+    routeDestinationLat: Double? = nil,
+    routeDestinationLng: Double? = nil,
+    routeDestinationName: String = ""
   ) {
     self.name = name
     self.email = email
@@ -50,6 +62,11 @@ public struct UserSession: Equatable, Hashable {
     self.selectedExploreSpotID = selectedExploreSpotID
     self.selectedExplorePlaceID = selectedExplorePlaceID
     self.explorePlacesFetchedAt = explorePlacesFetchedAt
+    self.routeStartLat = routeStartLat
+    self.routeStartLng = routeStartLng
+    self.routeDestinationLat = routeDestinationLat
+    self.routeDestinationLng = routeDestinationLng
+    self.routeDestinationName = routeDestinationName
   }
 }
 

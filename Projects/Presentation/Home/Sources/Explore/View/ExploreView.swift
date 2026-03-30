@@ -13,6 +13,7 @@ import UIKit
 
 import DesignSystem
 import Entity
+import LogMacro
 
 public struct ExploreView: View {
   @Bindable var store: StoreOf<ExploreFeature>
@@ -37,7 +38,7 @@ public struct ExploreView: View {
       VStack(spacing: 0) {
         headerSection()
           .padding(.top, 8)
-          .padding(.horizontal, 20)
+          .padding(.horizontal, 16)
 
         Spacer()
 
@@ -60,8 +61,8 @@ private extension ExploreView {
     NaverMapComponent(
       locationPermissionStatus: store.locationPermissionStatus,
       currentLocation: store.currentLocation,
-      routeInfo: store.routeInfo,
-      destination: store.selectedDestination,
+      routeInfo: nil, // ExploreView에서는 경로 정보 표시 안함
+      destination: nil, // ExploreView에서는 목적지 마커 표시 안함
       spots: store.state.filteredMapSpots,
       selectedSpotID: store.userSession.selectedExploreSpotID.isEmpty
         ? nil
@@ -86,9 +87,12 @@ private extension ExploreView {
       stationName: store.userSession.travelStationName,
       searchText: store.searchText,
       selectedCategory: store.selectedCategory,
+      showCategories: false,  // 카테고리 숨김
+      isSearchable: false,    // 검색창 아닌 텍스트로 표시
       onBackTap: { dismiss() },
       onSearchTextChanged: { store.send(.view(.searchTextChanged($0))) },
-      onCategoryTap: { store.send(.view(.categoryTapped($0))) }
+      onCategoryTap: { store.send(.view(.categoryTapped($0))) },
+      onSearchBarTap: nil
     )
   }
 
@@ -120,7 +124,9 @@ private extension ExploreView {
           onCardTap: {
             store.send(.view(.detailTapped))
           },
-          onRouteTap: {},
+          onRouteTap: {
+            store.send(.delegate(.presentRoute))
+          },
           onDragChanged: { value in
             store.send(.view(.cardDragChanged(value.translation.width)))
           },

@@ -162,6 +162,10 @@ extension HomeCoordinator {
       case .routeAction(id: _, action: .profile(.navigation(.presentAuth))):
         return .send(.navigation(.presentAuth))
 
+      case .routeAction(id: _, action: .explore(.delegate(.presentRoute))):
+        state.routes.push(.route(.init()))
+        return .none
+
 
       default:
         return .none
@@ -269,6 +273,7 @@ extension HomeCoordinator {
     case exploreList(ExploreListFeature)
     case exploreDetail(ExploreDetailFeature)
     case profile(ProfileCoordinator)
+    case route(RouteFeature)
   }
 }
 

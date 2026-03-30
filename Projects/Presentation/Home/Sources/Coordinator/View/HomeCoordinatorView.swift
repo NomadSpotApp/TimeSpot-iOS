@@ -59,6 +59,15 @@ public struct HomeCoordinatorView: View {
               insertion: .move(edge: .trailing).combined(with: .opacity),
               removal: .move(edge: .leading).combined(with: .opacity)
             ))
+
+        case .route(let routeStore):
+          RouteView(store: routeStore)
+            .navigationBarBackButtonHidden()
+            .transition(.asymmetric(
+              insertion: .move(edge: .trailing).combined(with: .opacity),
+              removal: .move(edge: .leading).combined(with: .opacity)
+            ))
+
       }
     }
     .animation(.easeInOut(duration: 0.35), value: store.routes.count)
