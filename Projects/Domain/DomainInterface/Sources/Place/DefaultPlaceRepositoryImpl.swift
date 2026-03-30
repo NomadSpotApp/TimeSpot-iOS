@@ -11,15 +11,7 @@ import Entity
 public final class DefaultPlaceRepositoryImpl: PlaceInterface {
   public init() {}
 
-  public func fetchPlaces(_ input: PlaceInput) async throws -> [PlaceEntity] {
-    throw NSError(
-      domain: "PlaceRepository",
-      code: -1,
-      userInfo: [NSLocalizedDescriptionKey: "PlaceRepository is not configured."]
-    )
-  }
-
-  public func searchPlaces(_ input: PlaceSearchInput) async throws -> PlaceSearchPageEntity {
+  public func fetchPlaces(_ input: PlaceSearchInput) async throws -> PlaceSearchPageEntity {
     throw NSError(
       domain: "PlaceRepository",
       code: -1,

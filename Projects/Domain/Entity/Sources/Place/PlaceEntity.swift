@@ -17,6 +17,10 @@ public struct PlaceEntity: Equatable {
   public let stayableMinutes: Int
   public let isOpen: Bool
   public let closingTime: String?
+  public let distanceFromUser: Double?
+  public let distanceFromStation: Double?
+  public let walkTimeFromStation: Int?
+  public let visitable: Bool
 
   public init(
     placeId: Int,
@@ -28,7 +32,11 @@ public struct PlaceEntity: Equatable {
     imageURL: String? = nil,
     stayableMinutes: Int = 0,
     isOpen: Bool = false,
-    closingTime: String? = nil
+    closingTime: String? = nil,
+    distanceFromUser: Double? = nil,
+    distanceFromStation: Double? = nil,
+    walkTimeFromStation: Int? = nil,
+    visitable: Bool = true
   ) {
     self.placeId = placeId
     self.name = name
@@ -40,6 +48,10 @@ public struct PlaceEntity: Equatable {
     self.stayableMinutes = stayableMinutes
     self.isOpen = isOpen
     self.closingTime = closingTime
+    self.distanceFromUser = distanceFromUser
+    self.distanceFromStation = distanceFromStation
+    self.walkTimeFromStation = walkTimeFromStation
+    self.visitable = visitable
   }
 }
 
