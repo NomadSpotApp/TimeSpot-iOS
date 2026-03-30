@@ -12,6 +12,7 @@ public struct UserSession: Equatable, Hashable {
   public var email: String
   public var provider: SocialType
   public var authCode: String
+  public var accessToken: String
   public var mapType: ExternalMapType
   public var isGuest: Bool
   public var travelID: String
@@ -35,6 +36,7 @@ public struct UserSession: Equatable, Hashable {
     email: String = "",
     provider: SocialType = .apple,
     authCode: String = "",
+    accessToken: String = "",
     mapType: ExternalMapType = .appleMap,
     isGuest: Bool = false,
     travelID: String = "",
@@ -55,6 +57,7 @@ public struct UserSession: Equatable, Hashable {
     self.email = email
     self.provider = provider
     self.authCode = authCode
+    self.accessToken = accessToken
     self.mapType = mapType
     self.isGuest = isGuest
     self.travelID = travelID
