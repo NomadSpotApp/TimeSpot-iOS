@@ -10,9 +10,11 @@ import Model
 import Entity
 
 import Service
+import UseCase
 
 import AsyncMoya
 import Foundation
+import ComposableArchitecture
 
 public final class StationRepositoryImpl: StationInterface, @unchecked Sendable {
   private let authorizedProvider: MoyaProvider<StationService>
@@ -20,7 +22,7 @@ public final class StationRepositoryImpl: StationInterface, @unchecked Sendable 
 
   public init(
     authorizedProvider: MoyaProvider<StationService> = MoyaProvider<StationService>.authorized,
-    publicProvider: MoyaProvider<StationService> = MoyaProvider<StationService>()
+    publicProvider: MoyaProvider<StationService> = MoyaProvider<StationService>.default
   ) {
     self.authorizedProvider = authorizedProvider
     self.publicProvider = publicProvider

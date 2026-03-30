@@ -96,12 +96,20 @@ final public class AuthRepositoryImpl: AuthInterface, @unchecked Sendable {
   public func logout() async throws -> LogoutEntity {
     let dto: LogoutDTOModel = try await authProvider.request(.logout)
     try await keychainManager.clear()
+
+    // APIHeader tokenProvider도 함께 클리어
+    APIHeader.clearAccessToken()
+
     return dto.toDomain()
   }
   // MARK: - 계정 삭제
   public func withDraw() async throws -> LogoutEntity {
     let dto: LogoutDTOModel = try await authProvider.request(.withDraw)
     try await keychainManager.clear()
+
+    // APIHeader tokenProvider도 함께 클리어
+    APIHeader.clearAccessToken()
+
     return dto.toDomain()
   }
 

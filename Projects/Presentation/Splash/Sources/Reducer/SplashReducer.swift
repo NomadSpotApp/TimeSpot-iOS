@@ -156,6 +156,13 @@ extension SplashReducer {
         state.isCheckingToken = false
         state.hasValidToken = hasToken
 
+        // UserSession의 isGuest 상태 업데이트
+        state.$userSession.withLock {
+          $0.isGuest = !hasToken
+        }
+
+        #logDebug("🔐 [Splash] Token check: hasToken=\(hasToken), isGuest=\(!hasToken)")
+
         if hasToken {
           // 토큰이 있으면 메인 화면으로
           return .send(.navigation(.presentHome))

@@ -19,7 +19,7 @@ public final class PlaceRepositoryImpl: PlaceInterface, @unchecked Sendable {
   private let provider: MoyaProvider<PlaceService>
 
   public init(
-    provider: MoyaProvider<PlaceService> = MoyaProvider<PlaceService>.authorized,
+    provider: MoyaProvider<PlaceService> = MoyaProvider<PlaceService>.default,
   ) {
     self.provider = provider
   }

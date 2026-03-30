@@ -34,6 +34,17 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, @MainActor UNUserNo
     let center = UNUserNotificationCenter.current()
     center.delegate = self
 
+    // iOS 17+ 호환 배지 초기화
+//    if #available(iOS 17.0, *) {
+//      center.setBadgeCount(0) { error in
+//        if let error = error {
+//          #logDebug("🔔 Failed to set badge count: \(error)")
+//        }
+//      }
+//    } else {
+//      application.applicationIconBadgeNumber = 0
+//    }
+
     center.requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
       if let error = error {
         #logDebug("🔔 Notification auth error:", error)

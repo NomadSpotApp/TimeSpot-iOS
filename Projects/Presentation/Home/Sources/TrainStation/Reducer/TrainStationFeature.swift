@@ -9,6 +9,7 @@
 import Foundation
 import CoreLocation
 import ComposableArchitecture
+import LogMacro
 import IdentifiedCollections
 
 import DomainInterface
@@ -128,12 +129,7 @@ extension TrainStationFeature {
     case .onAppear:
       state.isLoading = true
 
-      // 비회원인 경우 즐겨찾기 섹션은 표시하지 않음
-      if state.userSession.isGuest {
-        state.shouldShowFavoriteSection = false
-        return .send(.async(.fetchStations))
-      }
-
+      // 항상 토큰 재확인 후 즐겨찾기 섹션 표시 여부 결정
       return .merge(
         .send(.async(.checkAccessToken)),
         .send(.async(.fetchStations))
@@ -237,8 +233,16 @@ extension TrainStationFeature {
     action: InnerAction
   ) -> Effect<Action> {
     switch action {
-    case .accessTokenChecked(let shouldShowFavoriteSection):
-      state.shouldShowFavoriteSection = shouldShowFavoriteSection
+    case .accessTokenChecked(let hasAccessToken):
+      state.shouldShowFavoriteSection = hasAccessToken
+
+      // UserSession의 isGuest 상태도 함께 업데이트
+      state.$userSession.withLock {
+        $0.isGuest = !hasAccessToken
+      }
+
+      #logDebug("🔐 [TrainStation] Access token check: hasToken=\(hasAccessToken), shouldShowFavorite=\(hasAccessToken), isGuest=\(!hasAccessToken)")
+
       return .none
     case .fetchStationsResponse(let entity):
       state.favoriteRows = StationRowModel.makeFavoriteRows(from: entity.favoriteStations)

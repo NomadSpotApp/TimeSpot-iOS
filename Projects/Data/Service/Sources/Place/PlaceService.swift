@@ -55,6 +55,6 @@ extension PlaceService: BaseTargetType {
   }
 
   public var headers: [String : String]? {
-    return APIHeader.baseHeader
+    return APIHeader.notAccessTokenHeader
   }
 }
