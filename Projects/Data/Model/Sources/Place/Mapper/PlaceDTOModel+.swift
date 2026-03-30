@@ -51,7 +51,6 @@ public extension PlaceResponseDTOModel {
   private func mapCategory(_ value: String) -> ExploreCategory {
     let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
-
     let category: ExploreCategory
     switch normalized {
     case "카페", "cafe":

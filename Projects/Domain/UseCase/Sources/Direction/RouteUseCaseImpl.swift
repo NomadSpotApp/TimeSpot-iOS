@@ -8,6 +8,8 @@
 
 import Foundation
 import CoreLocation
+import MapKit
+import UIKit
 
 import DomainInterface
 import Entity
@@ -55,6 +57,80 @@ public struct RouteUseCaseImpl: DirectionInterface {
         to: destination,
         option: option
       )
+  }
+
+  /// 외부 지도 앱으로 길찾기 시작
+  public func startNavigation(
+    mapType: ExternalMapType,
+    destination: CLLocationCoordinate2D,
+    destinationName: String
+  ) async {
+    #logDebug("🧭 [RouteUseCase] 길찾기 시작: \(destinationName) (\(mapType.description))")
+
+    switch mapType {
+    case .appleMap:
+      await openAppleMap(destination: destination, destinationName: destinationName)
+
+    case .googleMap:
+      await openGoogleMap(lat: destination.latitude, lng: destination.longitude, destinationName: destinationName)
+
+    case .naverMap:
+      await openNaverMap(lat: destination.latitude, lng: destination.longitude, destinationName: destinationName)
+    }
+  }
+
+  /// Apple 지도 앱으로 길찾기
+  @MainActor
+  private func openAppleMap(destination: CLLocationCoordinate2D, destinationName: String) {
+    #logDebug("🍎 [RouteUseCase] Apple Maps 실행")
+
+    let placemark = MKPlacemark(coordinate: destination)
+    let mapItem = MKMapItem(placemark: placemark)
+    mapItem.name = destinationName
+
+    let launchOptions = [
+      MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
+    ]
+
+    mapItem.openInMaps(launchOptions: launchOptions)
+  }
+
+  /// Google Maps 앱으로 길찾기
+  @MainActor
+  private func openGoogleMap(lat: Double, lng: Double, destinationName: String) {
+    #logDebug("🌏 [RouteUseCase] Google Maps 실행")
+
+    let googleMapsURL = "comgooglemaps://?daddr=\(lat),\(lng)&directionsmode=walking"
+
+    guard let url = URL(string: googleMapsURL) else { return }
+
+    if UIApplication.shared.canOpenURL(url) {
+      UIApplication.shared.open(url)
+    } else {
+      // Google Maps 앱이 설치되어 있지 않으면 웹으로 실행
+      let webURL = "https://maps.google.com/maps?daddr=\(lat),\(lng)&dirflg=w"
+      guard let webURL = URL(string: webURL) else { return }
+      UIApplication.shared.open(webURL)
+    }
+  }
+
+  /// 네이버 지도 앱으로 길찾기
+  @MainActor
+  private func openNaverMap(lat: Double, lng: Double, destinationName: String) {
+    #logDebug("🗺️ [RouteUseCase] 네이버지도 실행")
+
+    let naverMapURL = "nmap://route/walk?dlat=\(lat)&dlng=\(lng)&dname=\(destinationName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? destinationName)"
+
+    guard let url = URL(string: naverMapURL) else { return }
+
+    if UIApplication.shared.canOpenURL(url) {
+      UIApplication.shared.open(url)
+    } else {
+      // 네이버 지도 앱이 설치되어 있지 않으면 웹으로 실행
+      let webURL = "https://map.naver.com/v5/directions/-/-/\(lat),\(lng),\(destinationName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? destinationName)?c=14,0,0,0,dh"
+      guard let webURL = URL(string: webURL) else { return }
+      UIApplication.shared.open(webURL)
+    }
   }
 }
 

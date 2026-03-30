@@ -152,21 +152,32 @@ public extension Date {
   // MARK: - Departure Time Utils
   func normalizedDepartureTime(from currentTime: Date) -> Date {
     let calendar = Calendar.current
-    let currentDateComponents = calendar.dateComponents([.year, .month, .day], from: currentTime)
+    let currentDateComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: currentTime)
     let selectedTimeComponents = calendar.dateComponents([.hour, .minute], from: self)
+
+    guard let selectedHour = selectedTimeComponents.hour,
+          let selectedMinute = selectedTimeComponents.minute else {
+      return self
+    }
 
     var normalizedComponents = DateComponents()
     normalizedComponents.year = currentDateComponents.year
     normalizedComponents.month = currentDateComponents.month
     normalizedComponents.day = currentDateComponents.day
-    normalizedComponents.hour = selectedTimeComponents.hour
-    normalizedComponents.minute = selectedTimeComponents.minute
+    normalizedComponents.hour = selectedHour
+    normalizedComponents.minute = selectedMinute
 
     guard let normalizedDate = calendar.date(from: normalizedComponents) else {
       return self
     }
 
-    if normalizedDate < currentTime {
+    // 선택된 시간이 현재 시간보다 이전이면 다음날로 설정
+    // 특별히 새벽 시간대(0-6시)를 선택하고 현재가 저녁(18시 이후)이면 다음날로 처리
+    let currentHour = currentDateComponents.hour ?? 0
+    let needsNextDay = normalizedDate <= currentTime ||
+                      (selectedHour >= 0 && selectedHour <= 6 && currentHour >= 18)
+
+    if needsNextDay {
       return calendar.date(byAdding: .day, value: 1, to: normalizedDate) ?? normalizedDate
     }
 
