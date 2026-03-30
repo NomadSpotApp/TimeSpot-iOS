@@ -26,10 +26,8 @@ public struct DeeplinkRouter: Sendable {
         let pathComponents = url.pathComponents.filter { $0 != "/" }
 
         switch url.host ?? pathComponents.first {
-        case "travel":
-            return parseTravelDeeplink(url: url, pathComponents: pathComponents)
-        case "invite":
-            return parseInviteDeeplink(url: url)
+        case "route":
+            return parseRouteDeeplink(url: url)
         default:
             return .success(.unknown(url: urlString))
         }
@@ -37,60 +35,49 @@ public struct DeeplinkRouter: Sendable {
 
     // MARK: - Private Parsing
 
-  private func parseTravelDeeplink(
-    url: URL,
-    pathComponents: [String]
-  ) -> DeeplinkResult {
-        guard let (travelId, remainingComponents) = extractTravelId(url: url, pathComponents: pathComponents),
-              !travelId.isEmpty else {
-            return .invalid(url: url.absoluteString, reason: "Missing travel ID")
-        }
 
-        let travelDeeplink: TravelDeeplink = {
-            switch remainingComponents.first {
-            case "settings":
-                return .settings(travelId: travelId)
-            case "expense" where remainingComponents.count >= 2:
-                return .expense(travelId: travelId, expenseId: remainingComponents[1])
-            case "settlement":
-                return .settlement(travelId: travelId)
-            default:
-                return .detail(travelId: travelId)
-            }
-        }()
 
-        return .success(.travel(travelDeeplink))
-    }
-
-  private func parseInviteDeeplink(
+  private func parseRouteDeeplink(
     url: URL
   ) -> DeeplinkResult {
-        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              let inviteCode = components.queryItems?.first(where: { $0.name == "code" })?.value,
-              !inviteCode.isEmpty else {
-            return .invalid(url: url.absoluteString, reason: "Missing invite code")
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            return .invalid(url: url.absoluteString, reason: "Invalid URL format")
         }
 
-        return .requiresLogin(destination: .invite(code: inviteCode))
+        var departureTime: String?
+        var notificationMinutes: [Int] = []
+
+        // Parse query parameters
+        components.queryItems?.forEach { queryItem in
+            switch queryItem.name {
+            case "departure-time":
+                departureTime = queryItem.value
+            case "notification":
+                // Parse notification time values like "5-min-before", "15-min-before", "10-min-before"
+                if let value = queryItem.value {
+                    if let minutes = parseNotificationMinutes(from: value) {
+                        notificationMinutes.append(minutes)
+                    }
+                }
+            default:
+                break
+            }
+        }
+
+        let routeDeeplink = RouteDeeplink(
+            departureTime: departureTime,
+            notificationMinutes: notificationMinutes.isEmpty ? nil : notificationMinutes
+        )
+
+        return .success(.route(routeDeeplink))
     }
 
-  private func extractTravelId(
-    url: URL,
-    pathComponents: [String]
-  ) -> (String, [String])? {
-        if pathComponents.first == "travel" && pathComponents.count >= 2 {
-            // ["travel", "123", "expense", "456"]
-            let travelId = pathComponents[1]
-            let remaining = Array(pathComponents.dropFirst(2))
-            return (travelId, remaining)
-        } else if url.host == "travel" && pathComponents.count >= 1 {
-            // host="travel", path=["123", "expense", "456"]
-            let travelId = pathComponents[0]
-            let remaining = Array(pathComponents.dropFirst(1))
-            return (travelId, remaining)
-        }
-        return nil
+  private func parseNotificationMinutes(from value: String) -> Int? {
+        // Parse values like "5-min-before", "15-min-before", "10-min-before"
+        let cleanValue = value.lowercased().replacingOccurrences(of: "-min-before", with: "")
+        return Int(cleanValue)
     }
+
 
   public  func extractDeepLink(from userInfo: [AnyHashable: Any]) -> String? {
     #logDebug("🔍 푸시 알림 payload 분석 시작")
@@ -154,20 +141,22 @@ extension DependencyValues {
 
 
 public enum DeeplinkDestination: Equatable, Sendable {
-    case travel(TravelDeeplink)
-    case invite(code: String)
+    case route(RouteDeeplink)
     case unknown(url: String)
 }
 
-public enum TravelDeeplink: Equatable, Sendable {
-    case detail(travelId: String)
-    case settings(travelId: String)
-    case expense(travelId: String, expenseId: String)
-    case settlement(travelId: String)
+
+public struct RouteDeeplink: Equatable, Sendable {
+    public let departureTime: String?
+    public let notificationMinutes: [Int]?
+
+    public init(departureTime: String?, notificationMinutes: [Int]?) {
+        self.departureTime = departureTime
+        self.notificationMinutes = notificationMinutes
+    }
 }
 
 public enum DeeplinkResult: Equatable, Sendable {
     case success(DeeplinkDestination)
-    case requiresLogin(destination: DeeplinkDestination)
     case invalid(url: String, reason: String)
 }

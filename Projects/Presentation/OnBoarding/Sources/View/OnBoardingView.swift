@@ -87,7 +87,7 @@ extension OnBoardingView {
         action: { store.send(.view(.nextStepButtonTapped)) },
         title: store.activeStep >= store.stepRange.upperBound ? "시작하기" : "다음으로",
         config: CustomButtonConfig.create(),
-        isEnable: true
+        isEnable: store.activeStep == 4 ? store.selectedMap != nil : true
       )
 
       Spacer()

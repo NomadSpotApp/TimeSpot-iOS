@@ -15,6 +15,7 @@ import Combine
 import LogMacro
 import ComposableArchitecture
 import UseCase
+import Foundations
 
 // MARK: - Token Refresh Manager
 actor TokenRefreshManager {
@@ -147,6 +148,8 @@ actor TokenRefreshManager {
         #logDebug("🗂️ [TokenRefreshManager] Clearing session manager...")
         await MainActor.run {
             AuthSessionManager.shared.credential = nil
+            // APIHeader TokenProvider도 함께 클리어
+            APIHeader.clearAccessToken()
         }
         #logDebug("✅ [TokenRefreshManager] Session manager cleared")
 

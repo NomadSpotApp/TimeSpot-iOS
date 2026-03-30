@@ -72,6 +72,23 @@ final class KeychainTokenProvider: TokenProviding, @unchecked Sendable {
     }
   }
 
+  func clearToken() {
+    // 메모리 캐시 클리어
+    TokenCache.shared.token = nil
+
+    // UserDefaults에서 제거
+    UserDefaults.standard.removeObject(forKey: Constants.cachedAccessTokenKey)
+
+    // 백그라운드에서 키체인에서도 제거
+    Task {
+      do {
+        try await keychainManager.clear()
+      } catch {
+        #logError("Failed to clear tokens from keychain", "\(error)")
+      }
+    }
+  }
+
   private func readAccessTokenFromKeychain() -> String? {
     let service = Bundle.main.bundleIdentifier ?? "com.nomadspot.app"
     let query: [CFString: Any] = [
