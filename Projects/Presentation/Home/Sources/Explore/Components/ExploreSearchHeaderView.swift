@@ -73,7 +73,7 @@ struct ExploreSearchHeaderView: View {
 
       if showCategories {
         categoryScrollView()
-          .padding(.top, 10)
+          .padding(.top, 12)
       }
     }
   }

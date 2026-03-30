@@ -401,7 +401,16 @@ extension HomeFeature {
 
 extension HomeFeature.State {
   var maxDepartureTime: Date {
-    Calendar.current.date(byAdding: .day, value: 1, to: currentTime) ?? currentTime
+    let calendar = Calendar.current
+    let nextDay = calendar.date(byAdding: .day, value: 1, to: currentTime) ?? currentTime
+
+    // 다음날 23:59:59까지 선택 가능하도록 설정
+    var components = calendar.dateComponents([.year, .month, .day], from: nextDay)
+    components.hour = 23
+    components.minute = 59
+    components.second = 59
+
+    return calendar.date(from: components) ?? nextDay
   }
 
   var remainingTotalMinutes: Int {

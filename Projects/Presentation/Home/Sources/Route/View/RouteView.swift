@@ -26,24 +26,31 @@ public struct RouteView: View {
       naverMap()
         .edgesIgnoringSafeArea(.all)
 
-      VStack {
-        headerSection()
+      // 🦴 경로 계산 중일 때는 스켈레톤 전체 화면으로 표시
+      if store.routeInfo == nil {
+        RouteSkeletonView()
+          .transition(.opacity)
+          .animation(.easeInOut(duration: 0.3), value: store.routeInfo == nil)
+      } else {
+        // ✅ 경로 계산 완료 후 실제 UI 표시
+        VStack {
+          headerSection()
 
-        // 🎯 경로 계산 완료 후에만 카드 표시
-        if let routeInfo = store.routeInfo {
           remainingTimeCard()
             .padding(.top, 12)
             .transition(.scale.combined(with: .opacity))
             .animation(.easeInOut(duration: 0.3), value: store.routeInfo != nil)
+
+          Spacer()
+
+          // 🧭 길찾기 버튼 (하단에서 32만큼 떨어진 위치)
+          routeStartButton()
+            .padding(.bottom, 32)
         }
-
-        Spacer()
-
-        // 🧭 길찾기 버튼 (하단에서 32만큼 떨어진 위치)
-        routeStartButton()
-          .padding(.bottom, 32)
+        .padding(.horizontal, 16)
+        .transition(.scale.combined(with: .opacity))
+        .animation(.easeInOut(duration: 0.3), value: store.routeInfo != nil)
       }
-      .padding(.horizontal, 16)
     }
     .onAppear {
       store.send(.view(.onAppear))
@@ -176,28 +183,14 @@ private extension RouteView {
   private func routeStartButton() -> some View {
     CustomButton(
       action: {
-        startNavigation()
+        store.send(.view(.startNavigation))
       },
       title: "길찾기 시작",
       config: CustomButtonConfig.create(),
       isEnable: store.routeInfo != nil
     )
-    .padding(.horizontal, 24)
+    .padding(.horizontal, 16)
   }
 
-  /// 외부 네비게이션 앱 또는 내장 지도로 길찾기 시작
-  private func startNavigation() {
-    guard let destination = makeDestination(),
-          let routeInfo = store.routeInfo else { return }
-
-    // TODO: 외부 지도 앱 연동 (네이버 지도, 카카오맵 등)
-    // 현재는 로그만 출력
-    #logDebug("🧭 [RouteView] 길찾기 시작: \(destination.name)")
-    #logDebug("🧭 [RouteView] 목적지: \(destination.coordinate.latitude), \(destination.coordinate.longitude)")
-    #logDebug("🧭 [RouteView] 예상시간: \(routeInfo.duration)분, 거리: \(routeInfo.distance)m")
-
-    // 추후 구현: 외부 앱 연동
-    // openExternalMap(destination: destination)
-  }
 
 }

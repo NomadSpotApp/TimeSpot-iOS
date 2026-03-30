@@ -45,6 +45,7 @@ public struct RouteFeature {
   public enum View {
     case onAppear
     case searchRoute
+    case startNavigation
   }
 
 
@@ -53,6 +54,7 @@ public struct RouteFeature {
   public enum AsyncAction: Equatable {
     case startLocationUpdates
     case searchRoute(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D)
+    case startNavigation(mapType: ExternalMapType, destination: CLLocationCoordinate2D, destinationName: String)
   }
 
   //MARK: - 앱내에서 사용하는 액션
@@ -121,6 +123,19 @@ extension RouteFeature {
         let startCoord = CLLocationCoordinate2D(latitude: startLat, longitude: startLng)
         let endCoord = CLLocationCoordinate2D(latitude: endLat, longitude: endLng)
         return .send(.async(.searchRoute(from: startCoord, to: endCoord)))
+
+      case .startNavigation:
+        guard let endLat = state.userSession.routeDestinationLat,
+              let endLng = state.userSession.routeDestinationLng else {
+          #logDebug("❌ [Route] 목적지 정보 없음")
+          return .none
+        }
+
+        let destination = CLLocationCoordinate2D(latitude: endLat, longitude: endLng)
+        let destinationName = state.userSession.routeDestinationName.isEmpty ? "목적지" : state.userSession.routeDestinationName
+        let mapType = state.userSession.mapType
+
+        return .send(.async(.startNavigation(mapType: mapType, destination: destination, destinationName: destinationName)))
     }
   }
 
@@ -161,6 +176,15 @@ extension RouteFeature {
           .mapError(DirectionError.from)
 
           await send(.inner(.routeSearchResponse(result)))
+        }
+
+      case .startNavigation(let mapType, let destination, let destinationName):
+        return .run { _ in
+          await getRouteUseCase.startNavigation(
+            mapType: mapType,
+            destination: destination,
+            destinationName: destinationName
+          )
         }
     }
   }
@@ -247,6 +271,13 @@ extension RouteFeature.AsyncAction {
       let toLatEqual = lhsTo.latitude == rhsTo.latitude
       let toLngEqual = lhsTo.longitude == rhsTo.longitude
       return fromLatEqual && fromLngEqual && toLatEqual && toLngEqual
+    case (.startNavigation(let lhsType, let lhsDestination, let lhsName),
+          .startNavigation(let rhsType, let rhsDestination, let rhsName)):
+      let typeEqual = lhsType == rhsType
+      let latEqual = lhsDestination.latitude == rhsDestination.latitude
+      let lngEqual = lhsDestination.longitude == rhsDestination.longitude
+      let nameEqual = lhsName == rhsName
+      return typeEqual && latEqual && lngEqual && nameEqual
     default:
       return false
     }

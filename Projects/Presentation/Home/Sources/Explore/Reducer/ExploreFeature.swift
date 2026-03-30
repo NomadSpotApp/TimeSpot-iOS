@@ -240,20 +240,7 @@ extension ExploreFeature {
         return .none
 
       case .categoryTapped(let category):
-        #logDebug("🏷️ [ExploreFeature] 카테고리 변경: \(state.selectedCategory.title) → \(category.title)")
         state.selectedCategory = category
-
-        // 디버깅: 카테고리별 스팟 개수 출력
-        let categoryStats = ExploreCategory.allCases.map { cat in
-          let count = state.spots.filter { spot in
-            spot.hasDetail && (cat == .all || spot.category == cat)
-          }.count
-          return "\(cat.title): \(count)개"
-        }.joined(separator: ", ")
-
-        #logDebug("🏷️ [ExploreFeature] 카테고리별 스팟: \(categoryStats)")
-        #logDebug("🏷️ [ExploreFeature] 선택된 카테고리(\(category.title)) 필터링 결과: \(state.filteredMapSpots.count)개")
-
         ExploreHelpers.syncSelectionWithFilters(state: &state)
         return .none
 
