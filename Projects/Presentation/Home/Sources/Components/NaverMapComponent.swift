@@ -87,13 +87,15 @@ public struct NaverMapComponent: UIViewRepresentable {
     mapView.touchDelegate = context.coordinator
     mapView.addCameraDelegate(delegate: context.coordinator)
 
-    // 현재 위치가 있으면 그 위치로, 없으면 선택한 역 위치, 그것도 없으면 서울
-    let initialLatitude = currentLocation?.coordinate.latitude
-      ?? destination?.coordinate.latitude
+    // 역(destination)을 최우선으로, 현재 위치는 그 다음, 마지막에 기본 서울
+    let initialLatitude = destination?.coordinate.latitude
+      ?? currentLocation?.coordinate.latitude
       ?? 37.5666805
-    let initialLongitude = currentLocation?.coordinate.longitude
-      ?? destination?.coordinate.longitude
+    let initialLongitude = destination?.coordinate.longitude
+      ?? currentLocation?.coordinate.longitude
       ?? 126.9784147
+
+    #logDebug(" [NaverMapComponent] 📍 초기 지도 중심: lat=\(initialLatitude), lng=\(initialLongitude), destination=\(destination?.name ?? "nil")")
 
     let cameraPosition = NMFCameraPosition(
       NMGLatLng(lat: initialLatitude, lng: initialLongitude),
@@ -106,24 +108,34 @@ public struct NaverMapComponent: UIViewRepresentable {
   }
 
   public static func dismantleUIView(_ uiView: NMFMapView, coordinator: Coordinator) {
+    #logDebug(" [NaverMapComponent] 🔥 dismantleUIView 호출됨 - 마커 완전 보존 모드")
     uiView.removeCameraDelegate(delegate: coordinator)
+
+    // 경로와 destination 마커만 정리
     Self.currentMarker?.mapView = nil
     Self.destinationMarker?.mapView = nil
     Self.routePath?.mapView = nil
-    Self.spotMarkers.values.forEach { $0.mapView = nil }
-    Self.spotMarkers.removeAll()
     Self.currentMarker = nil
     Self.destinationMarker = nil
-    Self.selectedSpotID = nil
+    Self.routePath = nil
+
+    // ⚠️ spot 마커들은 아예 건드리지 않음 - 뷰 전환시 완전 보존
+    // Self.spotMarkers.values.forEach { $0.mapView = nil }
+
+    // 모든 상태 보존
+    // Self.selectedSpotID = nil
+    // Self.spotMarkers.removeAll()
+
     Self.lastSyncedSpotID = nil
     Self.lastDestinationKey = nil
     Self.lastReturnToLocationTrigger = nil
     Self.lastAutoFitKey = nil
-    Self.routePath = nil
   }
 
   public func updateUIView(_ uiView: NMFMapView, context: Context) {
     context.coordinator.parent = self
+
+    #logDebug(" [NaverMapComponent] 🔄 updateUIView: routeInfo=\(routeInfo != nil ? "있음" : "nil"), destination=\(destination?.name ?? "nil")")
     let shouldReturnToLocation =
       currentLocation != nil
       && Self.lastReturnToLocationTrigger != returnToLocationTrigger
@@ -152,11 +164,11 @@ public struct NaverMapComponent: UIViewRepresentable {
         )
       }
 
-      // 경로가 있을 때는 출발점에 빨간색 마커도 추가로 표시
+      // 경로가 있을 때는 출발점에 startLocation 이미지 마커 표시
       if routeInfo != nil {
         if Self.currentMarker == nil {
           let currentMarker = NMFMarker()
-          currentMarker.iconTintColor = UIColor.red
+          currentMarker.zIndex = 900 // 🎯 출발점 마커도 높은 z-index 설정 (destination보다 낮음)
           currentMarker.touchHandler = { _ in
             Self.setSelectedSpotID(nil)
             onMapTapped?()
@@ -164,6 +176,46 @@ public struct NaverMapComponent: UIViewRepresentable {
           }
           currentMarker.mapView = uiView
           Self.currentMarker = currentMarker
+        }
+
+        if let currentMarker = Self.currentMarker {
+          #logDebug(" [NaverMapComponent] 🔍 startLocation 이미지 로딩 시도...")
+
+          // 여러 방법으로 이미지 로딩 시도
+          var startLocationImage: UIImage?
+
+          // 방법 1: UIImage(assetName:)
+          startLocationImage = UIImage(assetName: "startLocation")
+          if startLocationImage == nil {
+            // 방법 2: UIImage(.startLocation)
+            startLocationImage = UIImage(.startLocation)
+          }
+
+          if let image = startLocationImage {
+            #logDebug(" [NaverMapComponent] ✅ startLocation 이미지 로딩 성공: \(image.size)")
+
+            // SVG를 PNG로 렌더링해서 사용
+            if let pngImage = image.pngData().flatMap({ UIImage(data: $0) }) {
+              currentMarker.iconImage = NMFOverlayImage(image: pngImage)
+              currentMarker.width = 32
+              currentMarker.height = 38
+              // 커스텀 이미지 사용 시 틴트 색상 제거
+              currentMarker.iconTintColor = UIColor.clear
+              #logDebug(" [NaverMapComponent] 🎯 startLocation PNG 마커 적용 완료")
+            } else {
+              // PNG 변환 실패시 원본 이미지 사용
+              currentMarker.iconImage = NMFOverlayImage(image: image)
+              currentMarker.width = 32
+              currentMarker.height = 38
+              currentMarker.iconTintColor = UIColor.clear
+              #logDebug(" [NaverMapComponent] 🎯 startLocation 원본 이미지 마커 적용 완료")
+            }
+          } else {
+            #logDebug(" [NaverMapComponent] ❌ startLocation 이미지 로딩 완전 실패!")
+            currentMarker.iconTintColor = UIColor.systemBlue  // 파란색으로 구분
+            currentMarker.width = CGFloat(NMF_MARKER_SIZE_AUTO)
+            currentMarker.height = CGFloat(NMF_MARKER_SIZE_AUTO)
+          }
         }
 
         Self.currentMarker?.position = NMGLatLng(
@@ -183,12 +235,13 @@ public struct NaverMapComponent: UIViewRepresentable {
       Self.currentMarker = nil
     }
 
-    // 목적지 마커 추가 (네이버 3D 기본 마커 - 초록색)
+    // 목적지 마커 추가 (경로 찾기일 때는 endLocation 이미지, 아니면 기본 네이버 마커)
     if let destination = destination {
       let destinationKey = "\(destination.coordinate.latitude),\(destination.coordinate.longitude),\(destination.name)"
+      let isRouteMode = routeInfo != nil
+
       if Self.destinationMarker == nil {
         let destinationMarker = NMFMarker()
-        destinationMarker.iconTintColor = UIColor.systemGreen
         destinationMarker.touchHandler = { _ in
           Self.setSelectedSpotID(nil)
           onMapTapped?()
@@ -198,16 +251,83 @@ public struct NaverMapComponent: UIViewRepresentable {
         Self.destinationMarker = destinationMarker
       }
 
-      Self.destinationMarker?.position = NMGLatLng(
-        lat: destination.coordinate.latitude,
-        lng: destination.coordinate.longitude
-      )
-      Self.destinationMarker?.mapView = uiView
+      // 마커 스타일을 routeInfo 상태에 따라 업데이트
+      if let destinationMarker = Self.destinationMarker {
+        #logDebug(" [NaverMapComponent] 🎯 destinationMarker 업데이트: isRouteMode=\(isRouteMode)")
+
+        // 먼저 기존 설정 초기화
+        destinationMarker.width = CGFloat(NMF_MARKER_SIZE_AUTO)
+        destinationMarker.height = CGFloat(NMF_MARKER_SIZE_AUTO)
+
+        if isRouteMode {
+          // 경로 찾기 모드일 때는 endLocation 이미지 사용
+          #logDebug(" [NaverMapComponent] 🔍 endLocation 이미지 로딩 시도...")
+
+          // 여러 방법으로 이미지 로딩 시도
+          var endLocationImage: UIImage?
+
+          // 방법 1: UIImage(assetName:)
+          endLocationImage = UIImage(assetName: "endLocation")
+          if endLocationImage == nil {
+            // 방법 2: UIImage(.endLocation)
+            endLocationImage = UIImage(.endLocation)
+          }
+
+          if let image = endLocationImage {
+            #logDebug(" [NaverMapComponent] ✅ endLocation 이미지 로딩 성공: \(image.size)")
+
+            // 강제로 새 마커 생성해서 확실히 적용
+            let newDestinationMarker = NMFMarker()
+            newDestinationMarker.iconImage = NMFOverlayImage(image: image)
+            newDestinationMarker.width = 32
+            newDestinationMarker.height = 38
+            newDestinationMarker.zIndex = 1000 // 🎯 최우선 표시를 위해 높은 z-index 설정
+            newDestinationMarker.position = NMGLatLng(
+              lat: destination.coordinate.latitude,
+              lng: destination.coordinate.longitude
+            )
+            newDestinationMarker.touchHandler = { _ in
+              Self.setSelectedSpotID(nil)
+              onMapTapped?()
+              return true
+            }
+
+            // 기존 마커 제거 후 새 마커 추가
+            Self.destinationMarker?.mapView = nil
+            Self.destinationMarker = newDestinationMarker
+            newDestinationMarker.mapView = uiView
+
+            #logDebug(" [NaverMapComponent] 🎯 endLocation 새 마커로 교체 완료 - 크기: \(newDestinationMarker.width) x \(newDestinationMarker.height), z-index: \(newDestinationMarker.zIndex)")
+          } else {
+            #logDebug(" [NaverMapComponent] ❌ 경로모드: endLocation 이미지 로딩 완전 실패!")
+            destinationMarker.iconTintColor = UIColor.systemOrange  // 오렌지색으로 구분
+            destinationMarker.width = CGFloat(NMF_MARKER_SIZE_AUTO)
+            destinationMarker.height = CGFloat(NMF_MARKER_SIZE_AUTO)
+          }
+        } else {
+          // 일반 모드일 때는 기본 네이버 지도 마커 (초록색)
+          destinationMarker.iconTintColor = UIColor.systemGreen
+          destinationMarker.width = CGFloat(NMF_MARKER_SIZE_AUTO)
+          destinationMarker.height = CGFloat(NMF_MARKER_SIZE_AUTO)
+          #logDebug(" [NaverMapComponent] 🏛️ 일반모드: 기본 네이버 마커 적용")
+        }
+      }
+
+      // 경로 모드가 아닐 때만 position 업데이트 (경로 모드에서는 새 마커에서 이미 설정됨)
+      if !isRouteMode {
+        Self.destinationMarker?.position = NMGLatLng(
+          lat: destination.coordinate.latitude,
+          lng: destination.coordinate.longitude
+        )
+        Self.destinationMarker?.mapView = uiView
+      }
 
       #logDebug(" [NaverMapComponent] 목적지 마커 추가: \(destination.name)")
 
-      if !shouldPrioritizeCurrentLocation && Self.lastDestinationKey != destinationKey {
+      // destination이 변경되면 항상 해당 역 중심으로 카메라 이동
+      if Self.lastDestinationKey != destinationKey {
         Self.lastDestinationKey = destinationKey
+        #logDebug(" [NaverMapComponent] 🎯 역 변경됨 - 카메라 이동: \(destination.name)")
         moveCamera(
           on: uiView,
           to: NMGLatLng(
@@ -224,18 +344,20 @@ public struct NaverMapComponent: UIViewRepresentable {
     }
 
     let previousSpotID = Self.lastSyncedSpotID
+
+    // 먼저 마커들을 동기화한 후에 선택 상태를 설정
+    syncSpotMarkers(
+      on: uiView,
+      coordinator: context.coordinator,
+      onSpotTapped: onSpotTapped
+    )
+
     Self.setSelectedSpotID(selectedSpotID)
     Self.lastSyncedSpotID = Self.selectedSpotID
 
     if !spots.contains(where: { $0.id == Self.selectedSpotID }) {
       Self.setSelectedSpotID(nil)
     }
-
-    syncSpotMarkers(
-      on: uiView,
-      coordinator: context.coordinator,
-      onSpotTapped: onSpotTapped
-    )
 
     if !shouldPrioritizeCurrentLocation,
        let selectedSpotID = Self.selectedSpotID,
@@ -290,9 +412,9 @@ public struct NaverMapComponent: UIViewRepresentable {
       pathOverlay.path = lineString as! NMGLineString<AnyObject>
 
       // 경로 스타일 (실선으로 표시)
-      pathOverlay.color = UIColor(red: 0.0, green: 0.48, blue: 1.0, alpha: 0.8) // 파란색
+      pathOverlay.color = UIColor(hex: "#223B73", alpha: 1.0) // 메인 경로 색상
       pathOverlay.width = 8
-      pathOverlay.outlineColor = UIColor.white
+      pathOverlay.outlineColor = UIColor(hex: "#4D6399", alpha: 1.0) // 외곽선 색상
       pathOverlay.outlineWidth = 2
       pathOverlay.mapView = uiView
       Self.routePath = pathOverlay
@@ -335,11 +457,6 @@ public struct NaverMapComponent: UIViewRepresentable {
   // MARK: - Helper Functions
 
   private func markerImage(for category: ExploreCategory) -> UIImage {
-    let cacheKey = NSString(string: "marker-\(category.rawValue)")
-    if let cachedImage = Self.markerImageCache.object(forKey: cacheKey) {
-      return cachedImage
-    }
-
     let asset: ImageAsset
     switch category {
     case .all:
@@ -349,7 +466,7 @@ public struct NaverMapComponent: UIViewRepresentable {
     case .restaurant:
       asset = .foodPin
     case .shopping:
-      asset = .etcPin // TODO: shopping 전용 핀 아이콘 추가
+      asset = .shoppingPin
     case .activity:
       asset = .gamePin
     case .etc:
@@ -358,9 +475,7 @@ public struct NaverMapComponent: UIViewRepresentable {
       asset = .etcPin
     }
 
-    let image = UIImage(asset) ?? UIImage()
-    Self.markerImageCache.setObject(image, forKey: cacheKey)
-    return image
+    return UIImage(asset) ?? UIImage()
   }
 
   private static func applySpotMarkerStyle(
@@ -399,10 +514,22 @@ public struct NaverMapComponent: UIViewRepresentable {
     onSpotTapped: ((String) -> Void)?
   ) {
     let currentSpotIDs = Set(spots.map(\.id))
+    let isRouteMode = routeInfo != nil
 
-    for (spotID, marker) in Self.spotMarkers where !currentSpotIDs.contains(spotID) {
-      marker.mapView = nil
-      Self.spotMarkers.removeValue(forKey: spotID)
+    #logDebug(" [NaverMapComponent] 🔄 syncSpotMarkers: 현재 spots=\(currentSpotIDs.count)개, 기존 마커=\(Self.spotMarkers.count)개, 선택된ID=\(Self.selectedSpotID ?? "nil"), 경로모드=\(isRouteMode)")
+
+    // 경로 찾기 모드일 때는 모든 spot 마커들 숨김 (데이터는 보존)
+    if isRouteMode {
+      #logDebug(" [NaverMapComponent] 🚗 경로 모드 - 모든 spot 마커 숨김 (데이터 보존)")
+      for (_, marker) in Self.spotMarkers {
+        marker.mapView = nil  // 지도에서만 숨김, 마커 객체는 유지
+      }
+      return  // spot 마커 처리 종료
+    }
+
+    // 일반 모드에서는 모든 기존 마커들을 지도에 재연결
+    for (_, marker) in Self.spotMarkers {
+      marker.mapView = mapView
     }
 
     for spot in spots {
@@ -410,13 +537,17 @@ public struct NaverMapComponent: UIViewRepresentable {
 
       if let existingMarker = Self.spotMarkers[spot.id] {
         marker = existingMarker
+        #logDebug(" [NaverMapComponent] ♻️ 기존 마커 재사용: \(spot.id)")
       } else {
         let newMarker = NMFMarker()
         newMarker.anchor = CGPoint(x: 0.5, y: 1.0)
-        newMarker.mapView = mapView
         Self.spotMarkers[spot.id] = newMarker
         marker = newMarker
+        #logDebug(" [NaverMapComponent] ✨ 새 마커 생성: \(spot.id)")
       }
+
+      // 마커를 지도에 확실히 연결
+      marker.mapView = mapView
 
       marker.position = NMGLatLng(
         lat: spot.coordinate.latitude,
@@ -439,6 +570,32 @@ public struct NaverMapComponent: UIViewRepresentable {
         return true
       }
       Self.applySpotMarkerStyle(marker, isSelected: spot.id == Self.selectedSpotID)
+    }
+
+    // 선택된 스팟이 현재 spots 배열에 없더라도 마커 스타일 유지하고 표시
+    if let selectedSpotID = Self.selectedSpotID,
+       let selectedMarker = Self.spotMarkers[selectedSpotID] {
+
+      if !currentSpotIDs.contains(selectedSpotID) {
+        #logDebug(" [NaverMapComponent] 🎯 선택된 스팟이 현재 spots에 없음 - 마커 강제 복원: \(selectedSpotID)")
+
+        // 마커가 지도에서 제거되었을 수 있으므로 다시 추가
+        selectedMarker.mapView = mapView
+
+        // 선택된 스타일 적용
+        Self.applySpotMarkerStyle(selectedMarker, isSelected: true)
+
+        // 마커 터치 핸들러 재설정
+        selectedMarker.touchHandler = { _ in
+          coordinator.markMarkerTap()
+          Self.setSelectedSpotID(selectedSpotID)
+          onSpotTapped?(selectedSpotID)
+          return true
+        }
+      } else {
+        // spots 배열에 있는 경우는 정상적으로 선택된 스타일 적용
+        Self.applySpotMarkerStyle(selectedMarker, isSelected: true)
+      }
     }
   }
 

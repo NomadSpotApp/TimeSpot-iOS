@@ -172,6 +172,21 @@ public extension Date {
 
     return normalizedDate
   }
+
+  // MARK: - Route Time Utils
+  /// 예상 도착 시간 계산 (현재 시간 + 소요 시간)
+  /// - Parameter durationMinutes: 소요 시간 (분)
+  /// - Returns: "HH:mm" 형태의 도착 예정 시간
+  static func estimatedArrivalTime(durationMinutes: Int) -> String {
+    let now = Date()
+    let arrivalDate = now.addingTimeInterval(TimeInterval(durationMinutes * 60))
+
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.dateFormat = "HH:mm"
+
+    return formatter.string(from: arrivalDate)
+  }
 }
 
 public extension Calendar {

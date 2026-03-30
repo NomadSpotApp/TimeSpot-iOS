@@ -240,3 +240,40 @@ public extension String {
       .trimmingCharacters(in: .whitespacesAndNewlines)
   }
 }
+
+// MARK: - Distance Formatting
+public extension Int {
+  /// 미터 단위 거리를 적절한 단위로 포맷팅
+  /// 1000m 이상은 km로, 그 이하는 m로 표시
+  var formattedDistance: String {
+    if self >= 1000 {
+      let kilometers = Double(self) / 1000.0
+
+      // 1.0km, 2.5km 등으로 표시 (소수점 1자리까지, 불필요한 .0은 제거)
+      if kilometers == Double(Int(kilometers)) {
+        return "\(Int(kilometers))km"
+      } else {
+        return String(format: "%.1fkm", kilometers)
+      }
+    } else {
+      return "\(self)m"
+    }
+  }
+
+  /// 분 단위 시간을 포맷팅
+  /// 60분 이상은 시간으로, 그 이하는 분으로 표시
+  var formattedDuration: String {
+    if self >= 60 {
+      let hours = self / 60
+      let minutes = self % 60
+
+      if minutes == 0 {
+        return "\(hours)시간"
+      } else {
+        return "\(hours)시간 \(minutes)분"
+      }
+    } else {
+      return "\(self)분"
+    }
+  }
+}

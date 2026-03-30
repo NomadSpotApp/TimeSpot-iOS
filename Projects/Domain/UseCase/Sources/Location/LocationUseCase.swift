@@ -44,17 +44,17 @@ public struct LocationUseCaseImpl: LocationUseCaseInterface {
   public init() {}
 
   public func getAuthorizationStatus() async -> CLAuthorizationStatus {
-    let locationManager = LocationPermissionManager.shared
+    let locationManager = await LocationPermissionManager.shared
     return await locationManager.authorizationStatus
   }
 
   public func requestLocationPermission() async -> CLAuthorizationStatus {
-    let locationManager = LocationPermissionManager.shared
+    let locationManager = await LocationPermissionManager.shared
     return await locationManager.requestLocationPermission()
   }
 
   public func requestFullAccuracy() async {
-    let locationManager = LocationPermissionManager.shared
+    let locationManager = await LocationPermissionManager.shared
     await locationManager.requestFullAccuracy()
   }
 
@@ -62,24 +62,24 @@ public struct LocationUseCaseImpl: LocationUseCaseInterface {
     onUpdate: @escaping @Sendable (CLLocation) -> Void,
     onError: @escaping @Sendable (Error) -> Void
   ) async {
-    let locationManager = LocationPermissionManager.shared
+    let locationManager = await LocationPermissionManager.shared
     await locationManager.setLocationUpdateCallback(onUpdate)
     await locationManager.setLocationErrorCallback(onError)
     await locationManager.startLocationUpdates()
   }
 
   public func stopLocationUpdates() async {
-    let locationManager = LocationPermissionManager.shared
+    let locationManager = await LocationPermissionManager.shared
     await locationManager.stopLocationUpdates()
   }
 
   public func requestCurrentLocation() async throws -> CLLocation? {
-    let locationManager = LocationPermissionManager.shared
+    let locationManager = await LocationPermissionManager.shared
     return try await locationManager.requestCurrentLocation()
   }
 
   public func isLocationServicesEnabled() async -> Bool {
-    let locationManager = LocationPermissionManager.shared
+    let locationManager = await LocationPermissionManager.shared
     return await locationManager.isLocationServicesEnabled()
   }
 }
