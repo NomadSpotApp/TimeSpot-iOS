@@ -184,78 +184,42 @@ extension StationRowModel {
     return IdentifiedArray(uniqueElements: rows)
   }
 
-  // 비회원용 기본 주요 역 데이터
-  static func makeDefaultMajorStations() -> IdentifiedArrayOf<StationRowModel> {
-    let defaultStations = [
-      ("강남", 1, Station.gangnam, ["2호선", "신분당선"]),
-      ("홍대입구", 2, Station.hongdaeEntrance, ["2호선", "6호선", "공항철도"]),
-      ("신촌", 3, Station.sinchon, ["2호선"]),
-      ("이태원", 4, Station.itaewon, ["6호선"]),
-      ("명동", 5, Station.myeongdong, ["4호선"]),
-      ("건대입구", 6, Station.konkukUniversityEntrance, ["2호선", "7호선"]),
-      ("잠실", 7, Station.jamsil, ["2호선", "8호선"]),
-      ("종각", 8, Station.jonggak, ["1호선"]),
-      ("고속터미널", 9, Station.expressBusTerminal, ["3호선", "7호선", "9호선"]),
-      ("노원", 10, Station.nowon, ["4호선", "7호선"])
-    ]
-
-    let rows = defaultStations.map { (name, id, station, badges) in
-      let entity = StationEntity(
-        id: id,
-        favoriteID: nil,
-        station: station,
-        name: name,
-        badges: badges,
-        latitude: nil,
-        longitude: nil,
-        isFavorite: false
-      )
-
-      return StationRowModel(
-        stationEntity: entity,
-        distanceText: nil,
-        rowType: "station"
-      )
-    }
-
-    return IdentifiedArray(uniqueElements: rows)
-  }
 
   static func applyFavoriteState(
     favoriteRows: IdentifiedArrayOf<StationRowModel>,
     nearbyRows: inout IdentifiedArrayOf<StationRowModel>,
     majorRows: inout IdentifiedArrayOf<StationRowModel>
   ) {
-    let favoriteNameMap: [String: Int] = Dictionary(
-      uniqueKeysWithValues: favoriteRows.compactMap { row -> (String, Int)? in
-        let identifier = row.favoriteID ?? row.stationID
-        return (row.stationName.normalizedStationName, identifier)
-      }
-    )
-
-    let updatedNearbyRows = nearbyRows.map { row in
-      let favoriteID = favoriteNameMap[row.stationName.normalizedStationName]
-
-      let updatedEntity = StationEntity(
-        id: row.stationEntity.id,
-        favoriteID: favoriteID,
-        station: row.stationEntity.station,
-        name: row.stationEntity.name,
-        badges: row.stationEntity.badges,
-        latitude: row.stationEntity.latitude,
-        longitude: row.stationEntity.longitude,
-        isFavorite: favoriteID != nil
-      )
-
-      return StationRowModel(
-        stationEntity: updatedEntity,
-        distanceText: row.distanceText,
-        rowType: "nearby"
-      )
+    // 복잡한 표현식을 분리하여 컴파일러 타입 체킹 성능 향상
+    let favoriteNamePairs = favoriteRows.compactMap { row -> (String, Int)? in
+      let identifier = row.favoriteID ?? row.stationID
+      return (row.stationName.normalizedStationName, identifier)
     }
+    let favoriteNameMap: [String: Int] = Dictionary(uniqueKeysWithValues: favoriteNamePairs)
+
+    // 복잡한 표현식을 분리하여 컴파일러 타입 체킹 성능 향상
+    let updatedNearbyRows = Self.updateRowsWithFavoriteStatus(
+      rows: nearbyRows,
+      favoriteNameMap: favoriteNameMap,
+      rowType: "nearby"
+    )
     nearbyRows = IdentifiedArray(uniqueElements: updatedNearbyRows)
 
-    let updatedMajorRows = majorRows.map { row in
+    let updatedMajorRows = Self.updateRowsWithFavoriteStatus(
+      rows: majorRows,
+      favoriteNameMap: favoriteNameMap,
+      rowType: "station"
+    )
+    majorRows = IdentifiedArray(uniqueElements: updatedMajorRows)
+  }
+
+  // 복잡한 표현식을 분리한 헬퍼 함수
+  private static func updateRowsWithFavoriteStatus(
+    rows: IdentifiedArrayOf<StationRowModel>,
+    favoriteNameMap: [String: Int],
+    rowType: String
+  ) -> [StationRowModel] {
+    return rows.map { row in
       let favoriteID = favoriteNameMap[row.stationName.normalizedStationName]
 
       let updatedEntity = StationEntity(
@@ -272,9 +236,8 @@ extension StationRowModel {
       return StationRowModel(
         stationEntity: updatedEntity,
         distanceText: row.distanceText,
-        rowType: "station"
+        rowType: rowType
       )
     }
-    majorRows = IdentifiedArray(uniqueElements: updatedMajorRows)
   }
 }
