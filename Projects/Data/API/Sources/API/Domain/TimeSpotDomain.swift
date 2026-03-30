@@ -27,7 +27,7 @@ extension TimeSpotDomain: DomainType {
     case .auth:
       return "api/v1/auth"
       case .place:
-        return "api/v1/place"
+        return "api/v2/places"
     case .profile:
       return "api/v1/users"
       case .history:

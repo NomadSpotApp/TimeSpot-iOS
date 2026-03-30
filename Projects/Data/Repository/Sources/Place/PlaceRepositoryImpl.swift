@@ -26,39 +26,22 @@ public final class PlaceRepositoryImpl: PlaceInterface, @unchecked Sendable {
 
   // MARK: - 장소 관련 api
   public func fetchPlaces(
-    _ input: PlaceInput
-  ) async throws -> [PlaceEntity] {
-    let body: PlaceRequest = .init(
-      userLat: input.userLat,
-      userLon: input.userLon,
-      mapLat: input.mapLat,
-      mapLon: input.mapLon,
-      stationId: input.stationId,
-      remainingMinutes: input.remainingMinutes
-    )
-    let dto: PlaceDTOModel = try await provider.request(.fetchPlaces(body: body))
-
-    return dto.data.map { $0.toDomainForFetchPlaces() }
-  }
-
-  public func searchPlaces(
     _ input: PlaceSearchInput
   ) async throws -> PlaceSearchPageEntity {
-    let body: PlaceSearchRequest = .init(
+    let body = FetchPlaceRequest(
+      stationId: input.stationId,
       userLat: input.userLat,
       userLon: input.userLon,
-      stationId: input.stationId,
       remainingMinutes: input.remainingMinutes,
-      keyword: input.keyword,
-      category: input.category,
-      sortBy: input.sortBy,
       mapLat: input.mapLat,
       mapLon: input.mapLon,
+      keyword: input.keyword,
+      category: input.category,
       page: input.page,
       size: input.size,
-      sort: ["MAP_NEAREST"]
+      sort: input.sort
     )
-    let dto: PlaceSearchDTOModel = try await provider.request(.searchPlaces(body: body))
+    let dto: PlaceSearchDTOModel = try await provider.request(.fetchPlace(body: body))
     return dto.data.toDomain()
   }
 
@@ -66,14 +49,13 @@ public final class PlaceRepositoryImpl: PlaceInterface, @unchecked Sendable {
     _ input: PlaceDetailInput
   ) async throws -> PlaceDetailEntity {
     let body: PlaceDetailRequest = .init(
-      placeId: input.placeId,
       stationId: input.stationId,
       userLat: input.userLat,
       userLon: input.userLon,
       remainingMinutes: input.remainingMinutes
     )
 
-    let dto: PlaceDetailDTOModel = try await provider.request(.detailPlaces(body: body))
+    let dto: PlaceDetailDTOModel = try await provider.request(.detailPlaces(placeId: input.placeId, body: body))
     return dto.data.toDomain()
   }
 }

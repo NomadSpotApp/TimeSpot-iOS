@@ -11,18 +11,27 @@ public typealias PlaceDetailDTOModel = BaseResponseDTO<PlaceDetailDTOResponseMod
 
 // MARK: - DataClass
 public struct PlaceDetailDTOResponseModel: Decodable, Equatable {
+  let placeId: String
   let name, category, address: String
-  let distanceToStation, timeToStation, stayableMinutes: Int
-  let stationLat, stationLon: Double
+  let latitude, longitude: Double
+  let distanceFromStation, walkTimeFromStation, stayableMinutes: Int
+  let visitable: Bool
+  let stationLatitude, stationLongitude: Double
   let leaveTime: String
-  let imageURL: [String]
-  let weekday, weekend: [String]
-  let phoneNumber: String
+  let images: [String]
+  let useTime: String?
+  let spendTime: String?
+  let useFee: String?
+  let discountInfo: String?
+  let accomCountCulture: String?
+  let parkingCulture: String?
+  let placeType: String
 
   enum CodingKeys: String, CodingKey {
-    case name, category, address, distanceToStation, timeToStation, stayableMinutes, stationLat, stationLon, leaveTime
-    case imageURL = "imageUrl"
-    case weekday, weekend, phoneNumber
+    case placeId, name, category, address, latitude, longitude
+    case distanceFromStation, walkTimeFromStation, stayableMinutes, visitable
+    case stationLatitude, stationLongitude, leaveTime, images
+    case useTime, spendTime, useFee, discountInfo, accomCountCulture, parkingCulture, placeType
   }
 }
 
