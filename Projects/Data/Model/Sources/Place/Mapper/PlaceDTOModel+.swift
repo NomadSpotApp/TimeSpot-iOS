@@ -8,7 +8,6 @@
 
 import Foundation
 import Entity
-import LogMacro
 
 public extension PlaceResponseDTOModel {
   func toDomain() -> PlaceEntity {
@@ -52,7 +51,6 @@ public extension PlaceResponseDTOModel {
   private func mapCategory(_ value: String) -> ExploreCategory {
     let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
-    Log.debug("🏷️ [카테고리 매핑] 서버값: '\(value)' → 정규화: '\(normalized)'")
 
     let category: ExploreCategory
     switch normalized {
@@ -74,7 +72,6 @@ public extension PlaceResponseDTOModel {
       category = .etc
     }
 
-    Log.debug("🏷️ [카테고리 매핑] 결과: \(category)")
     return category
   }
 }
@@ -91,7 +88,6 @@ public extension PlaceSearchPageResponseDTO {
       sort: sortEntity
     )
 
-    Log.debug("📄 [페이지 매핑] 서버 number=\(number), hasNext=\(hasNext), content.count=\(content.count)")
 
     return PlaceSearchPageEntity(
       pageable: pageable,
