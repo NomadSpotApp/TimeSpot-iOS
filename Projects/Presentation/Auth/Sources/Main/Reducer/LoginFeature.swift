@@ -73,6 +73,7 @@ public struct LoginFeature {
     case presentPrivacyWeb
     case presentOnBoarding
     case presentMain
+    case presntGuestLookAround
 
   }
 
@@ -219,6 +220,13 @@ extension LoginFeature {
 
       case .presentMain:
         return .none
+
+      case .presntGuestLookAround:
+        // 비회원으로 시작하기
+        state.$userSession.withLock { userSession in
+          userSession.isGuest = true
+        }
+        return .send(.delegate(.presentOnBoarding))
 
     }
   }

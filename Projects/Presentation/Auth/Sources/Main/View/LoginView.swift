@@ -87,7 +87,7 @@ extension LoginView {
         .foregroundStyle(.gray800)
         .underline(true, color: .gray800.opacity(0.5))
         .onTapGesture {
-          store.send(.delegate(.presentPrivacyWeb))
+          store.send(.delegate(.presntGuestLookAround))
         }
 
 

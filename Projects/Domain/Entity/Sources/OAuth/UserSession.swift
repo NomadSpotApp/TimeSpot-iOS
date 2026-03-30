@@ -13,6 +13,7 @@ public struct UserSession: Equatable, Hashable {
   public var provider: SocialType
   public var authCode: String
   public var mapType: ExternalMapType
+  public var isGuest: Bool
   public var travelID: String
   public var travelStationName: String
   public var travelStationLat: Double?
@@ -35,6 +36,7 @@ public struct UserSession: Equatable, Hashable {
     provider: SocialType = .apple,
     authCode: String = "",
     mapType: ExternalMapType = .appleMap,
+    isGuest: Bool = false,
     travelID: String = "",
     travelStationName: String = "",
     travelStationLat: Double? = nil,
@@ -54,6 +56,7 @@ public struct UserSession: Equatable, Hashable {
     self.provider = provider
     self.authCode = authCode
     self.mapType = mapType
+    self.isGuest = isGuest
     self.travelID = travelID
     self.travelStationName = travelStationName
     self.travelStationLat = travelStationLat
