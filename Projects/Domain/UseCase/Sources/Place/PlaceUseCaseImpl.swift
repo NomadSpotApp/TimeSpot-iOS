@@ -22,26 +22,20 @@ public protocol PlaceUseCaseInterface: Sendable {
   func fetchPlaces(
     userSession: UserSession,
     userLat: Double,
-    userLon: Double
-  ) async throws -> [PlaceEntity]
+    userLon: Double,
+    keyword: String?,
+    category: ExploreCategory?,
+    sort: String,
+    mapLat: Double?,
+    mapLon: Double?,
+    page: Int
+  ) async throws -> PlaceSearchPageEntity
 
   func fetchInitialExploreSpots(
     userSession: UserSession,
     userLat: Double,
     userLon: Double
   ) async throws -> ExploreSpotPageEntity
-
-  func searchPlaces(
-    userSession: UserSession,
-    userLat: Double,
-    userLon: Double,
-    keyword: String?,
-    category: ExploreCategory?,
-    sortBy: String,
-    mapLat: Double?,
-    mapLon: Double?,
-    page: Int
-  ) async throws -> PlaceSearchPageEntity
 
   func searchExploreSpots(
     baseSpots: [ExploreMapSpot],
@@ -50,7 +44,7 @@ public protocol PlaceUseCaseInterface: Sendable {
     userLon: Double,
     keyword: String?,
     category: ExploreCategory?,
-    sortBy: String,
+    sort: String,
     mapLat: Double?,
     mapLon: Double?,
     page: Int
@@ -88,16 +82,29 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
   public func fetchPlaces(
     userSession: UserSession,
     userLat: Double,
-    userLon: Double
-  ) async throws -> [PlaceEntity] {
-    let input = PlaceInput(
+    userLon: Double,
+    keyword: String?,
+    category: ExploreCategory?,
+    sort: String,
+    mapLat: Double?,
+    mapLon: Double?,
+    page: Int
+  ) async throws -> PlaceSearchPageEntity {
+    let input = PlaceSearchInput(
       userLat: userLat,
       userLon: userLon,
-      mapLat: userSession.travelStationLat ?? 0,
-      mapLon: userSession.travelStationLng ?? 0,
       stationId: Int(userSession.travelID) ?? 0,
-      remainingMinutes: 250
+      remainingMinutes: userSession.remainingMinutes,
+      keyword: keyword,
+      category: mapCategory(category),
+      mapLat: mapLat,
+      mapLon: mapLon,
+      page: page, // 서버도 1-based 페이지 사용
+      size: 50,
+      sort: sort
     )
+
+    #logDebug("🌐 [API요청] fetchPlaces - page=\(page), size=50")
 
     return try await repository.fetchPlaces(input)
   }
@@ -107,25 +114,26 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
     userLat: Double,
     userLon: Double
   ) async throws -> ExploreSpotPageEntity {
-    // 🚀 단순화: searchPlaces API 하나만 사용
+    // 🚀 단순화: fetchPlaces API 하나만 사용
     let searchInput = PlaceSearchInput(
       userLat: userLat,
       userLon: userLon,
       stationId: Int(userSession.travelID) ?? 0,
-      remainingMinutes: 250,
+      remainingMinutes: userSession.remainingMinutes,
       keyword: nil,
       category: nil,
-      sortBy: "STATION_NEAREST",
       mapLat: userSession.travelStationLat,
       mapLon: userSession.travelStationLng,
-      page: 0,
+      page: 1, // 서버도 1-based 페이지 사용
       size: 200,
-      sort: ["MAP_NEAREST"]
+      sort: "distanceFromStation,ASC"
     )
 
-    let pageEntity = try await repository.searchPlaces(searchInput)
+    #logDebug("🚀 [초기로딩] fetchPlaces - page=1, size=200")
 
-    #logDebug("🚀 [초기로딩] searchPlaces 응답: \(pageEntity.content.count)개")
+    let pageEntity = try await repository.fetchPlaces(searchInput)
+
+    #logDebug("🚀 [초기로딩] fetchPlaces 응답: \(pageEntity.content.count)개")
 
     // 직접 마커 생성 (병합 없이)
     let spots = pageEntity.content.map { entity in
@@ -142,39 +150,11 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
 
     return ExploreSpotPageEntity(
       spots: spots,
-      currentPage: pageEntity.page + 1,
+      currentPage: pageEntity.page,
       hasNextPage: !pageEntity.isLastPage
     )
   }
 
-  public func searchPlaces(
-    userSession: UserSession,
-    userLat: Double,
-    userLon: Double,
-    keyword: String?,
-    category: ExploreCategory?,
-    sortBy: String = "STATION_NEAREST",
-    mapLat: Double?,
-    mapLon: Double?,
-    page: Int
-  ) async throws -> PlaceSearchPageEntity {
-    let input = PlaceSearchInput(
-      userLat: userLat,
-      userLon: userLon,
-      stationId: Int(userSession.travelID) ?? 0,
-      remainingMinutes: 250,
-      keyword: keyword,
-      category: mapCategory(category),
-      sortBy: sortBy,
-      mapLat: mapLat,
-      mapLon: mapLon,
-      page: page,
-      size: 200,
-      sort: ["MAP_NEAREST"]
-    )
-
-    return try await repository.searchPlaces(input)
-  }
 
   public func searchExploreSpots(
     baseSpots: [ExploreMapSpot],
@@ -183,33 +163,33 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
     userLon: Double,
     keyword: String?,
     category: ExploreCategory?,
-    sortBy: String = "STATION_NEAREST",
+    sort: String,
     mapLat: Double?,
     mapLon: Double?,
     page: Int
   ) async throws -> ExploreSpotPageEntity {
-    // 🔍 단순화: searchPlaces API 하나만 사용
+    // 🔍 단순화: fetchPlaces API 하나만 사용
     let searchInput = PlaceSearchInput(
       userLat: userLat,
       userLon: userLon,
       stationId: Int(userSession.travelID) ?? 0,
-      remainingMinutes: 250,
+      remainingMinutes: userSession.remainingMinutes,
       keyword: keyword,
       category: mapCategory(category),
-      sortBy: sortBy,
       mapLat: mapLat,
       mapLon: mapLon,
-      page: page,
-      size: 30  // 더 많은 데이터 로딩
+      page: page, // 서버도 1-based 페이지 사용
+      size: 50,
+      sort: sort
     )
 
-    #logDebug("🔍 [API요청] searchExploreSpots - page: \(page), size: 30")
+    #logDebug("🔍 [API요청] searchExploreSpots - page=\(page), size=50")
 
-    let pageEntity = try await repository.searchPlaces(searchInput)
+    let pageEntity = try await repository.fetchPlaces(searchInput)
 
     #logDebug("🔍 [API응답] searchExploreSpots - 응답 size: \(pageEntity.content.count), hasNext: \(!pageEntity.isLastPage)")
 
-    #logDebug("🔍 [필터링] searchPlaces 응답: \(pageEntity.content.count)개")
+    #logDebug("🔍 [필터링] fetchPlaces 응답: \(pageEntity.content.count)개")
 
     // 직접 마커 생성 (병합 없이)
     let spots = pageEntity.content.map { entity in
@@ -226,7 +206,7 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
 
     return ExploreSpotPageEntity(
       spots: spots,
-      currentPage: pageEntity.page + 1,
+      currentPage: pageEntity.page,
       hasNextPage: !pageEntity.isLastPage
     )
   }
@@ -241,6 +221,8 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       return "음식점"
     case .some(.activity):
       return "액티비티"
+    case .some(.shopping):
+      return "쇼핑"
     case .some(.etc):
       return "기타"
     }
@@ -260,7 +242,8 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       closingText: "",
       distanceText: "",
       walkTimeText: "",
-      address: entity.address
+      address: entity.address,
+      visitable: entity.visitable
     )
   }
 
@@ -281,17 +264,28 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
     let distanceText: String
     let walkTimeText: String
 
-    if let stationLat, let stationLon {
+    if let distanceFromStation = entity.distanceFromStation {
+      let roundedDistance = Int(distanceFromStation.rounded())
+      distanceText = "\(roundedDistance)m"
+    } else if let stationLat, let stationLon {
       let stationLocation = CLLocation(latitude: stationLat, longitude: stationLon)
       let placeLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
       let distanceInMeters = stationLocation.distance(from: placeLocation)
       let roundedDistance = Int((distanceInMeters / 10).rounded() * 10)
-      let walkingMinutes = max(Int(ceil(distanceInMeters / 67)), 1)
-
       distanceText = "\(roundedDistance)m"
-      walkTimeText = "\(stationName)역에서 약 \(walkingMinutes)분"
     } else {
       distanceText = ""
+    }
+
+    if let walkTime = entity.walkTimeFromStation {
+      walkTimeText = "\(stationName)역에서 약 \(walkTime)분"
+    } else if let stationLat, let stationLon, distanceText.isEmpty == false {
+      let stationLocation = CLLocation(latitude: stationLat, longitude: stationLon)
+      let placeLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+      let distanceInMeters = stationLocation.distance(from: placeLocation)
+      let walkingMinutes = max(Int(ceil(distanceInMeters / 67)), 1)
+      walkTimeText = "\(stationName)역에서 약 \(walkingMinutes)분"
+    } else {
       walkTimeText = ""
     }
 
@@ -304,11 +298,12 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       imageURL: entity.imageURL,
       badgeText: entity.stayableMinutes > 0 ? "\(entity.stayableMinutes)분 체류 가능" : "",
       subtitle: entity.category.title,
-      statusText: entity.isOpen ? "영업 중" : "영업 종료",
+      statusText: entity.visitable ? "영업 중" : "영업 종료",
       closingText: closingText,
       distanceText: distanceText,
       walkTimeText: walkTimeText,
-      address: entity.address
+      address: entity.address,
+      visitable: entity.visitable
     )
   }
 

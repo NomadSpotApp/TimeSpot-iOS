@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum PlaceError: Error, LocalizedError, Equatable {
+public enum PlaceError: Error, LocalizedError, Equatable, Hashable {
   case placeNotFound
   case placeAccessDenied
   case placeDataCorrupted

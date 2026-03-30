@@ -11,8 +11,7 @@ import WeaveDI
 import ComposableArchitecture
 
 public protocol PlaceInterface: Sendable {
-  func fetchPlaces(_ input: PlaceInput) async throws -> [PlaceEntity]
-  func searchPlaces(_ input: PlaceSearchInput) async throws -> PlaceSearchPageEntity
+  func fetchPlaces(_ input: PlaceSearchInput) async throws -> PlaceSearchPageEntity
   func detailPlaces(_ input: PlaceDetailInput) async throws -> PlaceDetailEntity
 }
 

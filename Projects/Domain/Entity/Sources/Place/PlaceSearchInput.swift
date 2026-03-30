@@ -15,12 +15,11 @@ public struct PlaceSearchInput: Equatable {
   public let remainingMinutes: Int
   public let keyword: String?
   public let category: String?
-  public let sortBy: String
   public let mapLat: Double?
   public let mapLon: Double?
   public let page: Int
   public let size: Int
-  public let sort: [String]
+  public let sort: String
 
   public init(
     userLat: Double,
@@ -29,12 +28,11 @@ public struct PlaceSearchInput: Equatable {
     remainingMinutes: Int,
     keyword: String? = nil,
     category: String? = nil,
-    sortBy: String = "STATION_NEAREST",
     mapLat: Double? = nil,
     mapLon: Double? = nil,
-    page: Int = 0,
-    size: Int = 200,
-    sort: [String] = ["MAP_NEAREST"]
+    page: Int = 1,
+    size: Int = 50,
+    sort: String = "distanceFromStation,ASC"
   ) {
     self.userLat = userLat
     self.userLon = userLon
@@ -42,7 +40,6 @@ public struct PlaceSearchInput: Equatable {
     self.remainingMinutes = remainingMinutes
     self.keyword = keyword
     self.category = category
-    self.sortBy = sortBy
     self.mapLat = mapLat
     self.mapLon = mapLon
     self.page = page
