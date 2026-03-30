@@ -288,7 +288,9 @@ private extension ExploreDetailView {
   @ViewBuilder
   func routeButtonSection() -> some View {
     CustomButton(
-      action: {},
+      action: {
+        store.send(.view(.routeButtonTapped))
+      },
       title: store.isVisitUnavailable ? "방문 불가" : "경로 확인하기",
       config: CustomButtonConfig.create(),
       isEnable: !store.isVisitUnavailable

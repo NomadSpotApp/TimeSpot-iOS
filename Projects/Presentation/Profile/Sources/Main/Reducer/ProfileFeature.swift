@@ -30,6 +30,7 @@ public struct ProfileFeature {
     var isHistoryLoading: Bool = false
     var isHistoryLoadingMore: Bool = false
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
+    @Shared(.appStorage("selectedMapType")) var selectedMapTypeStorage: ExternalMapType = .naverMap
 
     public init() {}
   }
@@ -207,6 +208,9 @@ extension ProfileFeature {
             state.$userSession.withLock {
               $0.name = state.profileEntity?.nickname ?? ""
               $0.mapType = state.profileEntity?.mapType ?? .appleMap
+            }
+            state.$selectedMapTypeStorage.withLock {
+              $0 = state.profileEntity?.mapType ?? .appleMap
             }
             return .none
 

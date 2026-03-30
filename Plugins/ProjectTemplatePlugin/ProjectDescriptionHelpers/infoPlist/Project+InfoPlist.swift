@@ -50,6 +50,7 @@ public extension InfoPlist {
       .setGIDClientID("${GOOGLE_CLIENT_ID}")
       .setUILaunchScreens()
       .setLocationPermissions()
+      .setLSApplicationQueriesSchemes()
 
   )
 

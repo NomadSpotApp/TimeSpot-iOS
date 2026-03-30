@@ -20,6 +20,7 @@ public struct NaverMapComponent: UIViewRepresentable {
   let currentLocation: CLLocation?
   let routeInfo: RouteInfo?
   let destination: Destination?
+  let travelStation: Destination? // 🚉 출발역 정보
   let spots: [ExploreMapSpot]
   let selectedSpotID: String?
   let returnToLocationTrigger: Int
@@ -44,6 +45,7 @@ public struct NaverMapComponent: UIViewRepresentable {
     currentLocation: CLLocation?,
     routeInfo: RouteInfo? = nil,
     destination: Destination? = nil,
+    travelStation: Destination? = nil,
     spots: [ExploreMapSpot] = [],
     selectedSpotID: String? = nil,
     returnToLocationTrigger: Int = 0,
@@ -55,6 +57,7 @@ public struct NaverMapComponent: UIViewRepresentable {
     self.currentLocation = currentLocation
     self.routeInfo = routeInfo
     self.destination = destination
+    self.travelStation = travelStation
     self.spots = spots
     self.selectedSpotID = selectedSpotID
     self.returnToLocationTrigger = returnToLocationTrigger
@@ -87,19 +90,46 @@ public struct NaverMapComponent: UIViewRepresentable {
     mapView.touchDelegate = context.coordinator
     mapView.addCameraDelegate(delegate: context.coordinator)
 
-    // 역(destination)을 최우선으로, 현재 위치는 그 다음, 마지막에 기본 서울
-    let initialLatitude = destination?.coordinate.latitude
-      ?? currentLocation?.coordinate.latitude
-      ?? 37.5666805
-    let initialLongitude = destination?.coordinate.longitude
-      ?? currentLocation?.coordinate.longitude
-      ?? 126.9784147
+    let (initialLatitude, initialLongitude): (Double, Double) = {
+      if let routeInfo = routeInfo,
+         let currentLoc = currentLocation,
+         let dest = destination {
 
-    #logDebug(" [NaverMapComponent] 📍 초기 지도 중심: lat=\(initialLatitude), lng=\(initialLongitude), destination=\(destination?.name ?? "nil")")
+        var locations: [(lat: Double, lng: Double)] = []
+
+        // 1. 출발역이 있으면 추가
+        if let station = travelStation {
+          locations.append((lat: station.coordinate.latitude, lng: station.coordinate.longitude))
+        }
+
+        // 2. 현재 위치 (출발지) 추가
+        locations.append((lat: currentLoc.coordinate.latitude, lng: currentLoc.coordinate.longitude))
+
+        // 3. 목적지 추가
+        locations.append((lat: dest.coordinate.latitude, lng: dest.coordinate.longitude))
+
+        // 모든 위치의 중심점 계산
+        let centerLat = locations.reduce(0.0) { $0 + $1.lat } / Double(locations.count)
+        let centerLng = locations.reduce(0.0) { $0 + $1.lng } / Double(locations.count)
+
+        return (centerLat, centerLng)
+      } else {
+        let lat = destination?.coordinate.latitude
+          ?? currentLocation?.coordinate.latitude
+          ?? 37.5666805
+        let lng = destination?.coordinate.longitude
+          ?? currentLocation?.coordinate.longitude
+          ?? 126.9784147
+        return (lat, lng)
+      }
+    }()
+
+    // 🗺️ 경로 모드일 때는 더 넓은 범위를 보여주기 위해 줌 레벨 조정
+    let zoomLevel: Double = routeInfo != nil ? 9.0 : 15.0
 
     let cameraPosition = NMFCameraPosition(
       NMGLatLng(lat: initialLatitude, lng: initialLongitude),
-      zoom: 15
+      zoom: zoomLevel
     )
     let cameraUpdate = NMFCameraUpdate(position: cameraPosition)
     mapView.moveCamera(cameraUpdate)
@@ -117,13 +147,6 @@ public struct NaverMapComponent: UIViewRepresentable {
     Self.currentMarker = nil
     Self.destinationMarker = nil
     Self.routePath = nil
-
-    // ⚠️ spot 마커들은 아예 건드리지 않음 - 뷰 전환시 완전 보존
-    // Self.spotMarkers.values.forEach { $0.mapView = nil }
-
-    // 모든 상태 보존
-    // Self.selectedSpotID = nil
-    // Self.spotMarkers.removeAll()
 
     Self.lastSyncedSpotID = nil
     Self.lastDestinationKey = nil
@@ -155,10 +178,13 @@ public struct NaverMapComponent: UIViewRepresentable {
           lat: location.coordinate.latitude,
           lng: location.coordinate.longitude
         )
+
+        let zoomLevel: Double = routeInfo != nil ? 9.0 : 16.0
+
         moveCamera(
           on: uiView,
           to: target,
-          zoom: 16
+          zoom: zoomLevel
         )
       }
 
@@ -249,9 +275,6 @@ public struct NaverMapComponent: UIViewRepresentable {
 
         if isRouteMode {
           // 경로 찾기 모드일 때는 endLocation 이미지 사용
-          #logDebug(" [NaverMapComponent] 🔍 endLocation 이미지 로딩 시도...")
-
-          // 여러 방법으로 이미지 로딩 시도
           var endLocationImage: UIImage?
 
           // 방법 1: UIImage(assetName:)
@@ -262,7 +285,6 @@ public struct NaverMapComponent: UIViewRepresentable {
           }
 
           if let image = endLocationImage {
-            #logDebug(" [NaverMapComponent] ✅ endLocation 이미지 로딩 성공: \(image.size)")
 
             // 강제로 새 마커 생성해서 확실히 적용
             let newDestinationMarker = NMFMarker()
@@ -373,17 +395,13 @@ public struct NaverMapComponent: UIViewRepresentable {
 
     // 도보 경로 그리기
     if let routeInfo = routeInfo, !routeInfo.paths.isEmpty {
-      #logDebug(" [NaverMapComponent] 경로 정보: 좌표 \(routeInfo.paths.count)개, 거리 \(routeInfo.distance)m")
-
       // 경로 좌표들을 NMGLatLng 배열로 변환
       let pathCoords = routeInfo.paths.map { coordinate in
-        #logDebug(" [NaverMapComponent] 경로 좌표: \(coordinate.latitude), \(coordinate.longitude)")
         return NMGLatLng(lat: coordinate.latitude, lng: coordinate.longitude)
       }
 
       // 좌표가 부족한 경우 체크
       guard pathCoords.count >= 2 else {
-        #logDebug(" [NaverMapComponent] 경로 좌표 부족: \(pathCoords.count)개")
         return
       }
 
@@ -403,7 +421,6 @@ public struct NaverMapComponent: UIViewRepresentable {
       // 🎯 경로 전체가 보이도록 카메라 조정 (중앙으로)
       adjustCameraToFitRoute(mapView: uiView, routeCoords: pathCoords, currentLocation: currentLocation)
 
-      #logDebug(" [NaverMapComponent] 경로 표시 및 카메라 조정 완료")
     }
   }
 
@@ -497,11 +514,8 @@ public struct NaverMapComponent: UIViewRepresentable {
     let currentSpotIDs = Set(spots.map(\.id))
     let isRouteMode = routeInfo != nil
 
-    #logDebug(" [NaverMapComponent] 🔄 syncSpotMarkers: 현재 spots=\(currentSpotIDs.count)개, 기존 마커=\(Self.spotMarkers.count)개, 선택된ID=\(Self.selectedSpotID ?? "nil"), 경로모드=\(isRouteMode)")
-
     // 경로 찾기 모드일 때는 모든 spot 마커들 숨김 (데이터는 보존)
     if isRouteMode {
-      #logDebug(" [NaverMapComponent] 🚗 경로 모드 - 모든 spot 마커 숨김 (데이터 보존)")
       for (_, marker) in Self.spotMarkers {
         marker.mapView = nil  // 지도에서만 숨김, 마커 객체는 유지
       }
@@ -563,8 +577,6 @@ public struct NaverMapComponent: UIViewRepresentable {
        let selectedMarker = Self.spotMarkers[selectedSpotID] {
 
       if !currentSpotIDs.contains(selectedSpotID) {
-        #logDebug(" [NaverMapComponent] 🎯 선택된 스팟이 현재 spots에 없음 - 마커 강제 복원: \(selectedSpotID)")
-
         // 마커가 지도에서 제거되었을 수 있으므로 다시 추가
         selectedMarker.mapView = mapView
 
@@ -702,7 +714,6 @@ public struct NaverMapComponent: UIViewRepresentable {
     cameraUpdate.animationDuration = 1.0
     mapView.moveCamera(cameraUpdate)
 
-    #logDebug(" [NaverMapComponent] 경로 전체가 보이도록 카메라 조정 완료")
   }
 
   private func adjustCameraToFitSpots(
@@ -780,6 +791,12 @@ public struct NaverMapComponent: UIViewRepresentable {
 #Preview {
   NaverMapComponent(
     locationPermissionStatus: .authorizedWhenInUse,
-    currentLocation: CLLocation(latitude: 37.5666805, longitude: 126.9784147)
+    currentLocation: CLLocation(latitude: 37.5666805, longitude: 126.9784147),
+    routeInfo: nil as RouteInfo?,
+    destination: nil as Destination?,
+    travelStation: nil as Destination?,
+    spots: [],
+    selectedSpotID: nil as String?,
+    returnToLocationTrigger: 0
   )
 }

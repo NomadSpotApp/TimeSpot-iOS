@@ -30,6 +30,7 @@ public struct OnBoardingFeature {
     var selectedMap: ExternalMapType? = nil
     var loginEntity: LoginEntity? = nil
     @Shared(.inMemory(SharedKeys.userSession)) var userSession: UserSession = .empty
+    @Shared(.appStorage("selectedMapType")) var selectedMapTypeStorage: ExternalMapType = .naverMap
   }
 
   public enum Action: ViewAction, BindableAction {
@@ -140,6 +141,11 @@ extension OnBoardingFeature {
         state.$userSession.withLock {
           $0.mapType = mapType
         }
+        // AppStorage에도 저장
+        state.$selectedMapTypeStorage.withLock {
+          $0 = mapType
+        }
+        #logDebug("온보딩에서 mapType 선택: \(mapType)")
       return .none
     }
   }
@@ -207,7 +213,8 @@ extension OnBoardingFeature.State: Equatable {
     lhs.stepRange == rhs.stepRange &&
     lhs.activeStep == rhs.activeStep &&
     lhs.selectedMap == rhs.selectedMap &&
-    lhs.loginEntity == rhs.loginEntity
+    lhs.loginEntity == rhs.loginEntity &&
+    lhs.selectedMapTypeStorage == rhs.selectedMapTypeStorage
   }
 }
 extension OnBoardingFeature.State {
@@ -215,5 +222,6 @@ extension OnBoardingFeature.State {
     hasher.combine(customAlert != nil)
     hasher.combine(activeStep)
     hasher.combine(selectedMap)
+    hasher.combine(selectedMapTypeStorage)
   }
 }

@@ -100,6 +100,21 @@ public extension SettingsDictionary {
       "CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES": SettingValue(stringLiteral: stringValue)
     ]) { _, new in new }
   }
+
+  func setCodeSignAllowEntitlementsModification(_ value: Bool = true) -> SettingsDictionary {
+    let stringValue = value ? "YES" : "NO"
+    return merging([
+      "CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION": SettingValue(stringLiteral: stringValue)
+    ]) { _, new in new }
+  }
+
+  /// User Script Sandboxing을 비활성화 (entitlements 에러 해결)
+  func setUserScriptSandboxing(_ value: Bool = false) -> SettingsDictionary {
+    let stringValue = value ? "YES" : "NO"
+    return merging([
+      "ENABLE_USER_SCRIPT_SANDBOXING": SettingValue(stringLiteral: stringValue)
+    ]) { _, new in new }
+  }
 }
 
 

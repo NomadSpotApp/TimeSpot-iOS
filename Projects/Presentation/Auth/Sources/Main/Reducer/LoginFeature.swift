@@ -28,6 +28,7 @@ public struct LoginFeature {
     var loginEntity: LoginEntity?
     var currentSocialType: SocialType?
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
+    @Shared(.appStorage("selectedMapType")) var selectedMapTypeStorage: ExternalMapType = .naverMap
 
     public init() {}
   }
@@ -235,6 +236,9 @@ extension LoginFeature {
         switch result {
           case .success(let loginEntity):
             state.loginEntity = loginEntity
+            state.$selectedMapTypeStorage.withLock {
+              $0 = loginEntity.mapType ?? .appleMap
+            }
 
             if loginEntity.isNewUser {
               return .send(.delegate(.presentTermsAgreement))
@@ -281,6 +285,7 @@ extension LoginFeature.State {
     hasher.combine(nonce)
     hasher.combine(appleAccessToken)
     hasher.combine(currentSocialType)
+    hasher.combine(selectedMapTypeStorage)
   }
 }
 

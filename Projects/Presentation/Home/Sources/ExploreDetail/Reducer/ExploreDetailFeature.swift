@@ -12,6 +12,7 @@ import Entity
 import UseCase
 import Utill
 import MapKit
+import LogMacro
 
 @Reducer
 public struct ExploreDetailFeature {
@@ -54,6 +55,7 @@ public struct ExploreDetailFeature {
   public enum View {
     case onAppear
     case hideLowStayTimeToast
+    case routeButtonTapped
   }
 
   public enum AsyncAction: Equatable {
@@ -64,7 +66,9 @@ public struct ExploreDetailFeature {
     case fetchPlaceDetailResponse(Result<PlaceDetailEntity, PlaceError>)
   }
 
-  public enum DelegateAction: Equatable {}
+  public enum DelegateAction: Equatable {
+    case presentRoute
+  }
 
   @Dependency(\.placeUseCase) var placeUseCase
 
@@ -104,6 +108,9 @@ extension ExploreDetailFeature {
     case .hideLowStayTimeToast:
       state.showLowStayTimeToast = false
       return .none
+
+    case .routeButtonTapped:
+      return .send(.delegate(.presentRoute))
     }
   }
 
@@ -140,7 +147,20 @@ extension ExploreDetailFeature {
     state: inout State,
     action: DelegateAction
   ) -> Effect<Action> {
-    switch action {}
+    switch action {
+    case .presentRoute:
+      // 장소 상세 정보의 위도와 경도를 UserSession에 저장
+      if let placeDetail = state.placeDetail {
+        state.$userSession.withLock {
+          // 목적지 정보 저장
+          $0.routeDestinationLat = placeDetail.latitude
+          $0.routeDestinationLng = placeDetail.longitude
+          $0.routeDestinationName = placeDetail.name
+        }
+        #logDebug("🛣️ [ExploreDetail Route] 저장됨 - 목적지: \(placeDetail.name), 위도: \(placeDetail.latitude), 경도: \(placeDetail.longitude)")
+      }
+      return .none
+    }
   }
 
   private func handleScopeAction(

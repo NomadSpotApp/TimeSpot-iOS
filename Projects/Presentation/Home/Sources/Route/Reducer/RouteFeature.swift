@@ -22,6 +22,7 @@ public struct RouteFeature {
   @ObservableState
   public struct State: Equatable {
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
+    @Shared(.appStorage("selectedMapType")) var selectedMapTypeStorage: ExternalMapType = .naverMap
     public var locationPermissionStatus: CLAuthorizationStatus = .notDetermined
     public var currentLocation: CLLocation?
     public var routeInfo: RouteInfo?
@@ -133,7 +134,7 @@ extension RouteFeature {
 
         let destination = CLLocationCoordinate2D(latitude: endLat, longitude: endLng)
         let destinationName = state.userSession.routeDestinationName.isEmpty ? "목적지" : state.userSession.routeDestinationName
-        let mapType = state.userSession.mapType
+        let mapType = state.selectedMapTypeStorage
 
         return .send(.async(.startNavigation(mapType: mapType, destination: destination, destinationName: destinationName)))
     }
