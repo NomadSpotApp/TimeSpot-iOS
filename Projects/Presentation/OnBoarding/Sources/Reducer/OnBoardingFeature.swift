@@ -77,7 +77,7 @@ public struct OnBoardingFeature {
   }
 
   @Dependency(\.signUpUseCase) var signUpUseCase
-  @Dependency(\.)
+  @Dependency(\.keychainManager) var keychainManager
 
   public var body: some Reducer<State, Action> {
     BindingReducer()
@@ -157,19 +157,23 @@ extension OnBoardingFeature {
   ) -> Effect<Action> {
     switch action {
       case .signup:
-        // 비회원인 경우 (isGuest = true 또는 accessToken이 비어있음) API 통신 없이 바로 onBoardingCompleted로 이동
-        if state.userSession.isGuest || state.userSession.accessToken.isEmpty {
-          return .send(.navigation(.onBoardingCompleted))
-        }
-
         return .run { [
           userSession = state.userSession
         ] send in
+          // Keychain에서 accessToken 확인
+          let accessToken = await keychainManager.accessToken()
+
+          // 비회원인 경우 (isGuest = true 또는 accessToken이 없음) API 통신 없이 바로 onBoardingCompleted로 이동
+          if userSession.isGuest && accessToken?.isEmpty != false {
+            await send(.navigation(.onBoardingCompleted))
+            return
+          }
+
           let signupResult = await Result {
             try await signUpUseCase.registerUser(userSession: userSession)
           }
             .mapError(SignUpError.from)
-          return await send(.inner(.signUpResponse(signupResult)))
+          await send(.inner(.signUpResponse(signupResult)))
         }
         .cancellable(id: CancelID.signup, cancelInFlight: true)
     }
