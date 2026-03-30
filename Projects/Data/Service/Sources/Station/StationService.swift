@@ -66,7 +66,8 @@ extension StationService: BaseTargetType {
   public var headers: [String : String]? {
     switch self {
     case .allStation:
-      return APIHeader.notAccessTokenHeader // 공개 API이므로 토큰 불필요
+      // accessToken이 있으면 baseHeader, 없으면 notAccessTokenHeader
+      return APIHeader.accessTokenKeyChain.isEmpty ? APIHeader.notAccessTokenHeader : APIHeader.baseHeader
     case .addFavoriteStation, .deleteFavoriteStation:
       return APIHeader.baseHeader // 인증 필요한 API
     }
