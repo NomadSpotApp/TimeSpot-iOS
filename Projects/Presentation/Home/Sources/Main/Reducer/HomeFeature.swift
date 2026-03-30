@@ -195,7 +195,7 @@ extension HomeFeature {
       guard let station = row.station else { return .none }
       state.selectedStation = station
       state.selectedStationID = row.stationID
-      state.selectedStationName = row.stationName
+        state.selectedStationName = row.stationName
       state.isSelected = false
       state.hasSelectedStation = true
       state.trainStation = nil
@@ -445,30 +445,6 @@ extension HomeFeature.State {
   }
 }
 
-private extension Date {
-  func normalizedDepartureTime(from currentTime: Date) -> Date {
-    let calendar = Calendar.current
-    let currentDateComponents = calendar.dateComponents([.year, .month, .day], from: currentTime)
-    let selectedTimeComponents = calendar.dateComponents([.hour, .minute], from: self)
-
-    var normalizedComponents = DateComponents()
-    normalizedComponents.year = currentDateComponents.year
-    normalizedComponents.month = currentDateComponents.month
-    normalizedComponents.day = currentDateComponents.day
-    normalizedComponents.hour = selectedTimeComponents.hour
-    normalizedComponents.minute = selectedTimeComponents.minute
-
-    guard let normalizedDate = calendar.date(from: normalizedComponents) else {
-      return self
-    }
-
-    if normalizedDate < currentTime {
-      return calendar.date(byAdding: .day, value: 1, to: normalizedDate) ?? normalizedDate
-    }
-
-    return normalizedDate
-  }
-}
 
 // MARK: - HomeReducer.State + Hashable
 extension HomeFeature.State: Hashable {

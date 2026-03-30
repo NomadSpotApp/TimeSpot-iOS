@@ -8,6 +8,7 @@
 import SwiftUI
 import DesignSystem
 import Entity
+import LogMacro
 
 import ComposableArchitecture
 
@@ -46,13 +47,15 @@ public struct ExploreListView: View {
 
           ScrollView(showsIndicators: false) {
             LazyVStack(spacing: 12) {
-              ForEach(filteredSpots) { spot in
+              let displaySpots = filteredSpots
+
+              ForEach(displaySpots) { spot in
                 ExploreSpotListCardView(spot: spot, store: store)
                   .onAppear {
                     guard shouldShowLoadMore else { return }
 
                     // 간단하게 마지막 3개 아이템 중 하나면 로드
-                    let lastFewSpots = filteredSpots.suffix(3)
+                    let lastFewSpots = displaySpots.suffix(3)
                     guard lastFewSpots.contains(where: { $0.id == spot.id }) else { return }
 
                     store.send(.view(.loadNextPage))
@@ -106,11 +109,24 @@ private extension ExploreListView {
     let query = store.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
     let sourceSpots = isFilteringLocally ? store.bufferedSpots : store.spots
 
-    return sourceSpots.filter { spot in
+    #logDebug("🎯 [UI 필터링] sourceSpots.count=\(sourceSpots.count), isFilteringLocally=\(isFilteringLocally), query='\(query)', selectedCategory=\(store.selectedCategory)")
+
+    let filtered = sourceSpots.filter { spot in
       let hasDetail = spot.hasDetail
       let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
-      return hasDetail && matchesQuery
+      let matchesCategory = store.selectedCategory == .all || spot.category == store.selectedCategory
+
+      let passes = hasDetail && matchesQuery && matchesCategory
+      if !passes {
+        #logDebug("🎯 [UI 필터링 실패] spot='\(spot.name)', hasDetail=\(hasDetail), matchesQuery=\(matchesQuery), matchesCategory=\(matchesCategory)")
+      }
+
+      return passes
     }
+
+    #logDebug("🎯 [UI 필터링 결과] filtered.count=\(filtered.count)")
+
+    return filtered
   }
 
   @ViewBuilder

@@ -348,6 +348,8 @@ public struct NaverMapComponent: UIViewRepresentable {
       asset = .cafePin
     case .restaurant:
       asset = .foodPin
+    case .shopping:
+      asset = .etcPin // TODO: shopping 전용 핀 아이콘 추가
     case .activity:
       asset = .gamePin
     case .etc:

@@ -75,15 +75,15 @@ public struct TrainStationView: View {
 
 extension TrainStationView {
   private var filteredFavoriteStations: [StationRowModel] {
-    filterRows(store.favoriteRows)
+    filterRows(Array(store.favoriteRows))
   }
 
   private var filteredNearbyStations: [StationRowModel] {
-    filterRows(store.nearbyRows)
+    filterRows(Array(store.nearbyRows))
   }
 
   private var filteredMajorStations: [StationRowModel] {
-    filterRows(store.majorRows)
+    filterRows(Array(store.majorRows))
   }
 
   private func filterRows(_ rows: [StationRowModel]) -> [StationRowModel] {

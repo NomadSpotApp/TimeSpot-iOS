@@ -13,42 +13,31 @@ import Entity
 import UseCase
 import Utill
 import IdentifiedCollections
+import LogMacro
 
-public enum ExploreListSort: String, CaseIterable, Equatable {
-  case stationNearest = "STATION_NEAREST"
-  case userNearest = "USER_NEAREST"
-
-  public var title: String {
-    switch self {
-    case .stationNearest:
-      return "역에서 가까운 순"
-    case .userNearest:
-      return "현재 위치로부터 가까운 순"
-    }
-  }
-}
 
 @Reducer
 public struct ExploreListFeature {
   public init() {}
 
   enum CancelID: Hashable {
-    case searchPlaces
+    case fetchPlaces
   }
 
   @ObservableState
   public struct State: Equatable {
-    public static let pageChunkSize = 10
+    public static let pageChunkSize = 50
 
     public var searchText: String = ""
     public var selectedCategory: ExploreCategory = .all
     public var selectedSort: ExploreListSort = .stationNearest
-    public var requestSortBy: String = "STATION_NEAREST"
+    public var requestSortBy: String = "distanceFromStation,ASC"
     public var spots: [ExploreMapSpot] = []
     public var bufferedSpots: [ExploreMapSpot] = []
-    public var currentPage: Int = 0
+    public var currentPage: Int = 1
     public var hasNextPage: Bool = true
     public var isLoading: Bool = false
+    public var placeError: PlaceError? = nil
     public var currentLocation: CLLocationCoordinate2D?
     public var markerLat: Double?
     public var markerLon: Double?
@@ -77,6 +66,7 @@ public struct ExploreListFeature {
     case categoryTapped(ExploreCategory)
     case sortTapped(ExploreListSort)
     case loadNextPage
+    case spotCardTapped(ExploreMapSpot)
     // Explore에서 데이터 동기화
     case syncSpotsFromExplore([ExploreMapSpot], currentPage: Int, hasNextPage: Bool)
   }
@@ -85,13 +75,13 @@ public struct ExploreListFeature {
 
   //MARK: - AsyncAction 비동기 처리 액션
   public enum AsyncAction: Equatable {
-    case searchPlaces(page: Int, append: Bool)
+    case fetchPlaces(page: Int, append: Bool, ignoreCategory: Bool = false)
   }
 
   //MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
-    case searchPlacesResponse(ExploreSpotPageEntity, append: Bool, requestedPage: Int)
-    case searchPlacesFailed(String)
+    case fetchPlacesResponse(PlaceSearchPageEntity, append: Bool, requestedPage: Int)
+    case fetchPlacesFailed(PlaceError)
     case forceResetLoading
   }
 
@@ -101,6 +91,7 @@ public struct ExploreListFeature {
 
   public enum DelegateAction: Equatable {
     case presentExploreMapAtCurrentLocation
+    case presentExploreDetail
   }
 
   @Dependency(\.placeUseCase) var placeUseCase
@@ -139,36 +130,52 @@ extension ExploreListFeature {
           return .none
         }
         state.hasLoadedInitialPage = true
-        return .send(.async(.searchPlaces(page: 0, append: false)))
+        return .send(.async(.fetchPlaces(page: 1, append: false, ignoreCategory: true)))
 
       case .searchTextChanged(let text):
         state.searchText = text
-        state.lastTriggeredLoadSpotID = nil
-        return .none
-
-      case .categoryTapped(let category):
-        state.selectedCategory = category
-        state.currentPage = 0
+        state.currentPage = 1
         state.hasNextPage = true
         state.lastTriggeredLoadSpotID = nil
         return .merge(
-          .cancel(id: CancelID.searchPlaces),
-          .send(.async(.searchPlaces(page: 0, append: false)))
+          .cancel(id: CancelID.fetchPlaces),
+          .send(.async(.fetchPlaces(page: 1, append: false, ignoreCategory: false)))
         )
+
+      case .categoryTapped(let category):
+        state.selectedCategory = category
+        state.lastTriggeredLoadSpotID = nil
+
+        // 기존 데이터가 있으면 로컬 필터링만, 없으면 API 호출
+        if !state.bufferedSpots.isEmpty {
+          #logDebug("🏷️ [카테고리 변경] selectedCategory=\(category), 기존 데이터 있음 - 로컬 필터링만 수행")
+          return .none
+        } else {
+          #logDebug("🏷️ [카테고리 변경] selectedCategory=\(category), 데이터 없음 - API 호출")
+          state.currentPage = 1
+          state.hasNextPage = true
+          return .merge(
+            .cancel(id: CancelID.fetchPlaces),
+            .send(.async(.fetchPlaces(page: 1, append: false, ignoreCategory: false)))
+          )
+        }
 
       case .sortTapped(let sort):
         state.selectedSort = sort
         state.requestSortBy = sort.rawValue
-        state.currentPage = 0
+        state.currentPage = 1
         state.hasNextPage = true
         state.lastTriggeredLoadSpotID = nil
         return .merge(
-          .cancel(id: CancelID.searchPlaces),
-          .send(.async(.searchPlaces(page: 0, append: false)))
+          .cancel(id: CancelID.fetchPlaces),
+          .send(.async(.fetchPlaces(page: 1, append: false, ignoreCategory: false)))
         )
 
       case .loadNextPage:
+        #logDebug("🔄 [ExploreList loadNextPage 호출] isLoading=\(state.isLoading), hasNextPage=\(state.hasNextPage)")
+
         guard !state.isLoading else {
+          #logDebug("🚫 [ExploreList loadNextPage 차단] 로딩 중이므로 요청 차단")
           // 5초 후 강제 리셋 (무한 로딩 방지)
           return .run { send in
             try await Task.sleep(nanoseconds: 5_000_000_000) // 5초
@@ -200,8 +207,18 @@ extension ExploreListFeature {
         }
 
         state.lastTriggeredLoadSpotID = currentLastSpotID
-        return .send(.async(.searchPlaces(page: state.currentPage, append: true)))
 
+        // 현재 버퍼 크기를 기준으로 다음 페이지 계산 (size=50 기준)
+        let nextPage = (state.bufferedSpots.count / 50) + 1
+
+        #logDebug("📄 [ExploreList loadNextPage] bufferedSpots.count=\(state.bufferedSpots.count), 계산된 nextPage=\(nextPage), hasNextPage=\(state.hasNextPage)")
+        return .send(.async(.fetchPlaces(page: nextPage, append: true, ignoreCategory: false)))
+
+      case .spotCardTapped(let spot):
+        state.$userSession.withLock {
+          $0.selectedExplorePlaceID = spot.id
+        }
+        return .send(.delegate(.presentExploreDetail))
 
       case .syncSpotsFromExplore(let spots, let currentPage, let hasNextPage):
         // Explore에서 전달받은 데이터로 동기화
@@ -220,7 +237,7 @@ extension ExploreListFeature {
     action: AsyncAction
   ) -> Effect<Action> {
     switch action {
-      case let .searchPlaces(page, append):
+      case let .fetchPlaces(page, append, ignoreCategory):
         guard !state.isLoading else {
           return .none
         }
@@ -233,20 +250,24 @@ extension ExploreListFeature {
         let userLon = state.currentLocation?.longitude ?? fallbackLon
         let trimmedKeyword = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let keyword = trimmedKeyword.isEmpty ? nil : trimmedKeyword
-        let category: ExploreCategory? = state.selectedCategory == .all ? nil : state.selectedCategory
+
+        // ignoreCategory가 true면 카테고리 조건 무시 (초기 로딩용)
+        let category: ExploreCategory? = ignoreCategory ? nil : (state.selectedCategory == .all ? nil : state.selectedCategory)
         let sortBy = state.requestSortBy
         let mapLat = state.markerLat ?? userSession.travelStationLat
         let mapLon = state.markerLon ?? userSession.travelStationLng
 
+        #logDebug("📤 [ExploreList 요청] page=\(page), keyword='\(keyword ?? "nil")', category=\(category?.rawValue ?? "nil"), selectedCategory=\(state.selectedCategory)")
+
         return .run { send in
           let result = await Result {
-            try await placeUseCase.searchPlaces(
+            try await placeUseCase.fetchPlaces(
               userSession: userSession,
               userLat: userLat,
               userLon: userLon,
               keyword: keyword,
               category: category,
-              sortBy: sortBy,
+              sort: sortBy,
               mapLat: mapLat,
               mapLon: mapLon,
               page: page
@@ -255,25 +276,20 @@ extension ExploreListFeature {
 
           switch result {
           case .success(let pageEntity):
-            let spots = makeSpots(from: pageEntity.content, userSession: userSession)
             await send(
               .inner(
-                .searchPlacesResponse(
-                  ExploreSpotPageEntity(
-                    spots: spots,
-                    currentPage: pageEntity.page + 1,
-                    hasNextPage: !pageEntity.isLastPage
-                  ),
+                .fetchPlacesResponse(
+                  pageEntity,
                   append: append,
                   requestedPage: page
                 )
               )
             )
           case .failure(let error):
-            await send(.inner(.searchPlacesFailed(error.localizedDescription)))
+            await send(.inner(.fetchPlacesFailed(PlaceError.from(error))))
           }
         }
-        .cancellable(id: CancelID.searchPlaces, cancelInFlight: true)
+        .cancellable(id: CancelID.fetchPlaces, cancelInFlight: true)
 
     }
   }
@@ -285,6 +301,8 @@ extension ExploreListFeature {
     switch action {
       case .presentExploreMapAtCurrentLocation:
         return .none
+      case .presentExploreDetail:
+        return .none
     }
   }
 
@@ -293,32 +311,50 @@ extension ExploreListFeature {
     action: InnerAction
   ) -> Effect<Action> {
     switch action {
-      case let .searchPlacesResponse(pageEntity, append, requestedPage):
+      case let .fetchPlacesResponse(pageEntity, append, _):
         // 무조건 로딩 해제 (중복 데이터여도)
         state.isLoading = false
 
+        #logDebug("📥 [ExploreList 응답] content.count=\(pageEntity.content.count), pageNumber=\(pageEntity.page), isLastPage=\(pageEntity.isLastPage)")
+
+        // PlaceEntity를 ExploreMapSpot으로 변환
+        let spots = makeSpots(from: pageEntity.content, userSession: state.userSession)
+
+        #logDebug("📥 [ExploreList 변환] spots.count=\(spots.count), spots.first?.name=\(spots.first?.name ?? "nil")")
+
         if append {
           let existingSpotIDs = Set(state.bufferedSpots.map(\.id))
-          let uniqueNewSpots = pageEntity.spots.filter { !existingSpotIDs.contains($0.id) }
+          let uniqueNewSpots = spots.filter { !existingSpotIDs.contains($0.id) }
 
-          // 중복 데이터만 있어도 페이지는 업데이트
-          state.currentPage = requestedPage + 1
-          state.hasNextPage = pageEntity.hasNextPage
+          // 페이지 업데이트
+          state.currentPage = max(pageEntity.page, 1)
+          state.hasNextPage = !pageEntity.isLastPage
+
+          #logDebug("📥 [ExploreList append] uniqueNewSpots.count=\(uniqueNewSpots.count), totalBuffered=\(state.bufferedSpots.count), currentPage=\(state.currentPage)")
 
           if !uniqueNewSpots.isEmpty {
             state.bufferedSpots.append(contentsOf: uniqueNewSpots)
             revealNextChunk(state: &state)
+          } else {
+            #logDebug("🚨 [ExploreList] 중복 데이터만 있음 - 무한 스크롤 계속 진행")
+            // 중복이어도 페이지는 증가시켜서 다음 페이지를 시도
           }
         } else {
-          state.bufferedSpots = pageEntity.spots
-          state.spots = pageEntity.spots  // 카테고리 변경 시 모든 데이터 바로 표시
-          state.currentPage = requestedPage + 1
-          state.hasNextPage = pageEntity.hasNextPage
+          state.bufferedSpots = spots
+          state.spots = spots  // 카테고리 변경 시 모든 데이터 바로 표시
+          state.currentPage = max(pageEntity.page, 1)
+          state.hasNextPage = !pageEntity.isLastPage
+
+          #logDebug("📥 [ExploreList 초기] bufferedSpots.count=\(state.bufferedSpots.count), spots.count=\(state.spots.count), currentPage=\(state.currentPage)")
         }
+
+        let filteredCount = filteredSpots(from: state.spots, state: state).count
+        #logDebug("📥 [ExploreList 필터링] filteredSpots.count=\(filteredCount), searchText='\(state.searchText)', selectedCategory=\(state.selectedCategory)")
 
         return .none
 
-      case .searchPlacesFailed:
+      case .fetchPlacesFailed(let error):
+        state.placeError = error
         state.isLoading = false
         return .none
 
@@ -359,11 +395,21 @@ private extension ExploreListFeature {
   func filteredSpots(from spots: [ExploreMapSpot], state: State) -> [ExploreMapSpot] {
     let query = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
 
-    return spots.filter { spot in
+    #logDebug("🔍 [필터링 시작] totalSpots=\(spots.count), query='\(query)', selectedCategory=\(state.selectedCategory)")
+
+    let filtered = spots.filter { spot in
       let hasDetail = spot.hasDetail
       let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
-      return hasDetail && matchesQuery
+      let matchesCategory = state.selectedCategory == .all || spot.category == state.selectedCategory
+
+      #logDebug("🔍 [필터링 체크] spot='\(spot.name)', category=\(spot.category), hasDetail=\(hasDetail), matchesQuery=\(matchesQuery), matchesCategory=\(matchesCategory)")
+
+      return hasDetail && matchesQuery && matchesCategory
     }
+
+    #logDebug("🔍 [필터링 완료] 결과=\(filtered.count)개")
+
+    return filtered
   }
 
   func makeSpots(
@@ -407,11 +453,12 @@ private extension ExploreListFeature {
         imageURL: place.imageURL,
         badgeText: place.stayableMinutes > 0 ? "\(place.stayableMinutes)분 체류 가능" : "",
         subtitle: place.category.title,
-        statusText: place.isOpen ? "영업 중" : "영업 종료",
+        statusText: place.visitable ? "영업 중" : "영업 종료",
         closingText: closingText,
         distanceText: distanceText,
         walkTimeText: walkTimeText,
-        address: place.address
+        address: place.address,
+        visitable: place.visitable
       )
     }
   }
@@ -423,6 +470,7 @@ extension ExploreListFeature.State: Hashable {
     && lhs.selectedCategory == rhs.selectedCategory
     && lhs.selectedSort == rhs.selectedSort
     && lhs.spots == rhs.spots
+    && lhs.placeError == rhs.placeError
     && lhs.currentLocation?.latitude == rhs.currentLocation?.latitude
     && lhs.currentLocation?.longitude == rhs.currentLocation?.longitude
     && lhs.userSession == rhs.userSession
@@ -433,6 +481,7 @@ extension ExploreListFeature.State: Hashable {
     hasher.combine(selectedCategory)
     hasher.combine(selectedSort)
     hasher.combine(spots)
+    hasher.combine(placeError)
     hasher.combine(currentLocation?.latitude)
     hasher.combine(currentLocation?.longitude)
     hasher.combine(userSession)

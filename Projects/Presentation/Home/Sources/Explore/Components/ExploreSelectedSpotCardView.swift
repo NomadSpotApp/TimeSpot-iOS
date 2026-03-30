@@ -41,10 +41,6 @@ struct ExploreSelectedSpotCardView: View {
         .onChanged(onDragChanged)
         .onEnded(onDragEnded)
     )
-    .onAppear {
-    }
-    .onChange(of: currentSpot.id) { _ in
-    }
   }
 
   private func cardContent(for spot: ExploreMapSpot) -> some View {
@@ -129,16 +125,17 @@ struct ExploreSelectedSpotCardView: View {
       .padding(.top, 16)
       .padding(.bottom, 20)
 
-      Button(action: onRouteTap) {
-        Text("경로 확인하기")
+      Button(action: spot.visitable ? onRouteTap : {}) {
+        Text(spot.visitable ? "경로 확인하기" : "방문 불가")
           .pretendardCustomFont(textStyle: .bodyBold)
           .foregroundStyle(.staticWhite)
           .frame(maxWidth: .infinity)
           .frame(height: 55)
-          .background(.navy900)
+          .background(spot.visitable ? .navy900 : .gray500)
           .clipShape(RoundedRectangle(cornerRadius: 25))
       }
       .buttonStyle(.plain)
+      .disabled(!spot.visitable)
       .padding(.horizontal, 16)
       .padding(.bottom, 12)
     }

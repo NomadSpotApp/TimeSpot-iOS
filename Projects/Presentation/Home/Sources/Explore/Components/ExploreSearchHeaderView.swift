@@ -114,8 +114,10 @@ struct ExploreSearchHeaderView: View {
       targetCategory = .all
     case .restaurant:
       targetCategory = .cafe
-    case .activity:
+    case .shopping:
       targetCategory = .restaurant
+    case .activity:
+      targetCategory = .shopping
     case .etc:
       targetCategory = .activity
     }

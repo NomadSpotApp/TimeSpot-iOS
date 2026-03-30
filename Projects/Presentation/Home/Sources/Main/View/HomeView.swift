@@ -170,7 +170,7 @@ extension HomeView {
           .foregroundStyle(.gray900.opacity(0.9))
           .padding(.bottom, 4)
 
-        Text(store.selectedStation.homeTitle)
+        Text(store.hasSelectedStation ? store.selectedStation.displayName : store.selectedStation.homeTitle)
           .pretendardFont(family: .Bold, size: 64)
           .foregroundStyle(store.isSelected || store.hasSelectedStation ? .gray900 : .slateGray)
           .tracking(-2.2)

@@ -64,13 +64,6 @@ public struct ExploreHelpers {
     return state.selectedCategory == .all ? nil : state.selectedCategory
   }
 
-  public static func isSameCoordinate(_ lhs: Double?, _ rhs: Double?, tolerance: Double = 0.000001) -> Bool {
-    guard let lhs = lhs, let rhs = rhs else {
-      return lhs == nil && rhs == nil
-    }
-
-    return abs(lhs - rhs) < tolerance
-  }
 
   public static func isResolvingSelectedMarkerDetail(state: ExploreFeature.State) -> Bool {
     let selectedSpotID = state.userSession.selectedExploreSpotID
@@ -80,9 +73,6 @@ public struct ExploreHelpers {
     return spot?.hasDetail == false
   }
 
-  public static func hasUnresolvedBaseSpots(_ spots: [ExploreMapSpot]) -> Bool {
-    return spots.contains { !$0.hasDetail }
-  }
 
   // MARK: - Filtered Data
 

@@ -25,6 +25,7 @@ public struct ExploreDetailFeature {
     public var shouldDismiss: Bool = false
     @Presents public var customAlert: CustomAlertState<CustomAlertAction>?
     public var customAlertMode: CustomAlertMode?
+    public var showLowStayTimeToast: Bool = false
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
 
     public init() {}
@@ -52,6 +53,7 @@ public struct ExploreDetailFeature {
   @CasePathable
   public enum View {
     case onAppear
+    case hideLowStayTimeToast
   }
 
   public enum AsyncAction: Equatable {
@@ -98,6 +100,10 @@ extension ExploreDetailFeature {
     switch action {
     case .onAppear:
       return .send(.async(.fetchPlaceDetail))
+
+    case .hideLowStayTimeToast:
+      state.showLowStayTimeToast = false
+      return .none
     }
   }
 
@@ -184,6 +190,12 @@ extension ExploreDetailFeature {
             confirmTitle: "확인",
             cancelTitle: "취소"
           )
+        } else {
+          // 체류시간이 10분 미만이면 토스트 표시
+          let remainingMinutes = calculateRemainingStayableMinutes(detail: detail, fetchedAt: state.userSession.explorePlacesFetchedAt)
+          if remainingMinutes > 0 && remainingMinutes < 10 {
+            state.showLowStayTimeToast = true
+          }
         }
       case .failure(let error):
         state.errorMessage = error.errorDescription
@@ -211,6 +223,19 @@ extension ExploreDetailFeature {
     }
     return max(detail.stayableMinutes - elapsedMinutes, 0) <= 0
   }
+
+  private func calculateRemainingStayableMinutes(
+    detail: PlaceDetailEntity,
+    fetchedAt: Date?
+  ) -> Int {
+    let elapsedMinutes: Int
+    if let fetchedAt {
+      elapsedMinutes = max(Int(Date().timeIntervalSince(fetchedAt) / 60), 0)
+    } else {
+      elapsedMinutes = 0
+    }
+    return max(detail.stayableMinutes - elapsedMinutes, 0)
+  }
 }
 
 extension ExploreDetailFeature.State: Hashable {
@@ -226,10 +251,10 @@ extension ExploreDetailFeature.State: Hashable {
 extension ExploreDetailFeature.State {
 
   var imageCards: [URL?] {
-    let urls = placeDetail?.imageURL.compactMap { urlString -> URL? in
+    let urls = placeDetail?.images.compactMap { urlString -> URL? in
       // Google Places API URL에 대한 특별한 처리
       if urlString.contains("places.googleapis.com") {
-        return URL(string: urlString.trimmingCharacters(in: .whitespacesAndNewlines))
+        return URL(string: urlString.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines))
       }
       return urlString.normalizedURL
     } ?? []
@@ -250,7 +275,7 @@ extension ExploreDetailFeature.State {
 
   var distanceText: String {
     if let placeDetail = placeDetail {
-      return "\(placeDetail.distanceToStation)m"
+      return "\(placeDetail.distanceFromStation)m"
     }
     return ""
   }
@@ -287,7 +312,8 @@ extension ExploreDetailFeature.State {
   }
 
   var isVisitUnavailable: Bool {
-    remainingStayableMinutes <= 0
+    guard let detail = placeDetail else { return true }
+    return !detail.visitable
   }
 
   var returnDeadlineSuffixText: String {
@@ -295,23 +321,18 @@ extension ExploreDetailFeature.State {
   }
 
   var openingHoursText: String {
-    let weekdayText = summarizedOpeningHours(from: placeDetail?.weekday ?? [])
-    let weekendText = summarizedOpeningHours(from: placeDetail?.weekend ?? [])
-
-    switch (weekdayText.isEmpty, weekendText.isEmpty) {
-    case (false, false):
-      return "평일 \(weekdayText), 주말 \(weekendText)"
-    case (false, true):
-      return "평일 \(weekdayText)"
-    case (true, false):
-      return "주말 \(weekendText)"
-    case (true, true):
-      return "영업 시간 정보 준비 중"
+    if let useTime = placeDetail?.useTime, !useTime.isEmpty {
+      // HTML 태그 제거 및 개행 문자 처리
+      return useTime
+        .replacingOccurrences(of: "<br>", with: "\n")
+        .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+        .trimmingCharacters(in: .whitespacesAndNewlines)
     }
+    return "영업 시간 정보 준비 중"
   }
 
   var phoneNumberText: String {
-    placeDetail?.phoneNumber.nilIfEmpty ?? "전화번호 정보 준비 중"
+    "전화번호 정보 준비 중"
   }
 
   var addressText: String {
@@ -324,7 +345,7 @@ extension ExploreDetailFeature.State {
 
   var walkMinutesText: String {
     if let placeDetail = placeDetail {
-      return "\(placeDetail.timeToStation)분"
+      return "\(placeDetail.walkTimeFromStation)분"
     }
     return "0분"
   }
@@ -332,8 +353,8 @@ extension ExploreDetailFeature.State {
   var mapCoordinate: CLLocationCoordinate2D {
     if let placeDetail = placeDetail {
       return CLLocationCoordinate2D(
-        latitude: placeDetail.stationLat,
-        longitude: placeDetail.stationLon
+        latitude: placeDetail.latitude,
+        longitude: placeDetail.longitude
       )
     }
 
