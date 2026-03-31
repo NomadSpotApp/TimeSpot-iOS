@@ -44,43 +44,38 @@ public struct LocationUseCaseImpl: LocationUseCaseInterface {
   public init() {}
 
   public func getAuthorizationStatus() async -> CLAuthorizationStatus {
-    let locationManager = await LocationPermissionManager.shared
-    return await locationManager.authorizationStatus
+    await MainActor.run {
+      LocationPermissionManager.shared.authorizationStatus
+    }
   }
 
   public func requestLocationPermission() async -> CLAuthorizationStatus {
-    let locationManager = await LocationPermissionManager.shared
-    return await locationManager.requestLocationPermission()
+    await LocationPermissionManager.shared.requestLocationPermission()
   }
 
   public func requestFullAccuracy() async {
-    let locationManager = await LocationPermissionManager.shared
-    await locationManager.requestFullAccuracy()
+    await LocationPermissionManager.shared.requestFullAccuracy()
   }
 
   public func startLocationUpdates(
     onUpdate: @escaping @Sendable (CLLocation) -> Void,
     onError: @escaping @Sendable (Error) -> Void
   ) async {
-    let locationManager = await LocationPermissionManager.shared
-    await locationManager.setLocationUpdateCallback(onUpdate)
-    await locationManager.setLocationErrorCallback(onError)
-    await locationManager.startLocationUpdates()
+    await LocationPermissionManager.shared.setLocationUpdateCallback(onUpdate)
+    await LocationPermissionManager.shared.setLocationErrorCallback(onError)
+    await LocationPermissionManager.shared.startLocationUpdates()
   }
 
   public func stopLocationUpdates() async {
-    let locationManager = await LocationPermissionManager.shared
-    await locationManager.stopLocationUpdates()
+    await LocationPermissionManager.shared.stopLocationUpdates()
   }
 
   public func requestCurrentLocation() async throws -> CLLocation? {
-    let locationManager = await LocationPermissionManager.shared
-    return try await locationManager.requestCurrentLocation()
+    try await LocationPermissionManager.shared.requestCurrentLocation()
   }
 
   public func isLocationServicesEnabled() async -> Bool {
-    let locationManager = await LocationPermissionManager.shared
-    return await locationManager.isLocationServicesEnabled()
+    await LocationPermissionManager.shared.isLocationServicesEnabled()
   }
 }
 

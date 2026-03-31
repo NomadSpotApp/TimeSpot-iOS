@@ -290,18 +290,18 @@ extension HomeFeature {
 
     case .requestHomeLocationPermission:
       return .run { _ in
-        let locationManager = await LocationPermissionManager.shared
-        let currentStatus = await locationManager.authorizationStatus
+        let currentStatus = await MainActor.run {
+          LocationPermissionManager.shared.authorizationStatus
+        }
 
         guard currentStatus == .notDetermined else { return }
 
-        _ = await locationManager.requestLocationPermission()
+        _ = await LocationPermissionManager.shared.requestLocationPermission()
       }
 
     case .requestExploreLocationPermission:
       return .run { send in
-        let locationManager = await LocationPermissionManager.shared
-        let status = await locationManager.requestLocationPermission()
+        let status = await LocationPermissionManager.shared.requestLocationPermission()
         let isGranted = status == .authorizedWhenInUse || status == .authorizedAlways
         await send(.inner(.exploreLocationPermissionChecked(isGranted)))
       }
