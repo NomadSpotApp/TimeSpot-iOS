@@ -140,10 +140,6 @@ extension ExploreFeature.AsyncAction {
       return true
     case (.fetchPlaces(let lhsPage, let lhsAppend), .fetchPlaces(let rhsPage, let rhsAppend)):
       return lhsPage == rhsPage && lhsAppend == rhsAppend
-    case (.searchRoute(let lhsFrom, let lhsTo), .searchRoute(let rhsFrom, let rhsTo)):
-      return lhsFrom.latitude == rhsFrom.latitude
-      && lhsFrom.longitude == rhsFrom.longitude
-      && lhsTo == rhsTo
     default:
       return false
     }

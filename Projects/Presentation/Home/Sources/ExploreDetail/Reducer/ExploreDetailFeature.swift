@@ -117,8 +117,6 @@ extension ExploreDetailFeature {
           userSession.routeDestinationLng = placeDetail.longitude
           userSession.routeDestinationName = placeDetail.name
         }
-
-        #logDebug("🗺️ [ExploreDetail] Route destination saved: \(placeDetail.name) at (\(placeDetail.latitude), \(placeDetail.longitude))")
       }
 
       return .send(.delegate(.presentRoute))
@@ -168,7 +166,6 @@ extension ExploreDetailFeature {
           $0.routeDestinationLng = placeDetail.longitude
           $0.routeDestinationName = placeDetail.name
         }
-        #logDebug("🛣️ [ExploreDetail Route] 저장됨 - 목적지: \(placeDetail.name), 위도: \(placeDetail.latitude), 경도: \(placeDetail.longitude)")
       }
       return .none
     }

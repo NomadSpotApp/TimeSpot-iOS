@@ -57,13 +57,13 @@ final public class AuthRepositoryImpl: AuthInterface, @unchecked Sendable {
       // ✅ TokenRefresher에서 keychain 저장과 credential 업데이트를 담당하므로 중복 제거
       return refreshData
     } catch {
-      #logDebug("🔍 [AuthRepositoryImpl] Refresh failed: \(error)")
+      #logDebug(" [AuthRepositoryImpl] Refresh failed: \(error)")
 
       // 401 에러 감지 및 처리는 AuthInterceptor에서 처리하므로 여기서는 단순히 에러 전달
       // AuthInterceptor가 더 정확하고 포괄적인 401 에러 감지를 수행
       let errorString = String(describing: error)
       if errorString.contains("statusCodeError(401)") {
-        #logDebug("🚪 [AuthRepositoryImpl] statusCodeError(401) detected - AuthInterceptor will handle logout")
+        #logDebug(" [AuthRepositoryImpl] statusCodeError(401) detected - AuthInterceptor will handle logout")
         throw AuthError.refreshTokenExpired
       }
 
@@ -71,10 +71,10 @@ final public class AuthRepositoryImpl: AuthInterface, @unchecked Sendable {
       if let moyaError = error as? MoyaError {
         switch moyaError {
         case .statusCode(let response) where response.statusCode == 401:
-          #logDebug("🚪 [AuthRepositoryImpl] MoyaError statusCode 401 detected - AuthInterceptor will handle logout")
+          #logDebug(" [AuthRepositoryImpl] MoyaError statusCode 401 detected - AuthInterceptor will handle logout")
           throw AuthError.refreshTokenExpired
         case .underlying(_, let response) where response?.statusCode == 401:
-          #logDebug("🚪 [AuthRepositoryImpl] MoyaError underlying 401 detected - AuthInterceptor will handle logout")
+          #logDebug(" [AuthRepositoryImpl] MoyaError underlying 401 detected - AuthInterceptor will handle logout")
           throw AuthError.refreshTokenExpired
         default:
           break
@@ -84,7 +84,7 @@ final public class AuthRepositoryImpl: AuthInterface, @unchecked Sendable {
       // 에러 메시지에서 401 키워드 체크
       let errorDesc = error.localizedDescription.lowercased()
       if errorDesc.contains("401") || errorDesc.contains("유효하지 않은 토큰") {
-        #logDebug("🚪 [AuthRepositoryImpl] Error description contains 401/invalid token - AuthInterceptor will handle logout")
+        #logDebug(" [AuthRepositoryImpl] Error description contains 401/invalid token - AuthInterceptor will handle logout")
         throw AuthError.refreshTokenExpired
       }
 

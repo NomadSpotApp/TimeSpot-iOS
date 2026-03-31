@@ -105,9 +105,6 @@ public struct ExploreFeature: Sendable {
     case cardDragEnded(CGFloat)
     case loadNextSpotPage
     case mapCenterChanged(CLLocationCoordinate2D)
-    // 길찾기 관련 액션
-    case searchRouteToGangnam
-    case clearRoute
     case returnToCurrentLocation
   }
 
@@ -118,9 +115,6 @@ public struct ExploreFeature: Sendable {
     case fetchPlacesInitialResponse(ExploreSpotPageEntity, usedCurrentLocation: Bool)
     case fetchPlacesPageResponse(ExploreSpotPageEntity, request: FetchPlacesRequest)
     case fetchPlacesFailed(PlaceError, usedCurrentLocation: Bool)
-    // 길찾기 관련 액션
-    case routeSearchStarted(Destination)
-    case routeSearchResponse(Result<RouteInfo, DirectionError>)
     // 지도 카메라 제어
     case resetCameraFlag
     case completeCardSwipe(next: Bool)
@@ -134,7 +128,6 @@ public struct ExploreFeature: Sendable {
     case stopLocationUpdates
     case requestCurrentLocation
     case fetchPlaces(page: Int, append: Bool)
-    case searchRoute(from: CLLocationCoordinate2D, to: Destination)
   }
 
 
@@ -181,7 +174,7 @@ extension ExploreFeature {
     switch action {
       case .onAppear:
         let shouldBootstrap = state.spots.isEmpty && !state.hasRequestedPlaces
-        #logDebug("📱 [ExploreFeature] onAppear - spots.count: \(state.spots.count), hasRequestedPlaces: \(state.hasRequestedPlaces), shouldBootstrap: \(shouldBootstrap)")
+
 
         if let lat = state.userSession.travelStationLat,
            let lng = state.userSession.travelStationLng {
@@ -192,7 +185,7 @@ extension ExploreFeature {
         }
 
         guard shouldBootstrap else {
-          #logDebug("📱 [ExploreFeature] shouldBootstrap false - fetchPlaces 건너뜀")
+
           ExploreHelpers.syncSelectedSpot(state: &state)
           return .run { send in
             let currentStatus = await locationUseCase.getAuthorizationStatus()
@@ -260,7 +253,7 @@ extension ExploreFeature {
           $0.selectedExplorePlaceID = spotID
         }
         state.isSpotCardVisible = state.spots.contains(where: { $0.id == spotID && $0.hasDetail })
-        #logDebug(" [ExploreReducer] spotTapped id=\(spotID), hasDetail=\(state.isSpotCardVisible)")
+
         guard !state.spots.contains(where: { $0.id == spotID && $0.hasDetail }),
               let markerSpot = state.spots.first(where: { $0.id == spotID }) else {
           return .none
@@ -342,27 +335,9 @@ extension ExploreFeature {
         state.mapCenterLon = coordinate.longitude
         return .none
 
-      // 길찾기 관련 액션
-      case .searchRouteToGangnam:
-        guard let currentLocation = state.currentLocation else {
-          state.routeError = "현재 위치를 확인할 수 없습니다"
-          return .none
-        }
-
-        let destination = PredefinedDestinations.gangnamStation
-        return .send(.async(.searchRoute(
-          from: currentLocation.coordinate,
-          to: destination
-        )))
-
-      case .clearRoute:
-        state.selectedDestination = nil
-        state.routeInfo = nil
-        state.routeError = nil
-        return .none
 
       case .returnToCurrentLocation:
-        #logDebug("🟡 [CurrentLocationButton] CameraUseCase 사용")
+
 
         // CameraUseCase를 통한 스팟 클리어 처리
         let clearResult = cameraUseCase.clearSelectedSpotForLocationReturn(
@@ -396,7 +371,7 @@ extension ExploreFeature {
         }
 
         state.returnToCurrentLocationTrigger = cameraResult.newTrigger
-        #logDebug("🟢 [CurrentLocationButton] CameraUseCase 처리 완료")
+
         return .none
 
     }
@@ -461,11 +436,11 @@ extension ExploreFeature {
         return .none
 
       case .fetchPlacesInitialResponse(let pageEntity, let usedCurrentLocation):
-        #logDebug("🎯 [fetchPlacesInitialResponse] pageEntity.spots.count: \(pageEntity.spots.count)")
+
         state.isLoadingPlaces = false
         state.hasRequestedPlaces = false
         state.spots = pageEntity.spots
-        #logDebug("🎯 [fetchPlacesInitialResponse] state.spots.count 설정 완료: \(state.spots.count)")
+
         state.currentPage = pageEntity.currentPage
         state.hasNextPage = pageEntity.hasNextPage || pageEntity.spots.contains { !$0.hasDetail }
         state.hasFetchedPlacesWithCurrentLocation = usedCurrentLocation
@@ -592,32 +567,10 @@ extension ExploreFeature {
         if usedCurrentLocation {
           state.hasFetchedPlacesWithCurrentLocation = false
         }
-        #logDebug("🎯 [fetchPlacesFailed] 장소 조회 실패: \(error.localizedDescription)")
         state.spots = []
-        #logDebug("🎯 [fetchPlacesFailed] spots 초기화 완료")
         ExploreHelpers.clearSelectedSpot(state: &state)
         return .none
 
-
-      // 길찾기 관련 액션
-      case .routeSearchStarted(let destination):
-        state.selectedDestination = destination
-        state.isLoadingRoute = true
-        state.routeError = nil
-        return .none
-
-      case .routeSearchResponse(let result):
-        state.isLoadingRoute = false
-        switch result {
-        case .success(let routeInfo):
-          state.routeInfo = routeInfo
-          state.routeError = nil
-          #logDebug(" [ExploreReducer] 경로 검색 완료: \(routeInfo.distance)m, \(routeInfo.duration)분")
-        case .failure(let error):
-          state.routeError = error.localizedDescription
-          #logDebug(" [ExploreReducer] 경로 검색 실패: \(error.localizedDescription)")
-        }
-        return .none
 
       case .resetCameraFlag:
         let cameraResult = cameraUseCase.resetCameraFlag()
@@ -629,7 +582,6 @@ extension ExploreFeature {
       case .completeCardSwipe(let next):
         let cardSpots = state.cardSpots
         guard !cardSpots.isEmpty else {
-          #logDebug(" [ExploreReducer] completeCardSwipe ignored: cardSpots empty")
           return .none
         }
 
@@ -760,28 +712,21 @@ extension ExploreFeature {
           let notLoading = !state.isLoadingPlaces
           let notRequested = !state.hasRequestedPlaces
 
-          #logDebug("🚀 [초기로딩 조건] travelID=\(travelIDExists), stationLat=\(stationLatExists), stationLng=\(stationLngExists), notLoading=\(notLoading), notRequested=\(notRequested)")
 
           guard travelIDExists, stationLatExists, stationLngExists, notLoading, notRequested else {
-            #logDebug("🚨 [초기로딩 조건 실패] - 페이지네이션으로 전환")
             return .none
           }
 
-          #logDebug("🚀 [초기로딩 시작] fetchInitialExploreSpots 호출 (size=200)")
         } else {
           // 페이지네이션 조건
           let travelIDExists = Int(state.userSession.travelID) != nil
           let notLoading = !state.isLoadingPlaces
           let notRequested = !state.hasRequestedPlaces
 
-          #logDebug("🔍 [페이지네이션 조건] travelID=\(travelIDExists), notLoading=\(notLoading), notRequested=\(notRequested)")
 
           guard travelIDExists, notLoading, notRequested else {
-            #logDebug("🚨 [페이지네이션 조건 실패] - 요청 취소")
             return .none
           }
-
-          #logDebug("🔍 [페이지네이션 시작] searchExploreSpots 호출 (size=10)")
         }
 
         state.isLoadingPlaces = true
@@ -795,7 +740,6 @@ extension ExploreFeature {
 
         if isInitialLoad {
           // 초기 로딩: fetchInitialExploreSpots 사용
-          #logDebug("✅ [실제 호출] fetchInitialExploreSpots (size=200)")
           return .run { send in
             let result = await Result {
               try await placeUseCase.fetchInitialExploreSpots(
@@ -807,7 +751,6 @@ extension ExploreFeature {
 
             switch result {
             case .success(let entities):
-              #logDebug("🎯 [fetchPlaces SUCCESS] entities.spots.count: \(entities.spots.count), dispatch fetchPlacesInitialResponse")
               await send(.inner(.fetchPlacesInitialResponse(entities, usedCurrentLocation: usedCurrentLocation)))
             case .failure(let error):
               await send(.inner(.fetchPlacesFailed(PlaceError.from(error), usedCurrentLocation: usedCurrentLocation)))
@@ -816,7 +759,6 @@ extension ExploreFeature {
           .cancellable(id: CancelID.fetchPlaces, cancelInFlight: true)
         } else {
           // 페이지네이션: searchExploreSpots 사용
-          #logDebug("✅ [실제 호출] searchExploreSpots (size=10)")
           let rawKeyword = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
           let isResolvingSelectedMarkerDetail = ExploreHelpers.isResolvingSelectedMarkerDetail(state: state)
           let mapLat = isResolvingSelectedMarkerDetail
@@ -869,25 +811,6 @@ extension ExploreFeature {
           .cancellable(id: CancelID.fetchPlaces, cancelInFlight: true)
         }
 
-      // 길찾기 관련 액션
-      case .searchRoute(let from, let destination):
-        return .run { send in
-          // 경로 검색 시작 알림
-          await send(.inner(.routeSearchStarted(destination)))
-
-          let routeResult = await Result {
-            try await getRouteUseCase.execute(
-              from: from,
-              to: destination.coordinate,
-              option: .traoptimal  // 최적 경로로 변경
-            )
-          }
-          .mapError(DirectionError.from)
-
-          await send(.inner(.routeSearchResponse(routeResult)))
-        }
-        .cancellable(id: CancelID.searchRoute, cancelInFlight: true)
-
     }
   }
 
@@ -927,7 +850,6 @@ extension ExploreFeature {
               $0.routeStartLng = currentLocation.coordinate.longitude
             }
           }
-          #logDebug("🛣️ [Route] 저장됨 - 목적지: \(selectedSpot.name), 위도: \(selectedSpot.coordinate.latitude), 경도: \(selectedSpot.coordinate.longitude)")
         }
         return .none
     }

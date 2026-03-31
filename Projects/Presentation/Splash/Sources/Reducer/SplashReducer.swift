@@ -113,7 +113,6 @@ extension SplashReducer {
         state.$userSession.withLock {
           $0.mapType = state.selectedMapTypeStorage
         }
-        #logDebug("🗺️ [Splash] AppStorage mapType을 UserSession에 동기화: \(state.selectedMapTypeStorage)")
         return .none
 
       case .checkToken:
@@ -161,7 +160,6 @@ extension SplashReducer {
           $0.isGuest = !hasToken
         }
 
-        #logDebug("🔐 [Splash] Token check: hasToken=\(hasToken), isGuest=\(!hasToken)")
 
         if hasToken {
           // 토큰이 있으면 메인 화면으로

@@ -29,7 +29,7 @@ public struct RouteUseCaseImpl: DirectionInterface {
         to destination: CLLocationCoordinate2D,
         option: RouteOption = .walking
     ) async throws -> RouteInfo {
-      #logDebug("🎯 [GetRouteUseCase] 경로 검색 시작: \(option.displayName)")
+      #logDebug(" [GetRouteUseCase] 경로 검색 시작: \(option.displayName)")
 
         do {
             let routeInfo = try await getRoute(
@@ -38,10 +38,10 @@ public struct RouteUseCaseImpl: DirectionInterface {
                 option: option
             )
 
-          #logDebug("✅ [GetRouteUseCase] 경로 검색 완료: \(routeInfo.distance)m, \(routeInfo.duration)분")
+          #logDebug(" [GetRouteUseCase] 경로 검색 완료: \(routeInfo.distance)m, \(routeInfo.duration)분")
             return routeInfo
         } catch {
-            #logDebug("❌ [GetRouteUseCase] 경로 검색 실패: \(error)")
+            #logDebug(" [GetRouteUseCase] 경로 검색 실패: \(error)")
             throw error
         }
     }
@@ -65,12 +65,12 @@ public struct RouteUseCaseImpl: DirectionInterface {
     destination: CLLocationCoordinate2D,
     destinationName: String
   ) async {
-    #logDebug("🧭 [RouteUseCase] 길찾기 시작: \(destinationName) (\(mapType.description))")
+    #logDebug(" [RouteUseCase] 길찾기 시작: \(destinationName) (\(mapType.description))")
 
     // 네이버 지도의 경우 앱 설치 여부를 먼저 확인
     if mapType == .naverMap {
       let isInstalled = await checkNaverMapInstallation()
-      #logDebug("🗺️ [RouteUseCase] 네이버지도 앱 설치 상태: \(isInstalled)")
+      #logDebug(" [RouteUseCase] 네이버지도 앱 설치 상태: \(isInstalled)")
     }
 
     switch mapType {
@@ -88,37 +88,32 @@ public struct RouteUseCaseImpl: DirectionInterface {
   /// 네이버 지도 앱 설치 여부 확인 (강화된 디버깅)
   @MainActor
   private func checkNaverMapInstallation() -> Bool {
-    #logDebug("🔍 [RouteUseCase] 네이버지도 앱 설치 여부 확인 시작")
-
     let naverMapSchemes = ["nmap://", "nmapmobile://", "navermap://"]
 
     for scheme in naverMapSchemes {
       if let url = URL(string: scheme) {
         let canOpen = UIApplication.shared.canOpenURL(url)
-        #logDebug("🔍 [RouteUseCase] 스킴 \(scheme) canOpenURL: \(canOpen)")
 
         if canOpen {
-          #logDebug("✅ [RouteUseCase] 네이버지도 앱 설치됨 (스킴: \(scheme))")
-
           // 추가 테스트: 실제 간단한 URL로 테스트
           let testURL = scheme + "place?lat=37.5665&lng=126.9780"
           if let testUrl = URL(string: testURL) {
             let testCanOpen = UIApplication.shared.canOpenURL(testUrl)
-            #logDebug("🧪 [RouteUseCase] 테스트 URL \(testURL) canOpenURL: \(testCanOpen)")
+            #logDebug(" [RouteUseCase] 테스트 URL \(testURL) canOpenURL: \(testCanOpen)")
           }
 
           return true
         }
       } else {
-        #logDebug("❌ [RouteUseCase] URL 생성 실패: \(scheme)")
+        #logDebug(" [RouteUseCase] URL 생성 실패: \(scheme)")
       }
     }
 
-    #logDebug("❌ [RouteUseCase] 네이버지도 앱 미설치 (모든 스킴 실패)")
+    #logDebug(" [RouteUseCase] 네이버지도 앱 미설치 (모든 스킴 실패)")
 
     // 설치되지 않은 경우 App Store로 이동
     let appStoreURL = "itms-apps://itunes.apple.com/app/311867728"
-    #logDebug("📱 [RouteUseCase] App Store로 이동: \(appStoreURL)")
+
 
     if let url = URL(string: appStoreURL), UIApplication.shared.canOpenURL(url) {
       UIApplication.shared.open(url, options: [:], completionHandler: nil)
@@ -146,7 +141,6 @@ public struct RouteUseCaseImpl: DirectionInterface {
   /// Google Maps 앱으로 길찾기
   @MainActor
   private func openGoogleMap(lat: Double, lng: Double, destinationName: String) {
-    #logDebug("🌏 [RouteUseCase] Google Maps 실행")
 
     let encodedName = destinationName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? destinationName
 
@@ -165,9 +159,7 @@ public struct RouteUseCaseImpl: DirectionInterface {
     var appOpened = false
 
     for urlString in googleAppURLs {
-      #logDebug("🌏 [RouteUseCase] 시도하는 앱 URL: \(urlString)")
       if let url = URL(string: urlString), UIApplication.shared.canOpenURL(url) {
-        #logDebug("🌏 [RouteUseCase] Google Maps 앱 실행 성공")
         UIApplication.shared.open(url)
         appOpened = true
         break
@@ -175,7 +167,6 @@ public struct RouteUseCaseImpl: DirectionInterface {
     }
 
     if !appOpened {
-      #logDebug("🌏 [RouteUseCase] Google Maps 앱 없음, 웹으로 실행")
       // Google Maps 앱이 설치되어 있지 않으면 웹으로 실행 (길찾기 모드)
       let webURL = "https://www.google.com/maps/dir/?api=1&destination=\(lat),\(lng)&travelmode=walking"
       if let url = URL(string: webURL) {
@@ -187,7 +178,7 @@ public struct RouteUseCaseImpl: DirectionInterface {
   /// 네이버 지도 앱으로 길찾기 (블로그 패턴 적용)
   @MainActor
   private func openNaverMap(lat: Double, lng: Double, destinationName: String) {
-    #logDebug("🗺️ [RouteUseCase] 네이버지도 실행 - lat: \(lat), lng: \(lng), name: \(destinationName)")
+
 
     // 시뮬레이터에서는 웹으로 바로 이동
     #if targetEnvironment(simulator)
@@ -218,17 +209,14 @@ public struct RouteUseCaseImpl: DirectionInterface {
     var appOpened = false
 
     for (index, urlString) in naverMapURLs.enumerated() {
-      #logDebug("🗺️ [RouteUseCase] 시도 \(index + 1)/\(naverMapURLs.count): \(urlString)")
+      #logDebug(" [RouteUseCase] 시도 \(index + 1)/\(naverMapURLs.count): \(urlString)")
 
       if let openApp = URL(string: urlString),
          UIApplication.shared.canOpenURL(openApp) {
-        #logDebug("✅ [RouteUseCase] 네이버지도 앱 실행 중...")
         UIApplication.shared.open(openApp, options: [:]) { success in
           Task { @MainActor in
-            #logDebug("🗺️ [RouteUseCase] URL \(index + 1) 실행 결과: \(success)")
             if !success && index == naverMapURLs.count - 1 {
               // 마지막 URL도 실패하면 웹으로 폴백
-              #logDebug("❌ [RouteUseCase] 모든 앱 실행 실패, 웹으로 폴백")
               self.openNaverMapWeb(lat: lat, lng: lng, destinationName: destinationName)
             }
           }
@@ -236,21 +224,18 @@ public struct RouteUseCaseImpl: DirectionInterface {
         appOpened = true
         break // 첫 번째 성공한 URL에서 중단
       } else {
-        #logDebug("🗺️ [RouteUseCase] canOpenURL 실패")
+        #logDebug("[RouteUseCase] canOpenURL 실패")
       }
     }
 
     if !appOpened {
-      #logDebug("🗺️ [RouteUseCase] 모든 canOpenURL 실패 - App Store 또는 웹으로")
-
-      // 블로그 패턴: App Store로 이동
       let appStoreURL = "itms-apps://itunes.apple.com/app/311867728"
       if let openStore = URL(string: appStoreURL),
          UIApplication.shared.canOpenURL(openStore) {
-        #logDebug("📱 [RouteUseCase] App Store로 이동")
+        #logDebug(" [RouteUseCase] App Store로 이동")
         UIApplication.shared.open(openStore, options: [:], completionHandler: nil)
       } else {
-        #logDebug("🌐 [RouteUseCase] App Store 이동 실패, 웹으로 폴백")
+        #logDebug(" [RouteUseCase] App Store 이동 실패, 웹으로 폴백")
         openNaverMapWeb(lat: lat, lng: lng, destinationName: destinationName)
       }
     }
@@ -277,13 +262,13 @@ public struct RouteUseCaseImpl: DirectionInterface {
 
     // 첫 번째 유효한 URL로 실행
     for (index, urlString) in webURLs.enumerated() {
-      #logDebug("🌐 [RouteUseCase] 웹 URL 시도 \(index + 1): \(urlString)")
+      #logDebug(" [RouteUseCase] 웹 URL 시도 \(index + 1): \(urlString)")
 
       if let url = URL(string: urlString) {
         UIApplication.shared.open(url, options: [:]) { success in
           Task { @MainActor in
             if success {
-              #logDebug("✅ [RouteUseCase] 웹 열기 성공!")
+              #logDebug(" [RouteUseCase] 웹 열기 성공!")
             } else {
               #logDebug("❌ [RouteUseCase] 웹 열기 실패")
             }
@@ -292,8 +277,6 @@ public struct RouteUseCaseImpl: DirectionInterface {
         return // 첫 번째 성공한 URL로 종료
       }
     }
-
-    #logDebug("🗺️ [RouteUseCase] 모든 웹 URL 생성 실패")
   }
 }
 
