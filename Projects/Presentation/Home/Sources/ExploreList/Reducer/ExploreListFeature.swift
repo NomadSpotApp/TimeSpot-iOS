@@ -148,10 +148,8 @@ extension ExploreListFeature {
 
         // 기존 데이터가 있으면 로컬 필터링만, 없으면 API 호출
         if !state.bufferedSpots.isEmpty {
-          #logDebug("🏷️ [카테고리 변경] selectedCategory=\(category), 기존 데이터 있음 - 로컬 필터링만 수행")
           return .none
         } else {
-          #logDebug("🏷️ [카테고리 변경] selectedCategory=\(category), 데이터 없음 - API 호출")
           state.currentPage = 1
           state.hasNextPage = true
           return .merge(
@@ -172,10 +170,10 @@ extension ExploreListFeature {
         )
 
       case .loadNextPage:
-        #logDebug("🔄 [ExploreList loadNextPage 호출] isLoading=\(state.isLoading), hasNextPage=\(state.hasNextPage)")
+        #logDebug("[ExploreList loadNextPage 호출] isLoading=\(state.isLoading), hasNextPage=\(state.hasNextPage)")
 
         guard !state.isLoading else {
-          #logDebug("🚫 [ExploreList loadNextPage 차단] 로딩 중이므로 요청 차단")
+          #logDebug(" [ExploreList loadNextPage 차단] 로딩 중이므로 요청 차단")
           // 5초 후 강제 리셋 (무한 로딩 방지)
           return .run { send in
             try await Task.sleep(nanoseconds: 5_000_000_000) // 5초
@@ -210,8 +208,6 @@ extension ExploreListFeature {
 
         // 현재 버퍼 크기를 기준으로 다음 페이지 계산 (size=50 기준)
         let nextPage = (state.bufferedSpots.count / 50) + 1
-
-        #logDebug("📄 [ExploreList loadNextPage] bufferedSpots.count=\(state.bufferedSpots.count), 계산된 nextPage=\(nextPage), hasNextPage=\(state.hasNextPage)")
         return .send(.async(.fetchPlaces(page: nextPage, append: true, ignoreCategory: false)))
 
       case .spotCardTapped(let spot):
@@ -256,8 +252,6 @@ extension ExploreListFeature {
         let sortBy = state.requestSortBy
         let mapLat = state.markerLat ?? userSession.travelStationLat
         let mapLon = state.markerLon ?? userSession.travelStationLng
-
-        #logDebug("📤 [ExploreList 요청] page=\(page), keyword='\(keyword ?? "nil")', category=\(category?.rawValue ?? "nil"), selectedCategory=\(state.selectedCategory)")
 
         return .run { send in
           let result = await Result {
@@ -345,11 +339,7 @@ extension ExploreListFeature {
           state.currentPage = max(pageEntity.page, 1)
           state.hasNextPage = !pageEntity.isLastPage
 
-          #logDebug("📥 [ExploreList 초기] bufferedSpots.count=\(state.bufferedSpots.count), spots.count=\(state.spots.count), currentPage=\(state.currentPage)")
         }
-
-        let filteredCount = filteredSpots(from: state.spots, state: state).count
-        #logDebug("📥 [ExploreList 필터링] filteredSpots.count=\(filteredCount), searchText='\(state.searchText)', selectedCategory=\(state.selectedCategory)")
 
         return .none
 
@@ -402,12 +392,8 @@ private extension ExploreListFeature {
       let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
       let matchesCategory = state.selectedCategory == .all || spot.category == state.selectedCategory
 
-      #logDebug("🔍 [필터링 체크] spot='\(spot.name)', category=\(spot.category), hasDetail=\(hasDetail), matchesQuery=\(matchesQuery), matchesCategory=\(matchesCategory)")
-
       return hasDetail && matchesQuery && matchesCategory
     }
-
-    #logDebug("🔍 [필터링 완료] 결과=\(filtered.count)개")
 
     return filtered
   }

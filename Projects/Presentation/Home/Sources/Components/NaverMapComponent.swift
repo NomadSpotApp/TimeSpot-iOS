@@ -630,13 +630,10 @@ public struct NaverMapComponent: UIViewRepresentable {
         )
         return true
       }
-
-      #logDebug("🗺️ [NaverMap] Spot marker updated: \(spot.id), isSelected: \(isSelected), position: \(spot.coordinate)")
     }
 
     // 디버깅: 현재 표시된 마커 개수 로그
     let visibleMarkersCount = Self.spotMarkers.values.filter { $0.mapView != nil }.count
-    #logDebug("🗺️ [NaverMap] Total visible spot markers: \(visibleMarkersCount)/\(spots.count)")
 
     // 선택된 스팟이 현재 spots 배열에 없더라도 마커 스타일 유지하고 표시
     if let selectedSpotID = Self.selectedSpotID,

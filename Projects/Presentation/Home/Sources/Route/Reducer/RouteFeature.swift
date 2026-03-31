@@ -109,7 +109,6 @@ extension RouteFeature {
         let hasDestination = state.userSession.routeDestinationLat != nil &&
                            state.userSession.routeDestinationLng != nil
 
-        #logDebug("🗺️ [Route] onAppear - hasDestination: \(hasDestination)")
 
         if hasDestination {
           return .merge(
@@ -145,7 +144,6 @@ extension RouteFeature {
       case .startNavigation:
         guard let endLat = state.userSession.routeDestinationLat,
               let endLng = state.userSession.routeDestinationLng else {
-          #logDebug("❌ [Route] 목적지 정보 없음")
           return .none
         }
 
@@ -171,7 +169,7 @@ extension RouteFeature {
               }
             },
             onError: { error in
-              #logDebug("❌ [Route] 위치 업데이트 실패: \(error.localizedDescription)")
+              #logDebug(" [Route] 위치 업데이트 실패: \(error.localizedDescription)")
             }
           )
 
@@ -181,14 +179,12 @@ extension RouteFeature {
               await send(.inner(.locationUpdated(location)))
             }
           } catch {
-            #logDebug("❌ [Route] 현재 위치 가져오기 실패: \(error.localizedDescription)")
+            #logDebug(" [Route] 현재 위치 가져오기 실패: \(error.localizedDescription)")
           }
         }
 
       case .waitForLocationThenSearchRoute:
         return .run { [userSession = state.userSession] send in
-          #logDebug("🗺️ [Route] Waiting for location to search route...")
-
           // 최대 5초 동안 현재 위치를 기다림
           var attempts = 0
           let maxAttempts = 25  // 5초 (200ms * 25)
@@ -202,19 +198,14 @@ extension RouteFeature {
                 let startCoord = currentLocation.coordinate
                 let endCoord = CLLocationCoordinate2D(latitude: endLat, longitude: endLng)
 
-                #logDebug("🗺️ [Route] Got location, searching route from \(startCoord) to \(endCoord)")
                 await send(.async(.searchRoute(from: startCoord, to: endCoord)))
                 return
               }
-            } catch {
-              #logDebug("⚠️ [Route] Location request attempt \(attempts + 1) failed: \(error)")
             }
 
             attempts += 1
             try? await Task.sleep(for: .milliseconds(200))
           }
-
-          #logDebug("❌ [Route] Could not get location after \(maxAttempts) attempts")
         }
 
       case .searchRoute(let from, let to):
@@ -266,16 +257,11 @@ extension RouteFeature {
           $0.routeStartLng = location.coordinate.longitude
         }
 
-        #logDebug("📍 [Route] 현재 위치 업데이트: \(location.coordinate.latitude), \(location.coordinate.longitude)")
-
         // 목적지 정보가 있으면 자동으로 경로 검색
         if let endLat = state.userSession.routeDestinationLat,
            let endLng = state.userSession.routeDestinationLng {
           let endCoord = CLLocationCoordinate2D(latitude: endLat, longitude: endLng)
-          #logDebug("🎯 [Route] 목적지 발견, 경로 검색 시작: (\(endLat), \(endLng))")
           return .send(.async(.searchRoute(from: location.coordinate, to: endCoord)))
-        } else {
-          #logDebug("⚠️ [Route] 목적지 정보 없음")
         }
         return .none
 
@@ -285,10 +271,8 @@ extension RouteFeature {
         case .success(let routeInfo):
           state.routeInfo = routeInfo
           state.routeError = nil
-          #logDebug("✅ [Route] 경로 검색 완료: \(routeInfo.distance)m, \(routeInfo.duration)분")
         case .failure(let error):
           state.routeError = error.localizedDescription
-          #logDebug("❌ [Route] 경로 검색 실패: \(error.localizedDescription)")
         }
         return .none
     }

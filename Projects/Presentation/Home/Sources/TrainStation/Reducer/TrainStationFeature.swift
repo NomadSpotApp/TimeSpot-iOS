@@ -242,7 +242,6 @@ extension TrainStationFeature {
         $0.isGuest = !hasAccessToken
       }
 
-      #logDebug("🔐 [TrainStation] Access token check: hasToken=\(hasAccessToken), shouldShowFavorite=\(hasAccessToken), isGuest=\(!hasAccessToken)")
 
       return .none
     case .fetchStationsResponse(let entity):

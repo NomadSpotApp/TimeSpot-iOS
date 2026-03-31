@@ -215,13 +215,13 @@ extension AppReducer {
 
   /// Refresh token 만료 감지 리스너 설정
   private func setupRefreshTokenExpiredListener() -> Effect<Action> {
-    #logDebug("🔔 [AppReducer] 🚨 SETTING UP REFRESH TOKEN EXPIRED LISTENER...")
+    #logDebug(" [AppReducer] 🚨 SETTING UP REFRESH TOKEN EXPIRED LISTENER...")
     return .publisher {
       NotificationCenter.default
         .publisher(for: NSNotification.Name("RefreshTokenExpired"))
         .map { notification in
-          #logDebug("🔔 [AppReducer] 🔥 🎯 REFRESH TOKEN EXPIRED NOTIFICATION RECEIVED!")
-          #logDebug("🔔 [AppReducer] Notification details: \(notification)")
+          #logDebug(" [AppReducer] 🔥 🎯 REFRESH TOKEN EXPIRED NOTIFICATION RECEIVED!")
+          #logDebug(" [AppReducer] Notification details: \(notification)")
           return Action.async(.refreshTokenExpired)
         }
     }

@@ -47,12 +47,12 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, @MainActor UNUserNo
 
     center.requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
       if let error = error {
-        #logDebug("🔔 Notification auth error:", error)
+        #logDebug(" Notification auth error:", error)
         return
       }
 
       guard granted else {
-        #logDebug("🔔 Notification permission not granted")
+        #logDebug(" Notification permission not granted")
         return
       }
 
@@ -139,7 +139,7 @@ extension AppDelegate {
         try await Task.sleep(for: .seconds(0.3))
         _ = try await self.authUseCase.registerNotification(with: tokenString)
       } catch {
-        #logDebug("🔔 Failed to register device token: \(error.localizedDescription)")
+        #logDebug(" Failed to register device token: \(error.localizedDescription)")
       }
     }
   }
