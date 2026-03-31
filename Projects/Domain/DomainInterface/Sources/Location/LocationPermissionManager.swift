@@ -34,10 +34,11 @@ public enum LocationError: Error, LocalizedError, Equatable {
 }
 
 // MARK: - LocationPermissionManager Protocol
+@MainActor
 public protocol LocationPermissionManagerProtocol: Sendable {
-    var authorizationStatus: CLAuthorizationStatus { get async }
-    var currentLocation: CLLocation? { get async }
-    var locationError: String? { get async }
+    var authorizationStatus: CLAuthorizationStatus { get }
+    var currentLocation: CLLocation? { get }
+    var locationError: String? { get }
 
     func requestLocationPermission() async -> CLAuthorizationStatus
     func requestFullAccuracy() async
@@ -80,9 +81,31 @@ public final class LocationPermissionManager: NSObject, ObservableObject, Locati
 
     private func setupLocationManager() {
         locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.distanceFilter = 10 // 10미터 이상 이동시 업데이트
+        locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters // 배터리 효율적인 정확도
+        locationManager.distanceFilter = 5 // 5미터 이상 이동시 업데이트 (더 민감하게)
         authorizationStatus = locationManager.authorizationStatus
+
+        // 앱 시작 시 즉시 위치 요청
+        Task {
+            await startInitialLocationUpdate()
+        }
+    }
+
+    private func startInitialLocationUpdate() async {
+        guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
+            return
+        }
+
+        // 즉시 위치 업데이트 시작
+        locationManager.startUpdatingLocation()
+
+        // 3초 후 중지 (초기 위치만 가져오기 위함)
+        Task {
+            try? await Task.sleep(for: .seconds(3))
+            if currentLocation != nil {
+                locationManager.stopUpdatingLocation()
+            }
+        }
     }
 
     // MARK: - LocationPermissionManagerProtocol Implementation
@@ -117,6 +140,8 @@ public final class LocationPermissionManager: NSObject, ObservableObject, Locati
             locationError = "위치 권한이 거부되었습니다. 설정에서 허용해 주세요."
             return authorizationStatus
         case .authorizedWhenInUse, .authorizedAlways:
+            // 권한이 있으면 즉시 위치 업데이트 시작
+            await startInitialLocationUpdate()
             return authorizationStatus
         @unknown default:
             locationError = "알 수 없는 위치 권한 상태입니다."
@@ -191,18 +216,19 @@ public final class LocationPermissionManager: NSObject, ObservableObject, Locati
             self.locationTimeoutTask?.cancel()
             self.locationTimeoutTask = Task { [weak self] in
                 guard let self else { return }
-                try? await Task.sleep(for: .seconds(5))
+                try? await Task.sleep(for: .seconds(10)) // 타임아웃을 10초로 증가
                 guard !Task.isCancelled else { return }
                 self.resumeLocationContinuation(with: .failure(LocationError.timeout))
             }
 
-            if #available(iOS 14.0, *) {
-                locationManager.requestLocation()
-            } else {
-                // iOS 14 이전에서는 잠시 업데이트하고 중지
-                locationManager.startUpdatingLocation()
-                Task {
-                    try? await Task.sleep(for: .seconds(3))
+            // 더 적극적인 위치 요청을 위해 startUpdatingLocation 사용
+            locationManager.startUpdatingLocation()
+
+            // 위치를 받으면 자동으로 중지하는 태스크
+            Task {
+                try? await Task.sleep(for: .seconds(8))
+                if self.locationContinuation == nil {
+                    // 이미 위치를 받아서 continuation이 nil이면 중지
                     await self.stopLocationUpdates()
                 }
             }
@@ -273,7 +299,13 @@ extension LocationPermissionManager: CLLocationManagerDelegate {
             self.onLocationUpdate?(location)
 
             // continuation이 있으면 결과 반환 (일회성 요청용)
+            let hadContinuation = self.locationContinuation != nil
             self.resumeLocationContinuation(with: .success(location))
+
+            // 일회성 요청이었다면 업데이트 중지
+            if hadContinuation {
+                manager.stopUpdatingLocation()
+            }
         }
     }
 
@@ -293,6 +325,11 @@ extension LocationPermissionManager: CLLocationManagerDelegate {
         Task { @MainActor in
             self.authorizationStatus = status
             self.locationError = nil
+
+            // 권한이 허용된 경우 즉시 초기 위치 업데이트 시작
+            if status == .authorizedWhenInUse || status == .authorizedAlways {
+                await self.startInitialLocationUpdate()
+            }
 
             // continuation이 있으면 권한 상태 반환
             if let continuation = self.authorizationContinuation {

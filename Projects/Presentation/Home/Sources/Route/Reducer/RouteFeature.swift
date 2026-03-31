@@ -54,6 +54,7 @@ public struct RouteFeature {
   //MARK: - AsyncAction 비동기 처리 액션
   public enum AsyncAction: Equatable {
     case startLocationUpdates
+    case waitForLocationThenSearchRoute
     case searchRoute(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D)
     case startNavigation(mapType: ExternalMapType, destination: CLLocationCoordinate2D, destinationName: String)
   }
@@ -105,13 +106,29 @@ extension RouteFeature {
   ) -> Effect<Action> {
     switch action {
       case .onAppear:
-        return .merge(
-          .run { send in
-            let currentStatus = await locationUseCase.getAuthorizationStatus()
-            await send(.inner(.locationPermissionStatusChanged(currentStatus)))
-          },
-          .send(.async(.startLocationUpdates))
-        )
+        let hasDestination = state.userSession.routeDestinationLat != nil &&
+                           state.userSession.routeDestinationLng != nil
+
+        #logDebug("🗺️ [Route] onAppear - hasDestination: \(hasDestination)")
+
+        if hasDestination {
+          return .merge(
+            .run { send in
+              let currentStatus = await locationUseCase.getAuthorizationStatus()
+              await send(.inner(.locationPermissionStatusChanged(currentStatus)))
+            },
+            .send(.async(.startLocationUpdates)),
+            .send(.async(.waitForLocationThenSearchRoute))
+          )
+        } else {
+          return .merge(
+            .run { send in
+              let currentStatus = await locationUseCase.getAuthorizationStatus()
+              await send(.inner(.locationPermissionStatusChanged(currentStatus)))
+            },
+            .send(.async(.startLocationUpdates))
+          )
+        }
 
       case .searchRoute:
         guard let startLat = state.userSession.routeStartLat,
@@ -166,6 +183,38 @@ extension RouteFeature {
           } catch {
             #logDebug("❌ [Route] 현재 위치 가져오기 실패: \(error.localizedDescription)")
           }
+        }
+
+      case .waitForLocationThenSearchRoute:
+        return .run { [userSession = state.userSession] send in
+          #logDebug("🗺️ [Route] Waiting for location to search route...")
+
+          // 최대 5초 동안 현재 위치를 기다림
+          var attempts = 0
+          let maxAttempts = 25  // 5초 (200ms * 25)
+
+          while attempts < maxAttempts {
+            do {
+              if let currentLocation = try await locationUseCase.requestCurrentLocation(),
+                 let endLat = userSession.routeDestinationLat,
+                 let endLng = userSession.routeDestinationLng {
+
+                let startCoord = currentLocation.coordinate
+                let endCoord = CLLocationCoordinate2D(latitude: endLat, longitude: endLng)
+
+                #logDebug("🗺️ [Route] Got location, searching route from \(startCoord) to \(endCoord)")
+                await send(.async(.searchRoute(from: startCoord, to: endCoord)))
+                return
+              }
+            } catch {
+              #logDebug("⚠️ [Route] Location request attempt \(attempts + 1) failed: \(error)")
+            }
+
+            attempts += 1
+            try? await Task.sleep(for: .milliseconds(200))
+          }
+
+          #logDebug("❌ [Route] Could not get location after \(maxAttempts) attempts")
         }
 
       case .searchRoute(let from, let to):
@@ -265,6 +314,8 @@ extension RouteFeature.AsyncAction {
   public static func == (lhs: RouteFeature.AsyncAction, rhs: RouteFeature.AsyncAction) -> Bool {
     switch (lhs, rhs) {
     case (.startLocationUpdates, .startLocationUpdates):
+      return true
+    case (.waitForLocationThenSearchRoute, .waitForLocationThenSearchRoute):
       return true
     case (.searchRoute(let lhsFrom, let lhsTo), .searchRoute(let rhsFrom, let rhsTo)):
       let fromLatEqual = lhsFrom.latitude == rhsFrom.latitude

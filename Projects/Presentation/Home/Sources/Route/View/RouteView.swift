@@ -63,9 +63,10 @@ public struct RouteView: View {
 private extension RouteView {
   @ViewBuilder
   func naverMap() -> some View {
-    let destination = makeDestination()
-    let travelStation = makeTravelStation()
-    let routeInfo = store.routeInfo
+    // 스켈레톤 로딩 중에는 마커와 경로 정보를 숨김
+    let destination = store.isLoadingRoute ? nil : makeDestination()
+    let travelStation = store.isLoadingRoute ? nil : makeTravelStation()
+    let routeInfo = store.isLoadingRoute ? nil : store.routeInfo
 
     NaverMapComponent(
       locationPermissionStatus: store.locationPermissionStatus,

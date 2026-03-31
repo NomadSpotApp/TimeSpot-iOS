@@ -167,8 +167,9 @@ extension TrainStationFeature {
       .cancellable(id: CancelID.checkAccessToken)
     case .fetchStations:
       return .run { [stationUseCase] send in
-        let locationManager = await LocationPermissionManager.shared
-        let location = await MainActor.run { locationManager.currentLocation }
+        let location = await MainActor.run {
+          LocationPermissionManager.shared.currentLocation
+        }
         let userLat = location?.coordinate.latitude ?? 37.5666805
         let userLon = location?.coordinate.longitude ?? 126.9784147
 

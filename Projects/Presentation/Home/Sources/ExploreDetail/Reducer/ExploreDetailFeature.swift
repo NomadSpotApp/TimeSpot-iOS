@@ -110,6 +110,17 @@ extension ExploreDetailFeature {
       return .none
 
     case .routeButtonTapped:
+      // UserSession에 목적지 정보 저장
+      if let placeDetail = state.placeDetail {
+        state.$userSession.withLock { userSession in
+          userSession.routeDestinationLat = placeDetail.latitude
+          userSession.routeDestinationLng = placeDetail.longitude
+          userSession.routeDestinationName = placeDetail.name
+        }
+
+        #logDebug("🗺️ [ExploreDetail] Route destination saved: \(placeDetail.name) at (\(placeDetail.latitude), \(placeDetail.longitude))")
+      }
+
       return .send(.delegate(.presentRoute))
     }
   }
