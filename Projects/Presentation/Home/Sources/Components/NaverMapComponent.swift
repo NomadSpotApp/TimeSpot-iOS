@@ -502,7 +502,30 @@ public struct NaverMapComponent: UIViewRepresentable {
       asset = .etcPin
     }
 
-    return UIImage(asset) ?? UIImage()
+    // 이미지가 없을 때 기본 마커 이미지 생성
+    return UIImage(asset) ?? createDefaultMarkerImage(for: category)
+  }
+
+  private func createDefaultMarkerImage(for category: ExploreCategory) -> UIImage {
+    let color: UIColor
+    switch category {
+    case .all:
+      color = .systemGray
+    case .cafe:
+      color = .systemBrown
+    case .restaurant:
+      color = .systemRed
+    case .shopping:
+      color = .systemBlue
+    case .activity:
+      color = .systemGreen
+    case .etc:
+      color = .systemGray
+    @unknown default:
+      color = .systemGray
+    }
+
+    return create3DMarkerImage(color: color, size: CGSize(width: 20, height: 24))
   }
 
   private static func applySpotMarkerStyle(
@@ -511,7 +534,8 @@ public struct NaverMapComponent: UIViewRepresentable {
   ) {
     marker.width = isSelected ? 36 : 20
     marker.height = isSelected ? 43 : 24
-    marker.zIndex = isSelected ? 100 : 10
+    // 업데이트된 zIndex: 선택된 마커가 최상위에 표시
+    marker.zIndex = isSelected ? 600 : 500
   }
 
   private static func updateSpotMarkerSelection() {
@@ -551,15 +575,10 @@ public struct NaverMapComponent: UIViewRepresentable {
       return  // spot 마커 처리 종료
     }
 
-    // 일반 모드에서는 모든 기존 마커들을 지도에 재연결
-    for (_, marker) in Self.spotMarkers {
-      marker.mapView = mapView
-    }
-
-    // 🔧 핵심 수정: 현재 spots에 없는 마커들 먼저 숨김
+    // 현재 spots에 없는 마커들만 숨김 (기존 마커 전체 제거 방식 개선)
     for (markerID, marker) in Self.spotMarkers {
       if !currentSpotIDs.contains(markerID) {
-        marker.mapView = nil  // 필터링으로 제외된 마커 숨김
+        marker.mapView = nil  // 필터링으로 제외된 마커만 숨김
       }
     }
 
@@ -575,20 +594,33 @@ public struct NaverMapComponent: UIViewRepresentable {
         marker = newMarker
       }
 
-      // 마커를 지도에 확실히 연결
-      marker.mapView = mapView
-
+      // 마커 위치 설정
       marker.position = NMGLatLng(
         lat: spot.coordinate.latitude,
         lng: spot.coordinate.longitude
       )
-      marker.iconImage = NMFOverlayImage(image: markerImage(for: spot.category))
+
+      // 마커 이미지 설정 (실패 시 기본 이미지 사용)
+      let spotImage = markerImage(for: spot.category)
+      marker.iconImage = NMFOverlayImage(image: spotImage)
+
+      // 마커 크기와 스타일 적용
+      let isSelected = selectedSpotID == spot.id
+      marker.width = isSelected ? 36 : 20
+      marker.height = isSelected ? 43 : 24
+
+      // spot 마커는 높은 우선순위로 설정 (선택된 마커가 가장 위에)
+      marker.zIndex = isSelected ? 600 : 500
+
+      // 마커를 지도에 연결
       marker.mapView = mapView
-      marker.touchHandler = { _ in
-        coordinator.markMarkerTap()
+
+      // 마커 터치 핸들러 설정 (for loop 안에서)
+      marker.touchHandler = { [weak coordinator] _ in
+        coordinator?.markMarkerTap()
         Self.setSelectedSpotID(spot.id)
         onSpotTapped?(spot.id)
-        moveCamera(
+        self.moveCamera(
           on: mapView,
           to: NMGLatLng(
             lat: spot.coordinate.latitude,
@@ -598,30 +630,31 @@ public struct NaverMapComponent: UIViewRepresentable {
         )
         return true
       }
-      Self.applySpotMarkerStyle(marker, isSelected: spot.id == Self.selectedSpotID)
+
+      #logDebug("🗺️ [NaverMap] Spot marker updated: \(spot.id), isSelected: \(isSelected), position: \(spot.coordinate)")
     }
+
+    // 디버깅: 현재 표시된 마커 개수 로그
+    let visibleMarkersCount = Self.spotMarkers.values.filter { $0.mapView != nil }.count
+    #logDebug("🗺️ [NaverMap] Total visible spot markers: \(visibleMarkersCount)/\(spots.count)")
 
     // 선택된 스팟이 현재 spots 배열에 없더라도 마커 스타일 유지하고 표시
     if let selectedSpotID = Self.selectedSpotID,
-       let selectedMarker = Self.spotMarkers[selectedSpotID] {
+       let selectedMarker = Self.spotMarkers[selectedSpotID],
+       !currentSpotIDs.contains(selectedSpotID) {
 
-      if !currentSpotIDs.contains(selectedSpotID) {
-        // 마커가 지도에서 제거되었을 수 있으므로 다시 추가
-        selectedMarker.mapView = mapView
+      // 마커가 지도에서 제거되었을 수 있으므로 다시 추가
+      selectedMarker.mapView = mapView
 
-        // 선택된 스타일 적용
-        Self.applySpotMarkerStyle(selectedMarker, isSelected: true)
+      // 선택된 스타일 적용
+      Self.applySpotMarkerStyle(selectedMarker, isSelected: true)
 
-        // 마커 터치 핸들러 재설정
-        selectedMarker.touchHandler = { _ in
-          coordinator.markMarkerTap()
-          Self.setSelectedSpotID(selectedSpotID)
-          onSpotTapped?(selectedSpotID)
-          return true
-        }
-      } else {
-        // spots 배열에 있는 경우는 정상적으로 선택된 스타일 적용
-        Self.applySpotMarkerStyle(selectedMarker, isSelected: true)
+      // 마커 터치 핸들러 재설정
+      selectedMarker.touchHandler = { [weak coordinator] _ in
+        coordinator?.markMarkerTap()
+        Self.setSelectedSpotID(selectedSpotID)
+        onSpotTapped?(selectedSpotID)
+        return true
       }
     }
   }

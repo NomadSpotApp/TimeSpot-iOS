@@ -48,6 +48,7 @@ public enum ImageAsset: String {
   case spotPin
   case endLocation
   case startLocation
+  case emptyExplore
 
   case onBoardingLogo1
   case onBoardingLogo2

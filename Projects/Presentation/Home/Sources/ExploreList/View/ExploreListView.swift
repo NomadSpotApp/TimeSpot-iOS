@@ -25,8 +25,27 @@ public struct ExploreListView: View {
   public var body: some View {
     ZStack {
       VStack(spacing: 0) {
-        if shouldShowInitialSkeleton {
+        if store.shouldShowInitialSkeleton {
           ExploreListSkeletonView()
+        } else if store.shouldShowEmptyState {
+          VStack(spacing: 0) {
+            ExploreSearchHeaderView(
+              stationName: store.userSession.travelStationName,
+              searchText: store.searchText,
+              selectedCategory: store.selectedCategory,
+              showCategories: true,   // 카테고리 표시
+              isSearchable: true,     // 검색 기능 활성화
+              onBackTap: { dismiss() },
+              onSearchTextChanged: { store.send(.view(.searchTextChanged($0))) },
+              onCategoryTap: { store.send(.view(.categoryTapped($0))) },
+              onSearchBarTap: nil
+            )
+            .padding(.top, 8)
+            .padding(.horizontal, 16)
+            .background(.staticWhite)
+
+            emptyExploreListView()
+          }
         } else {
           ExploreSearchHeaderView(
             stationName: store.userSession.travelStationName,
@@ -50,12 +69,12 @@ public struct ExploreListView: View {
 
           ScrollView(showsIndicators: false) {
             LazyVStack(spacing: 12) {
-              let displaySpots = filteredSpots
+              let displaySpots = store.filteredMapSpots
 
               ForEach(displaySpots) { spot in
                 ExploreSpotListCardView(spot: spot, store: store)
                   .onAppear {
-                    guard shouldShowLoadMore else { return }
+                    guard store.shouldShowLoadMore else { return }
 
                     // 간단하게 마지막 3개 아이템 중 하나면 로드
                     let lastFewSpots = displaySpots.suffix(3)
@@ -96,41 +115,6 @@ public struct ExploreListView: View {
 }
 
 private extension ExploreListView {
-  var shouldShowInitialSkeleton: Bool {
-    store.spots.isEmpty && (!store.hasLoadedInitialPage || store.isLoading)
-  }
-
-  var isFilteringLocally: Bool {
-    !store.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-  }
-
-  var shouldShowLoadMore: Bool {
-    !isFilteringLocally && (store.spots.count < store.bufferedSpots.count || store.hasNextPage)
-  }
-
-  var filteredSpots: [ExploreMapSpot] {
-    let query = store.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-    let sourceSpots = isFilteringLocally ? store.bufferedSpots : store.spots
-
-    #logDebug("🎯 [UI 필터링] sourceSpots.count=\(sourceSpots.count), isFilteringLocally=\(isFilteringLocally), query='\(query)', selectedCategory=\(store.selectedCategory)")
-
-    let filtered = sourceSpots.filter { spot in
-      let hasDetail = spot.hasDetail
-      let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
-      let matchesCategory = store.selectedCategory == .all || spot.category == store.selectedCategory
-
-      let passes = hasDetail && matchesQuery && matchesCategory
-      if !passes {
-        #logDebug("🎯 [UI 필터링 실패] spot='\(spot.name)', hasDetail=\(hasDetail), matchesQuery=\(matchesQuery), matchesCategory=\(matchesCategory)")
-      }
-
-      return passes
-    }
-
-    #logDebug("🎯 [UI 필터링 결과] filtered.count=\(filtered.count)")
-
-    return filtered
-  }
 
   @ViewBuilder
   func sortSection() -> some View {
@@ -201,5 +185,30 @@ private extension ExploreListView {
       .shadow(color: .black.opacity(0.1), radius: 24, x: 0, y: 8)
     }
     .padding(.bottom, 40)
+  }
+
+  @ViewBuilder
+  func emptyExploreListView() -> some View {
+    VStack {
+      Spacer()
+
+
+      Image(asset: .emptyExplore)
+        .resizable()
+        .scaledToFit()
+        .frame(width: 100, height: 100)
+
+      Spacer()
+        .frame(height: 24)
+
+
+      Text("근처에 장소가 없습니다.")
+        .pretendardCustomFont(textStyle: .bodyMedium)
+        .foregroundStyle(.gray550)
+
+
+
+      Spacer()
+    }
   }
 }

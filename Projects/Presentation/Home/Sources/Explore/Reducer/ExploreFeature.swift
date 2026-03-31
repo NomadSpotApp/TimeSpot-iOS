@@ -181,6 +181,7 @@ extension ExploreFeature {
     switch action {
       case .onAppear:
         let shouldBootstrap = state.spots.isEmpty && !state.hasRequestedPlaces
+        #logDebug("📱 [ExploreFeature] onAppear - spots.count: \(state.spots.count), hasRequestedPlaces: \(state.hasRequestedPlaces), shouldBootstrap: \(shouldBootstrap)")
 
         if let lat = state.userSession.travelStationLat,
            let lng = state.userSession.travelStationLng {
@@ -191,6 +192,7 @@ extension ExploreFeature {
         }
 
         guard shouldBootstrap else {
+          #logDebug("📱 [ExploreFeature] shouldBootstrap false - fetchPlaces 건너뜀")
           ExploreHelpers.syncSelectedSpot(state: &state)
           return .run { send in
             let currentStatus = await locationUseCase.getAuthorizationStatus()
@@ -980,6 +982,7 @@ private extension ExploreFeature.State {
 
     return max(Int(Date().timeIntervalSince(fetchedAt) / 60), 0)
   }
+
 }
 
 private extension ExploreMapSpot {
