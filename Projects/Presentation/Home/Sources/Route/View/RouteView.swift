@@ -68,6 +68,9 @@ private extension RouteView {
     let travelStation = store.isLoadingRoute ? nil : makeTravelStation()
     let routeInfo = store.isLoadingRoute ? nil : store.routeInfo
 
+    // 경로 정보가 업데이트되면 카메라 자동 조정 트리거 증가
+    let autoFitTrigger = store.routeInfo != nil ? 1 : 0
+
     NaverMapComponent(
       locationPermissionStatus: store.locationPermissionStatus,
       currentLocation: store.currentLocation,
@@ -76,7 +79,8 @@ private extension RouteView {
       travelStation: travelStation,
       spots: [],
       selectedSpotID: nil,
-      returnToLocationTrigger: 0
+      returnToLocationTrigger: 0,
+      autoFitTrigger: autoFitTrigger
     )
   }
 
