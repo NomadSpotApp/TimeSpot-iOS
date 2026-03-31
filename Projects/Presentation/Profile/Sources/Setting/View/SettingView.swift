@@ -52,6 +52,75 @@ public struct SettingView: View {
         Spacer()
       }
       .padding(.horizontal, 16)
+
+      // Map dropdown overlay
+      if store.showMapDropdown {
+        VStack(spacing: 0) {
+          // 상단 여백 (네비게이션 + 시간 알림 + 위치 권한 + 지도 설정까지의 높이)
+          Spacer()
+            .frame(height: 8 + 44 + 18 + 56 + 56 + 56) // 대략적인 높이 계산
+
+          HStack {
+            Spacer()
+
+            VStack(alignment: .leading, spacing: 0) {
+              ForEach(Array(ExternalMapType.allCases.enumerated()), id: \.element) { index, mapType in
+                Button {
+                  store.send(.view(.mapTypeSelected(mapType)))
+                } label: {
+                  HStack(spacing: 12) {
+                    Text(mapType.description)
+                      .pretendardCustomFont(textStyle: .bodyMedium)
+                      .foregroundStyle(.gray800)
+                      .frame(maxWidth: .infinity, alignment: .leading)
+
+                  Spacer()
+
+                    if store.userSession.mapType == mapType {
+                      Image(asset: .rowCheck)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
+                    }
+                  }
+                  .frame(height: 44)
+                  .padding(.horizontal, 20)
+                  .padding(.top, index == 0 ? 4 : 0)
+                  .padding(.bottom, index == 2 ? 4 : 0)
+                }
+                .buttonStyle(.plain)
+
+                // 마지막 항목이 아니면 divider 추가
+                if index < ExternalMapType.allCases.count - 1 {
+                  Rectangle()
+                    .fill(.enableColor)
+                    .frame(height: 1)
+                }
+              }
+            }
+            .frame(width: 236)
+            .background(.staticWhite)
+            .clipShape(RoundedRectangle(cornerRadius: 30))
+            .overlay(
+              RoundedRectangle(cornerRadius: 30)
+                .stroke(.enableColor, lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+            .padding(.trailing, 32) // 오른쪽 끝에서 16pt (padding) + 16pt (section padding) = 32pt
+          }
+
+          Spacer()
+        }
+        .transition(.opacity)
+        .animation(.easeInOut(duration: 0.3), value: store.showMapDropdown)
+
+        // 외부 클릭 감지
+        Color.clear
+          .ignoresSafeArea()
+          .onTapGesture {
+            store.send(.view(.toggleMapDropdown))
+          }
+      }
     }
     .customAlert($store.scope(state: \.customAlert, action: \.scope.customAlert))
   }
@@ -76,37 +145,15 @@ extension SettingView {
         }
       )
 
-      Menu {
-        ForEach(ExternalMapType.allCases) { mapType in
-          Button {
-            store.send(.view(.mapTypeSelected(mapType)))
-          } label: {
-            if store.userSession.mapType == mapType {
-              HStack(spacing: 8) {
-                Image(asset: .rowCheck)
-                  .resizable()
-                  .scaledToFit()
-                  .frame(width: 24, height: 24)
-
-                Text(mapType.description)
-                  .pretendardCustomFont(textStyle: .bodyMedium)
-                  .foregroundStyle(.gray800)
-              }
-            } else {
-              Text(mapType.description)
-                .pretendardCustomFont(textStyle: .bodyMedium)
-                .foregroundStyle(.gray800)
-            }
-          }
+      SettingMenuRowView(
+        title: "연동된 지도",
+        trailingText: store.userSession.mapType.description,
+        accessory: .dropdown,
+        showsDivider: false,
+        action: {
+          store.send(.view(.toggleMapDropdown))
         }
-      } label: {
-        SettingMenuRowView(
-          title: "연동된 지도",
-          trailingText: store.userSession.mapType.description,
-          accessory: .dropdown,
-          showsDivider: false
-        )
-      }
+      )
     }
   }
 

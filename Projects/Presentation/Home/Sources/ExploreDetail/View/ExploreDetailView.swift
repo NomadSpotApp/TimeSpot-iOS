@@ -31,50 +31,99 @@ public struct ExploreDetailView: View {
         Color.gray100
           .edgesIgnoringSafeArea(.all)
 
-        VStack {
+        VStack(spacing: 0) {
+          // 상단 네비게이션 바
           if !(store.isLoading && store.placeDetail == nil) {
-            CustomNavigationBackBar(buttonAction: {
-              dismiss()
-            }, title: "")
+            ExploreDetailNavigationBar(
+              placeName: store.placeNameText.formattedPlaceNameForDisplay,
+              category: store.categoryText,
+              showTitle: store.showNavigationTitle,
+              onBackTap: {
+                dismiss()
+              }
+            )
             .padding(.horizontal, 16)
-            .offset(y: -24)
+            .offset(y: -30)
           }
 
-          ScrollView(.vertical) {
-            Group {
-              if store.isLoading && store.placeDetail == nil {
-                ExploreDetailSkeletonView()
-              } else {
-                VStack(alignment: .leading) {
-                  exploreSpotNameTitle()
+          // 스크롤 가능한 컨텐츠
+          ScrollViewReader { scrollProxy in
+            ScrollView(.vertical) {
+              LazyVStack(alignment: .leading, spacing: 0) {
+                Group {
+                  if store.isLoading && store.placeDetail == nil {
+                    ExploreDetailSkeletonView()
+                  } else {
+                    VStack(alignment: .leading, spacing: 0) {
+                      exploreSpotNameTitle()
+                        .padding(.top, 18) // 6 + 18 = 24 (네비게이션에서 총 24만큼 떨어짐)
+                        .id("title")
 
-                  imageSection()
-                    .padding(.top, 24)
+                      imageSection()
+                        .padding(.top, 24)
+                        .id("images")
+                        .background(
+                          GeometryReader { imageGeo in
+                            Color.clear
+                              .onAppear {
+                                // 이미지 섹션 위치 감지
+                                let imageFrame = imageGeo.frame(in: .global)
+                                store.send(.view(.titlePositionChanged(imageFrame.minY)))
+                              }
+                              .onChange(of: imageGeo.frame(in: .global).minY) { _, newY in
+                                store.send(.view(.titlePositionChanged(newY)))
+                              }
+                          }
+                        )
 
-                  stayInfoSection()
-                    .padding(.top, 24)
+                      stayInfoSection()
+                        .padding(.top, 24)
 
-                  returnDeadlineSection()
-                    .padding(.top, 24)
+                      returnDeadlineSection()
+                        .padding(.top, 24)
 
-                  placeInfoSection()
-                    .padding(.top, 29)
+                      placeInfoSection()
+                        .padding(.top, 29)
 
-                  locationMapSection()
-                    .padding(.top, 24)
+                      locationMapSection()
+                        .padding(.top, 24)
+                        .id("map")
 
-                  routeButtonSection()
-                    .padding(.top, 24)
+                      // 고정 버튼 영역만큼 하단 공간 확보
+                      Color.clear
+                        .frame(height: 131) // 간격 41 + 버튼 높이 56 + 하단 패딩 34
+                        .id("bottom")
+
+                    }
+                  }
                 }
+                .padding(.horizontal, 16)
               }
             }
-            .padding(.horizontal, 16)
+            .scrollIndicators(.hidden)
+            .padding(.top, 6) // 상단 네비게이션에서 6만큼 떨어진 지점부터 스크롤 시작
           }
-          .scrollIndicators(.hidden)
+          .offset(y: -10)
         }
 
-        Spacer()
+        // 하단 고정 버튼
+        VStack {
+          Spacer()
 
+          if !(store.isLoading && store.placeDetail == nil) {
+            VStack(spacing: 0) {
+              // 투명한 상단 간격 (콘텐츠가 보이도록)
+              Spacer()
+                .frame(height: 41)
+
+              // 버튼 영역만 배경 적용
+              routeButtonSection()
+                .padding(.horizontal, 16)
+                .padding(.bottom, 24)
+                .background(.gray100)
+            }
+          }
+        }
       }
     }
     .onAppear {
@@ -97,7 +146,7 @@ public struct ExploreDetailView: View {
     .toastOverlay(
       position: .bottom,
       horizontalPadding: 20,
-      bottomPadding: 100
+      bottomPadding: 170 // 고정 버튼(상단 41 + 버튼 + 하단 34) 위에 토스트 표시
     )
   }
 }
@@ -116,7 +165,7 @@ private extension ExploreDetailView {
     let searchRange = max(0, midPoint - 2)...min(characters.count - 1, midPoint + 2)
 
     // 이미 스페이스가 있는 위치 찾기
-    if let spaceIndex = searchRange.first(where: { characters[$0] == " " }) {
+    if searchRange.first(where: { characters[$0] == " " }) != nil {
       return text
     }
 
@@ -130,19 +179,17 @@ private extension ExploreDetailView {
 
   @ViewBuilder
   func exploreSpotNameTitle() -> some View {
-    VStack(alignment: .leading) {
-      HStack(spacing: 8) {
-        Text(formatLongText(store.placeNameText.formattedPlaceNameForDisplay))
-          .pretendardCustomFont(textStyle: .heading1)
-          .foregroundStyle(.staticBlack)
-          .lineLimit(2)
+    HStack(spacing: 8) {
+      Text(formatLongText(store.placeNameText.formattedPlaceNameForDisplay))
+        .pretendardCustomFont(textStyle: .heading1)
+        .foregroundStyle(.staticBlack)
+        .lineLimit(2)
 
-        Text(formatLongText(store.categoryText))
-          .pretendardCustomFont(textStyle: .body2Regular)
-          .foregroundStyle(.gray700)
+      Text(formatLongText(store.categoryText))
+        .pretendardCustomFont(textStyle: .body2Regular)
+        .foregroundStyle(.gray700)
 
-        Spacer()
-      }
+      Spacer()
     }
   }
 
@@ -270,17 +317,59 @@ private extension ExploreDetailView {
   @ViewBuilder
   func locationMapSection() -> some View {
     GeometryReader { proxy in
-      Map(initialPosition: .region(store.mapRegion), interactionModes: .all) {
-        Annotation(formatLongText(store.placeNameText), coordinate: store.mapCoordinate) {
-          Image(asset: .spotPin)
-            .resizable()
-            .scaledToFit()
-            .frame(width: 24, height: 28)
+      if let placeDetail = store.placeDetail {
+        // placeDetail이 로딩된 후 유효한 좌표로만 지도 표시
+        let coordinate = CLLocationCoordinate2D(
+          latitude: placeDetail.latitude,
+          longitude: placeDetail.longitude
+        )
+
+        if coordinate.latitude != 0 && coordinate.longitude != 0 {
+          Map(initialPosition: .region(store.mapRegion), interactionModes: .all) {
+            Annotation(formatLongText(store.placeNameText), coordinate: coordinate) {
+              Image(asset: .spotPin)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 24, height: 28)
+            }
+          }
+          .frame(width: proxy.size.width, height: 180)
+          .clipShape(RoundedRectangle(cornerRadius: 20))
+          .clipped()
+        } else {
+          // 좌표가 유효하지 않을 때
+          RoundedRectangle(cornerRadius: 20)
+            .fill(.gray200)
+            .frame(width: proxy.size.width, height: 180)
+            .overlay {
+              VStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle")
+                  .font(.system(size: 24, weight: .medium))
+                  .foregroundStyle(.orange600)
+
+                Text("위치 정보를 찾을 수 없습니다")
+                  .pretendardCustomFont(textStyle: .body2Regular)
+                  .foregroundStyle(.gray600)
+              }
+            }
         }
+      } else {
+        // placeDetail 로딩 중에는 플레이스홀더 표시
+        RoundedRectangle(cornerRadius: 20)
+          .fill(.gray200)
+          .frame(width: proxy.size.width, height: 180)
+          .overlay {
+            VStack(spacing: 8) {
+              ProgressView()
+                .progressViewStyle(CircularProgressViewStyle(tint: .gray600))
+                .scaleEffect(0.8)
+
+              Text("지도 로딩 중...")
+                .pretendardCustomFont(textStyle: .body2Regular)
+                .foregroundStyle(.gray600)
+            }
+          }
       }
-      .frame(width: proxy.size.width, height: 180)
-      .clipShape(RoundedRectangle(cornerRadius: 20))
-      .clipped()
     }
     .frame(height: 180)
   }
@@ -443,22 +532,5 @@ private extension ExploreDetailView {
         .foregroundStyle(.gray500)
     }
   }
-
-  func loadingPlaceholder() -> some View {
-    ZStack {
-      RoundedRectangle(cornerRadius: 20)
-        .fill(.gray200)
-
-      VStack(spacing: 8) {
-        ProgressView()
-          .progressViewStyle(CircularProgressViewStyle(tint: .gray600))
-          .scaleEffect(0.8)
-
-        Text("로딩 중...")
-          .pretendardCustomFont(textStyle: .body2Regular)
-          .foregroundStyle(.gray600)
-      }
-    }
-  }
-
 }
+
