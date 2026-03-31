@@ -69,6 +69,7 @@ private extension ExploreView {
         ? nil
         : store.userSession.selectedExploreSpotID,
       returnToLocationTrigger: store.returnToCurrentLocationTrigger,
+      autoFitTrigger: 0, // ExploreView에서는 자동 피팅 사용하지 않음
       onSpotTapped: { spotID in
         store.send(.view(.spotTapped(spotID)))
       },

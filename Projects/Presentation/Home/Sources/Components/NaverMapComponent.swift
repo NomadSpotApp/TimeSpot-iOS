@@ -24,6 +24,7 @@ public struct NaverMapComponent: UIViewRepresentable {
   let spots: [ExploreMapSpot]
   let selectedSpotID: String?
   let returnToLocationTrigger: Int
+  let autoFitTrigger: Int // 카메라 자동 조정 트리거
   let onSpotTapped: ((String) -> Void)?
   let onMapTapped: (() -> Void)?
   let onCameraIdle: ((CLLocationCoordinate2D) -> Void)?
@@ -38,6 +39,7 @@ public struct NaverMapComponent: UIViewRepresentable {
   private static var lastDestinationKey: String?
   private static var lastReturnToLocationTrigger: Int?
   private static var lastAutoFitKey: String?
+  private static var lastAutoFitTrigger: Int?
   private static var routePath: NMFPath?
 
   public init(
@@ -49,6 +51,7 @@ public struct NaverMapComponent: UIViewRepresentable {
     spots: [ExploreMapSpot] = [],
     selectedSpotID: String? = nil,
     returnToLocationTrigger: Int = 0,
+    autoFitTrigger: Int = 0,
     onSpotTapped: ((String) -> Void)? = nil,
     onMapTapped: (() -> Void)? = nil,
     onCameraIdle: ((CLLocationCoordinate2D) -> Void)? = nil
@@ -61,6 +64,7 @@ public struct NaverMapComponent: UIViewRepresentable {
     self.spots = spots
     self.selectedSpotID = selectedSpotID
     self.returnToLocationTrigger = returnToLocationTrigger
+    self.autoFitTrigger = autoFitTrigger
     self.onSpotTapped = onSpotTapped
     self.onMapTapped = onMapTapped
     self.onCameraIdle = onCameraIdle
@@ -160,6 +164,7 @@ public struct NaverMapComponent: UIViewRepresentable {
     let shouldReturnToLocation =
       currentLocation != nil
       && Self.lastReturnToLocationTrigger != returnToLocationTrigger
+    let shouldAutoFit = Self.lastAutoFitTrigger != autoFitTrigger && autoFitTrigger > 0
     let shouldPrioritizeCurrentLocation = shouldReturnToLocation
     let autoFitKey = makeAutoFitKey(destination: destination, spots: spots)
     Self.routePath?.mapView = nil
@@ -422,6 +427,30 @@ public struct NaverMapComponent: UIViewRepresentable {
       adjustCameraToFitRoute(mapView: uiView, routeCoords: pathCoords, currentLocation: currentLocation)
 
     }
+
+    // autoFitTrigger가 변경되었을 때 카메라 자동 조정
+    if shouldAutoFit {
+      Self.lastAutoFitTrigger = autoFitTrigger
+
+      // 경로가 있으면 경로에 맞게 카메라 조정
+      if let routeInfo = routeInfo, !routeInfo.paths.isEmpty {
+        let pathCoords = routeInfo.paths.map {
+          NMGLatLng(lat: $0.latitude, lng: $0.longitude)
+        }
+        adjustCameraToFitRoute(mapView: uiView, routeCoords: pathCoords, currentLocation: currentLocation)
+      }
+      // 경로가 없고 목적지가 있으면 목적지와 현재 위치에 맞게 조정
+      else if let destination = destination {
+        var coords = [NMGLatLng(lat: destination.coordinate.latitude, lng: destination.coordinate.longitude)]
+        if let currentLocation = currentLocation {
+          coords.append(NMGLatLng(lat: currentLocation.coordinate.latitude, lng: currentLocation.coordinate.longitude))
+        }
+        if let travelStation = travelStation {
+          coords.append(NMGLatLng(lat: travelStation.coordinate.latitude, lng: travelStation.coordinate.longitude))
+        }
+        adjustCameraToFitCoordinates(mapView: uiView, coordinates: coords)
+      }
+    }
   }
 
   public final class Coordinator: NSObject, NMFMapViewTouchDelegate, NMFMapViewCameraDelegate {
@@ -676,6 +705,37 @@ public struct NaverMapComponent: UIViewRepresentable {
     }
   }
 
+  // 여러 좌표에 맞게 카메라 조정
+  private func adjustCameraToFitCoordinates(mapView: NMFMapView, coordinates: [NMGLatLng]) {
+    guard let first = coordinates.first else { return }
+
+    var minLat = first.lat
+    var maxLat = first.lat
+    var minLng = first.lng
+    var maxLng = first.lng
+
+    for coord in coordinates {
+      minLat = min(minLat, coord.lat)
+      maxLat = max(maxLat, coord.lat)
+      minLng = min(minLng, coord.lng)
+      maxLng = max(maxLng, coord.lng)
+    }
+
+    // 약간의 여백 추가 (15%)
+    let latPadding = (maxLat - minLat) * 0.15
+    let lngPadding = (maxLng - minLng) * 0.15
+
+    let bounds = NMGLatLngBounds(
+      southWest: NMGLatLng(lat: minLat - latPadding, lng: minLng - lngPadding),
+      northEast: NMGLatLng(lat: maxLat + latPadding, lng: maxLng + lngPadding)
+    )
+
+    // 카메라를 bounds에 맞게 조정
+    let cameraUpdate = NMFCameraUpdate(fit: bounds, paddingInsets: UIEdgeInsets(top: 100, left: 50, bottom: 100, right: 50))
+    cameraUpdate.animationDuration = 1.0
+    mapView.moveCamera(cameraUpdate)
+  }
+
   // 경로 전체가 보이도록 카메라 조정
   private func adjustCameraToFitRoute(mapView: NMFMapView, routeCoords: [NMGLatLng], currentLocation: CLLocation?) {
     var allCoords = routeCoords
@@ -797,6 +857,7 @@ public struct NaverMapComponent: UIViewRepresentable {
     travelStation: nil as Destination?,
     spots: [],
     selectedSpotID: nil as String?,
-    returnToLocationTrigger: 0
+    returnToLocationTrigger: 0,
+    autoFitTrigger: 0
   )
 }
