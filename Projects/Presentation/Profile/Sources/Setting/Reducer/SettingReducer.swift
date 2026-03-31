@@ -30,6 +30,10 @@ public struct SettingFeature {
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
     @Shared(.appStorage("mapUrlScheme")) var mapURLScheme: String?
 
+    // 지도 dropdown 상태
+    var showMapDropdown: Bool = false
+
+
     public init() {}
   }
 
@@ -59,6 +63,7 @@ public struct SettingFeature {
     case timeNotificationRowTapped
     case logoutRowTapped
     case mapTypeSelected(ExternalMapType)
+    case toggleMapDropdown
   }
 
 
@@ -139,7 +144,12 @@ extension SettingFeature {
       state.$userSession.withLock {
         $0.mapType = mapType
       }
+      state.showMapDropdown = false // dropdown 선택 후 닫기
       return .send(.async(.editProfile(previousMapType: previousMapType)))
+
+    case .toggleMapDropdown:
+      state.showMapDropdown.toggle()
+      return .none
 
     case .logoutRowTapped:
       return .send(.inner(.presentLogoutConfirmationAlert))
@@ -301,5 +311,6 @@ extension SettingFeature.State: Hashable {
     hasher.combine(logoutEntity)
     hasher.combine(errorMessage)
     hasher.combine(userSession)
+    hasher.combine(showMapDropdown)
   }
 }

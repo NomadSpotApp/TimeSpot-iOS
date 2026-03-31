@@ -29,6 +29,10 @@ public struct ExploreDetailFeature {
     public var showLowStayTimeToast: Bool = false
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
 
+    // 스크롤 관련 상태
+    public var scrollOffset: CGFloat = 0
+    public var showNavigationTitle: Bool = false
+
     public init() {}
   }
 
@@ -56,6 +60,7 @@ public struct ExploreDetailFeature {
     case onAppear
     case hideLowStayTimeToast
     case routeButtonTapped
+    case titlePositionChanged(CGFloat)
   }
 
   public enum AsyncAction: Equatable {
@@ -120,6 +125,12 @@ extension ExploreDetailFeature {
       }
 
       return .send(.delegate(.presentRoute))
+
+    case .titlePositionChanged(let imageY):
+      // 이미지가 조금만 스크롤되어도 네비게이션 바에 제목 표시
+      // 더 빠른 트리거로 사용자 경험 개선
+      state.showNavigationTitle = imageY < 120
+      return .none
     }
   }
 
@@ -380,15 +391,21 @@ extension ExploreDetailFeature.State {
 
   var mapCoordinate: CLLocationCoordinate2D {
     if let placeDetail = placeDetail {
-      return CLLocationCoordinate2D(
-        latitude: placeDetail.latitude,
-        longitude: placeDetail.longitude
+      let coordinate = CLLocationCoordinate2D(
+        latitude: placeDetail.latitude,   // 장소의 실제 위도
+        longitude: placeDetail.longitude  // 장소의 실제 경도
       )
+
+      // 디버깅: 좌표가 유효한지 확인
+      if coordinate.latitude != 0 && coordinate.longitude != 0 {
+        return coordinate
+      }
     }
 
+    // placeDetail이 없거나 좌표가 유효하지 않을 때는 기본 서울 중심 좌표 사용
     return CLLocationCoordinate2D(
-      latitude: userSession.travelStationLat ?? 37.5666805,
-      longitude: userSession.travelStationLng ?? 126.9784147
+      latitude: 37.5666805,  // 서울 중심
+      longitude: 126.9784147
     )
   }
 
