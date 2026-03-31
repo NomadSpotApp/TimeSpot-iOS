@@ -35,14 +35,24 @@ public struct ExploreView: View {
     ZStack {
       mapView()
 
-      VStack(spacing: 0) {
-        headerSection()
-          .padding(.top, 8)
-          .padding(.horizontal, 16)
+      // 🦴 마커 로딩 중일 때는 스켈레톤 전체 화면으로 표시
+      if store.isLoadingPlaces && store.spots.isEmpty {
+        ExploreSkeletonView()
+          .transition(.opacity)
+          .animation(.easeInOut(duration: 0.3), value: store.isLoadingPlaces && store.spots.isEmpty)
+      } else {
+        // ✅ 마커 로딩 완료 후 실제 UI 표시
+        VStack(spacing: 0) {
+          headerSection()
+            .padding(.top, 8)
+            .padding(.horizontal, 16)
 
-        Spacer()
+          Spacer()
 
-        bottomSection()
+          bottomSection()
+        }
+        .transition(.scale.combined(with: .opacity))
+        .animation(.easeInOut(duration: 0.3), value: !(store.isLoadingPlaces && store.spots.isEmpty))
       }
     }
     .onAppear {
@@ -64,7 +74,7 @@ private extension ExploreView {
       routeInfo: nil,
       destination: store.selectedDestination,
       travelStation: nil,
-      spots: store.state.filteredMapSpots,
+      spots: store.spots,
       selectedSpotID: store.userSession.selectedExploreSpotID.isEmpty
         ? nil
         : store.userSession.selectedExploreSpotID,

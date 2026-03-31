@@ -464,6 +464,37 @@ private extension ExploreListFeature {
   }
 }
 
+extension ExploreListFeature.State {
+  var shouldShowInitialSkeleton: Bool {
+    spots.isEmpty && (!hasLoadedInitialPage || isLoading)
+  }
+
+  var isFilteringLocally: Bool {
+    !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+  }
+
+  var shouldShowLoadMore: Bool {
+    !isFilteringLocally && (spots.count < bufferedSpots.count || hasNextPage)
+  }
+
+  var filteredMapSpots: [ExploreMapSpot] {
+    let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    let sourceSpots = isFilteringLocally ? bufferedSpots : spots
+
+    return sourceSpots.filter { spot in
+      let hasDetail = spot.hasDetail
+      let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
+      let matchesCategory = selectedCategory == .all || spot.category == selectedCategory
+
+      return hasDetail && matchesQuery && matchesCategory
+    }
+  }
+
+  var shouldShowEmptyState: Bool {
+    !isLoading && !spots.isEmpty && filteredMapSpots.isEmpty
+  }
+}
+
 extension ExploreListFeature.State: Hashable {
   public static func == (lhs: Self, rhs: Self) -> Bool {
     lhs.searchText == rhs.searchText
