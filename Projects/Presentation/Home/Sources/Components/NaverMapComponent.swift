@@ -95,7 +95,7 @@ public struct NaverMapComponent: UIViewRepresentable {
     mapView.addCameraDelegate(delegate: context.coordinator)
 
     let (initialLatitude, initialLongitude): (Double, Double) = {
-      if let routeInfo = routeInfo,
+      if let _ = routeInfo,
          let currentLoc = currentLocation,
          let dest = destination {
 
@@ -317,10 +317,18 @@ public struct NaverMapComponent: UIViewRepresentable {
             destinationMarker.height = CGFloat(NMF_MARKER_SIZE_AUTO)
           }
         } else {
-          // 일반 모드일 때는 기본 네이버 지도 마커 (초록색)
-          destinationMarker.iconTintColor = UIColor.systemGreen
-          destinationMarker.width = CGFloat(NMF_MARKER_SIZE_AUTO)
-          destinationMarker.height = CGFloat(NMF_MARKER_SIZE_AUTO)
+          // 일반 모드일 때는 stationLocation 이미지 사용
+          if let stationLocationImage = UIImage(assetName: "stationLocation") ?? UIImage(.stationLocation) {
+            destinationMarker.iconImage = NMFOverlayImage(image: stationLocationImage)
+            destinationMarker.width = 36
+            destinationMarker.height = 44
+            destinationMarker.iconTintColor = UIColor.clear
+          } else {
+            // 이미지 로드 실패시 기본 초록색 마커 사용
+            destinationMarker.iconTintColor = UIColor.systemGreen
+            destinationMarker.width = CGFloat(NMF_MARKER_SIZE_AUTO)
+            destinationMarker.height = CGFloat(NMF_MARKER_SIZE_AUTO)
+          }
         }
       }
 
@@ -633,7 +641,7 @@ public struct NaverMapComponent: UIViewRepresentable {
     }
 
     // 디버깅: 현재 표시된 마커 개수 로그
-    let visibleMarkersCount = Self.spotMarkers.values.filter { $0.mapView != nil }.count
+    let _ = Self.spotMarkers.values.filter { $0.mapView != nil }.count
 
     // 선택된 스팟이 현재 spots 배열에 없더라도 마커 스타일 유지하고 표시
     if let selectedSpotID = Self.selectedSpotID,

@@ -110,8 +110,8 @@ final public class DefaultHistoryRepositoryImpl: HistoryInterface {
       isInProgress: false,
       isSuccess: isCompleted,
       createdAt: Date().addingTimeInterval(-3600),
-      startLat: 37.48005159976895,
-      startLng: 127.05369804815471
+      startLat: nil,
+      startLng: nil
     )
   }
 }

@@ -39,7 +39,7 @@ public struct RouteNotificationView: View {
         subtitle: "이제 슬슬 일어날 준비를 해볼까요?",
         image: .tenMinutesNotification,
         store: store,
-        showBottomElements: false,
+        showBottomElements: true,
         isEndJourney: false
       )
     case .fiveMin:

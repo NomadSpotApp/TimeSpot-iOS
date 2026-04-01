@@ -13,6 +13,7 @@ let project = Project.makeModule(
   dependencies: [
     .Domain(implements: .UseCase),
     .Shared(implements: .DesignSystem),
+    .SPM.sdWebImage
   ],
   sources: ["Sources/**"],
   hasTests: true

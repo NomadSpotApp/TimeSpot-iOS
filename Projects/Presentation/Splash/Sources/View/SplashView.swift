@@ -9,6 +9,7 @@ import SwiftUI
 
 import DesignSystem
 import ComposableArchitecture
+import SDWebImageSwiftUI
 
 
 public struct SplashView: View {
@@ -34,32 +35,10 @@ public struct SplashView: View {
 
   public var body: some View {
     ZStack {
-      Color.gray100
-        .ignoresSafeArea()
-
-      ZStack {
-        Image(asset: .appLogo)
-          .resizable()
-          .scaledToFit()
-          .frame(
-            width: Constants.symbolLargeSize.width,
-            height: Constants.symbolLargeSize.height
-          )
-          .scaleEffect(x: symbolScale * symbolScaleX, y: symbolScale * symbolScaleY)
-          .rotationEffect(.degrees(symbolRotation))
-          .offset(x: symbolOffsetX)
-          .opacity(symbolOpacity)
-
-        Image(asset: .logo)
-          .resizable()
-          .scaledToFit()
-          .frame(
-            width: Constants.wordmarkSize.width,
-            height: Constants.wordmarkSize.height
-          )
-          .opacity(wordmarkOpacity)
-          .offset(x: wordmarkOffsetX)
-      }
+      AnimatedImage(name: "splash.gif", isAnimating: .constant(true))
+        .resizable()
+        .scaledToFit()
+        .edgesIgnoringSafeArea(.all)
     }
     .onAppear {
       store.send(.view(.onAppear))

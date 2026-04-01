@@ -28,8 +28,8 @@ public struct JourneyResponseDTO: Decodable, Equatable {
   public let isInProgress: Bool
   public let isSuccess: Bool
   public let createdAt: String
-  public let startLat: Double
-  public let startLng: Double
+  public let startLat: Double?
+  public let startLng: Double?
 
   enum CodingKeys: String, CodingKey {
     case visitingHistoryId
@@ -71,8 +71,8 @@ public struct JourneyResponseDTO: Decodable, Equatable {
     isInProgress: Bool,
     isSuccess: Bool,
     createdAt: String,
-    startLat: Double,
-    startLng: Double
+    startLat: Double? = nil,
+    startLng: Double? = nil
   ) {
     self.visitingHistoryId = visitingHistoryId
     self.stationId = stationId

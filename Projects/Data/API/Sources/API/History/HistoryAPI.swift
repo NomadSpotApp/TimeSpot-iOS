@@ -20,7 +20,7 @@ public enum HistoryAPI {
         return ""
 
       case .endHistory(let historyId):
-        return "\(historyId)"
+        return "/\(historyId)"
     }
   }
 }
