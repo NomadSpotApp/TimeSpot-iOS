@@ -10,6 +10,7 @@ import TCACoordinators
 import Profile
 import CoreLocation
 import Entity
+import LogMacro
 
 @Reducer
 public struct HomeCoordinator {
@@ -22,6 +23,22 @@ public struct HomeCoordinator {
 
     public init() {
       self.routes = [.root(.home(.init()), embedInNavigationView: true)]
+    }
+
+    // 푸쉬 알림용 이니셜라이저
+    public init(withRouteNotification: Bool, deepLink: String? = nil) {
+      if withRouteNotification, let deepLink = deepLink {
+        // 딥링크에 따른 알림 타입 결정
+        let notificationType = RouteNotificationFeature.NotificationType.from(deepLink: deepLink)
+
+        // 홈을 root로 하고 RouteNotificationView를 즉시 push (스와이프 뒤로가기 지원)
+        self.routes = [
+          .root(.home(.init()), embedInNavigationView: true),
+          .push(.routeNotification(.init(notificationType: notificationType)))
+        ]
+      } else {
+        self.routes = [.root(.home(.init()), embedInNavigationView: true)]
+      }
     }
   }
 
@@ -53,6 +70,7 @@ public struct HomeCoordinator {
     case presentExplore
     case presentExploreList(ExploreFeature.State)
     case presentExploreDetail
+    case presentRouteFromPushNotification(String)
   }
 
   // MARK: - NavigationAction
@@ -170,6 +188,15 @@ extension HomeCoordinator {
         state.routes.push(.route(.init()))
         return .none
 
+      case .routeAction(id: _, action: .routeNotification(.delegate(.presentRoute))):
+        state.routes.push(.route(.init()))
+        return .none
+
+      case .routeAction(id: _, action: .routeNotification(.delegate(.closeNotification))):
+        return .send(.view(.backAction))
+
+      case .routeAction(id: _, action: .routeNotification(.delegate(.presentHome))):
+        return .send(.view(.backAction))
 
       default:
         return .none
@@ -264,6 +291,49 @@ extension HomeCoordinator {
     case .presentExploreDetail:
       state.routes.push(.exploreDetail(.init()))
       return .none
+
+    case let .presentRouteFromPushNotification(deepLink):
+      #logDebug("🚀 HomeCoordinator: presentRouteFromPushNotification 액션 처리 시작")
+
+      let notificationType = RouteNotificationFeature.NotificationType.from(deepLink: deepLink)
+      #logDebug("📋 HomeCoordinator: 딥링크 = \(deepLink), 알림 타입 = \(notificationType)")
+
+      // 현재 routes 상태 로그
+      #logDebug("📍 현재 routes 개수: \(state.routes.count)")
+      for (index, route) in state.routes.enumerated() {
+        switch route.screen {
+        case .home:
+          #logDebug("Route[\(index)]: home")
+        case .explore:
+          #logDebug("Route[\(index)]: explore")
+        case .exploreList:
+          #logDebug("Route[\(index)]: exploreList")
+        case .exploreDetail:
+          #logDebug("Route[\(index)]: exploreDetail")
+        case .profile:
+          #logDebug("Route[\(index)]: profile")
+        case .route:
+          #logDebug("Route[\(index)]: route (기존)")
+        case .routeNotification:
+          #logDebug("Route[\(index)]: routeNotification (기존)")
+        }
+      }
+
+      // 기존 route 또는 routeNotification 화면이 있으면 제거하고 새로 추가
+      let removedCount = state.routes.count
+      state.routes.removeAll { route in
+        switch route.screen {
+        case .route, .routeNotification:
+          return true
+        default:
+          return false
+        }
+      }
+      #logDebug("🗑️ 기존 route/routeNotification 화면 제거됨. 제거 전: \(removedCount), 제거 후: \(state.routes.count)")
+
+      state.routes.push(.routeNotification(.init(notificationType: notificationType)))
+      #logDebug("✅ RouteNotificationView 추가 완료. 현재 routes 개수: \(state.routes.count)")
+      return .none
     }
   }
 
@@ -278,6 +348,7 @@ extension HomeCoordinator {
     case exploreDetail(ExploreDetailFeature)
     case profile(ProfileCoordinator)
     case route(RouteFeature)
+    case routeNotification(RouteNotificationFeature)
   }
 }
 

@@ -9,6 +9,8 @@ import SwiftUI
 import ComposableArchitecture
 import TCACoordinators
 import Profile
+import UseCase
+import LogMacro
 
 public struct HomeCoordinatorView: View {
   @Bindable var store: StoreOf<HomeCoordinator>
@@ -68,13 +70,19 @@ public struct HomeCoordinatorView: View {
               removal: .move(edge: .leading).combined(with: .opacity)
             ))
 
+        case .routeNotification(let routeNotificationStore):
+          RouteNotificationView(store: routeNotificationStore)
+            .navigationBarBackButtonHidden()
+            .transition(.opacity)
+
       }
     }
-    .animation(.easeInOut(duration: 0.35), value: store.routes.count)
+    .animation(.easeInOut(duration: 0.1), value: store.routes.count)
     .transaction { transaction in
       if store.routes.count > 1 {
-        transaction.animation = .easeInOut(duration: 0.35)
+        transaction.animation = .easeInOut(duration: 0.1)
       }
     }
   }
 }
+

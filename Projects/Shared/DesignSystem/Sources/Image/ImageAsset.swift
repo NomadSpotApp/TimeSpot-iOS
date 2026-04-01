@@ -58,6 +58,10 @@ public enum ImageAsset: String {
   case loginlogo
   case appLogo
   case locationBadge
+  case fiveMinutesNotification
+  case tenMinutesNotification
+  case fifteenMinutesNotification
+  case startNotification
 
 
   case warning

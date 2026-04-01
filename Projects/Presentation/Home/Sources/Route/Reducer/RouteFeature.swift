@@ -23,6 +23,8 @@ public struct RouteFeature {
   public struct State: Equatable {
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
     @Shared(.appStorage("selectedMapType")) var selectedMapTypeStorage: ExternalMapType = .naverMap
+    @Shared(.appStorage("nearestStationLat")) var persistedStationLat: Double = 0.0
+    @Shared(.appStorage("nearestStationLng")) var persistedStationLng: Double = 0.0
     public var locationPermissionStatus: CLAuthorizationStatus = .notDetermined
     public var currentLocation: CLLocation?
     public var routeInfo: RouteInfo?
@@ -271,6 +273,20 @@ extension RouteFeature {
         case .success(let routeInfo):
           state.routeInfo = routeInfo
           state.routeError = nil
+
+          // UserSession에 경로 정보 저장
+          state.$userSession.withLock {
+            $0.routeDistance = routeInfo.distance
+            $0.routeDuration = routeInfo.duration
+          }
+
+          // 목적지를 가장 가까운 역으로 appStorage에 저장 (지속적 저장)
+          if let destLat = state.userSession.routeDestinationLat,
+             let destLng = state.userSession.routeDestinationLng {
+            state.persistedStationLat = destLat
+            state.persistedStationLng = destLng
+          }
+
         case .failure(let error):
           state.routeError = error.localizedDescription
         }

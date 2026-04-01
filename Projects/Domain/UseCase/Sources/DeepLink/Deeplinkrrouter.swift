@@ -19,14 +19,22 @@ public struct DeeplinkRouter: Sendable {
     _ urlString: String
   ) -> DeeplinkResult {
         guard let url = URL(string: urlString),
-              url.scheme == "sseudam" else {
+              url.scheme == "timespot" else {
             return .invalid(url: urlString, reason: "Invalid scheme")
         }
 
         let pathComponents = url.pathComponents.filter { $0 != "/" }
 
-        switch url.host ?? pathComponents.first {
+        let hostOrPath = url.host ?? pathComponents.first ?? ""
+
+        switch hostOrPath {
         case "route":
+            return parseRouteDeeplink(url: url)
+        case "departure_time":
+            // 출발 시간 알림 딥링크
+            return parseRouteDeeplink(url: url)
+        case let host where host.contains("min_before") || host.contains("min_after"):
+            // 시간 알림 관련 딥링크는 route로 처리
             return parseRouteDeeplink(url: url)
         default:
             return .success(.unknown(url: urlString))
@@ -104,9 +112,16 @@ public struct DeeplinkRouter: Sendable {
         #logDebug(" \(key) 컨테이너 내용: \(container)")
 
         // url 또는 deeplink 필드 확인
-        for urlKey in ["url", "deeplink", "link"] {
+        for urlKey in ["url", "deeplink", "link", "notificationSchema"] {
           if let url = container[urlKey] as? String {
             #logDebug(" 딥링크 발견 (\(key).\(urlKey)): \(url)")
+
+            // notificationType도 함께 추출해서 URL에 추가
+            if let notificationType = container["notificationType"] as? String {
+              #logDebug(" 알림 타입 발견: \(notificationType)")
+              return "\(url)?notificationType=\(notificationType)"
+            }
+
             return url
           }
         }
