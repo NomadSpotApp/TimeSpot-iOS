@@ -141,101 +141,59 @@ public struct RouteUseCaseImpl: DirectionInterface {
   /// Google Maps 앱으로 길찾기
   @MainActor
   private func openGoogleMap(lat: Double, lng: Double, destinationName: String) {
-
     let encodedName = destinationName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? destinationName
+    let primaryURL = "comgooglemaps://?daddr=\(lat),\(lng)(\(encodedName))&directionsmode=walking"
 
-    // 구글 지도 길찾기 URL 스킴 (바로 도보 길안내)
-    let googleAppURLs = [
-      // 1. 도보 길찾기 (목적지 + 이름)
-      "comgooglemaps://?daddr=\(lat),\(lng)(\(encodedName))&directionsmode=walking",
-
-      // 2. 기본 도보 길찾기
-      "comgooglemaps://?daddr=\(lat),\(lng)&directionsmode=walking",
-
-      // 3. 구글 지도 앱 (다른 스킴)
-      "googlemaps://?daddr=\(lat),\(lng)&directionsmode=walking"
-    ]
-
-    var appOpened = false
-
-    for urlString in googleAppURLs {
-      if let url = URL(string: urlString), UIApplication.shared.canOpenURL(url) {
-        UIApplication.shared.open(url)
-        appOpened = true
-        break
+    if let url = URL(string: primaryURL), UIApplication.shared.canOpenURL(url) {
+      UIApplication.shared.open(url, options: [:]) { success in
+        Task { @MainActor in
+          if !success {
+            self.openGoogleMapWeb(lat: lat, lng: lng, destinationName: destinationName)
+          }
+        }
       }
-    }
-
-    if !appOpened {
-      // Google Maps 앱이 설치되어 있지 않으면 웹으로 실행 (길찾기 모드)
-      let webURL = "https://www.google.com/maps/dir/?api=1&destination=\(lat),\(lng)&travelmode=walking"
-      if let url = URL(string: webURL) {
-        UIApplication.shared.open(url)
-      }
+    } else {
+      openGoogleMapWeb(lat: lat, lng: lng, destinationName: destinationName)
     }
   }
 
-  /// 네이버 지도 앱으로 길찾기 (블로그 패턴 적용)
+  /// Google Maps 웹으로 길찾기
+  @MainActor
+  private func openGoogleMapWeb(lat: Double, lng: Double, destinationName: String) {
+    let webURL = "https://www.google.com/maps/dir/?api=1&destination=\(lat),\(lng)&travelmode=walking"
+    if let url = URL(string: webURL) {
+      UIApplication.shared.open(url, options: [:], completionHandler: nil)
+    }
+  }
+
+  /// 네이버 지도 앱으로 길찾기
   @MainActor
   private func openNaverMap(lat: Double, lng: Double, destinationName: String) {
-
-
-    // 시뮬레이터에서는 웹으로 바로 이동
     #if targetEnvironment(simulator)
     #logDebug("⚠️ [RouteUseCase] 시뮬레이터에서는 외부 앱 연동 불가")
     openNaverMapWeb(lat: lat, lng: lng, destinationName: destinationName)
     return
     #endif
 
-    // 길찾기 우선 실행 URL들 (바로 도보 네비게이션)
     let encodedName = destinationName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? destinationName
-    let naverMapURLs = [
-      // 1. 도보 길찾기 (목적지 이름 포함) - 최우선
-      "nmap://route/walk?dlat=\(lat)&dlng=\(lng)&dname=\(encodedName)",
 
-      // 2. 네비게이션 모드 (바로 길안내)
-      "nmap://navigation?dlat=\(lat)&dlng=\(lng)&dname=\(encodedName)",
+    // 가장 효과적인 URL 순서로 정렬
+    let primaryURL = "nmap://route/walk?dlat=\(lat)&dlng=\(lng)&dname=\(encodedName)"
 
-      // 3. 길찾기 (일반)
-      "nmap://route?dlat=\(lat)&dlng=\(lng)&dname=\(encodedName)",
-
-      // 4. 백업: 장소 표시 (이름 포함)
-      "nmap://place?lat=\(lat)&lng=\(lng)&name=\(encodedName)",
-
-      // 5. 최종 백업: 기본 장소 표시
-      "nmap://place?lat=\(lat)&lng=\(lng)",
-    ]
-
-    var appOpened = false
-
-    for (index, urlString) in naverMapURLs.enumerated() {
-      #logDebug(" [RouteUseCase] 시도 \(index + 1)/\(naverMapURLs.count): \(urlString)")
-
-      if let openApp = URL(string: urlString),
-         UIApplication.shared.canOpenURL(openApp) {
-        UIApplication.shared.open(openApp, options: [:]) { success in
-          Task { @MainActor in
-            if !success && index == naverMapURLs.count - 1 {
-              // 마지막 URL도 실패하면 웹으로 폴백
-              self.openNaverMapWeb(lat: lat, lng: lng, destinationName: destinationName)
-            }
+    if let url = URL(string: primaryURL), UIApplication.shared.canOpenURL(url) {
+      UIApplication.shared.open(url, options: [:]) { success in
+        Task { @MainActor in
+          if !success {
+            self.openNaverMapWeb(lat: lat, lng: lng, destinationName: destinationName)
           }
         }
-        appOpened = true
-        break // 첫 번째 성공한 URL에서 중단
-      } else {
-        #logDebug("[RouteUseCase] canOpenURL 실패")
       }
-    }
-
-    if !appOpened {
+    } else {
+      // 앱이 설치되지 않은 경우 App Store로 이동
       let appStoreURL = "itms-apps://itunes.apple.com/app/311867728"
-      if let openStore = URL(string: appStoreURL),
-         UIApplication.shared.canOpenURL(openStore) {
-        #logDebug(" [RouteUseCase] App Store로 이동")
-        UIApplication.shared.open(openStore, options: [:], completionHandler: nil)
+      if let storeUrl = URL(string: appStoreURL) {
+        UIApplication.shared.open(storeUrl, options: [:], completionHandler: nil)
       } else {
-        #logDebug(" [RouteUseCase] App Store 이동 실패, 웹으로 폴백")
         openNaverMapWeb(lat: lat, lng: lng, destinationName: destinationName)
       }
     }

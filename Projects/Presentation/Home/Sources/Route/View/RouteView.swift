@@ -85,21 +85,28 @@ private extension RouteView {
   }
 
   private func makeDestination() -> Destination? {
-    guard let lat = store.userSession.routeDestinationLat,
-          let lng = store.userSession.routeDestinationLng else { return nil }
-
-    return Destination(
-      name: store.userSession.routeDestinationName.nilIfEmpty ?? "목적지",
-      coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng)
+    makeLocation(
+      lat: store.userSession.routeDestinationLat,
+      lng: store.userSession.routeDestinationLng,
+      name: store.userSession.routeDestinationName.nilIfEmpty,
+      defaultName: "목적지"
     )
   }
 
   private func makeTravelStation() -> Destination? {
-    guard let lat = store.userSession.travelStationLat,
-          let lng = store.userSession.travelStationLng else { return nil }
+    makeLocation(
+      lat: store.userSession.travelStationLat,
+      lng: store.userSession.travelStationLng,
+      name: store.userSession.travelStationName.nilIfEmpty,
+      defaultName: "출발역"
+    )
+  }
+
+  private func makeLocation(lat: Double?, lng: Double?, name: String?, defaultName: String) -> Destination? {
+    guard let lat = lat, let lng = lng else { return nil }
 
     return Destination(
-      name: store.userSession.travelStationName.nilIfEmpty ?? "출발역",
+      name: name ?? defaultName,
       coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng)
     )
   }

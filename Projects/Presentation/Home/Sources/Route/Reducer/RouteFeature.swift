@@ -234,26 +234,19 @@ extension RouteFeature {
 
       case .waitForLocationThenSearchRoute:
         return .run { [userSession = state.userSession] send in
-          // 최대 5초 동안 현재 위치를 기다림
-          var attempts = 0
-          let maxAttempts = 25  // 5초 (200ms * 25)
+          // 현재 위치를 한 번만 요청하고 실패하면 종료
+          do {
+            if let currentLocation = try await locationUseCase.requestCurrentLocation(),
+               let endLat = userSession.routeDestinationLat,
+               let endLng = userSession.routeDestinationLng {
 
-          while attempts < maxAttempts {
-            do {
-              if let currentLocation = try await locationUseCase.requestCurrentLocation(),
-                 let endLat = userSession.routeDestinationLat,
-                 let endLng = userSession.routeDestinationLng {
+              let startCoord = currentLocation.coordinate
+              let endCoord = CLLocationCoordinate2D(latitude: endLat, longitude: endLng)
 
-                let startCoord = currentLocation.coordinate
-                let endCoord = CLLocationCoordinate2D(latitude: endLat, longitude: endLng)
-
-                await send(.async(.searchRoute(from: startCoord, to: endCoord)))
-                return
-              }
+              await send(.async(.searchRoute(from: startCoord, to: endCoord)))
             }
-
-            attempts += 1
-            try? await Task.sleep(for: .milliseconds(200))
+          } catch {
+            #logDebug("❌ [Route] 현재 위치 요청 실패: \(error.localizedDescription)")
           }
         }
 
