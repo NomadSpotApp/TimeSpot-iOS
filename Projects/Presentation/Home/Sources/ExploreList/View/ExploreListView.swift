@@ -30,7 +30,7 @@ public struct ExploreListView: View {
         } else if store.shouldShowEmptyState {
           VStack(spacing: 0) {
             ExploreSearchHeaderView(
-              stationName: store.userSession.travelStationName,
+              stationName: "\(store.userSession.travelStationName)역",
               searchText: store.searchText,
               selectedCategory: store.selectedCategory,
               showCategories: true,   // 카테고리 표시

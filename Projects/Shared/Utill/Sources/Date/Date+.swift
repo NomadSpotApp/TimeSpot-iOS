@@ -171,13 +171,8 @@ public extension Date {
       return self
     }
 
-    // 선택된 시간이 현재 시간보다 이전이면 다음날로 설정
-    // 특별히 새벽 시간대(0-6시)를 선택하고 현재가 저녁(18시 이후)이면 다음날로 처리
-    let currentHour = currentDateComponents.hour ?? 0
-    let needsNextDay = normalizedDate <= currentTime ||
-                      (selectedHour >= 0 && selectedHour <= 6 && currentHour >= 18)
-
-    if needsNextDay {
+    // 선택된 시간이 현재 시간보다 이전이거나 같으면 다음날로 설정
+    if normalizedDate <= currentTime {
       return calendar.date(byAdding: .day, value: 1, to: normalizedDate) ?? normalizedDate
     }
 

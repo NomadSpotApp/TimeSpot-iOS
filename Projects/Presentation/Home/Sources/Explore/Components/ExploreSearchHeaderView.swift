@@ -103,7 +103,7 @@ struct ExploreSearchHeaderView: View {
 
         ZStack(alignment: .leading) {
           if searchText.isEmpty {
-            Text("\(formatLongText(stationName))역")
+            Text("\(formatLongText(stationName))")
               .pretendardCustomFont(textStyle: .titleRegular)
               .foregroundStyle(.gray600)
           }

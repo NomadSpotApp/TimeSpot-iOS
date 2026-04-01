@@ -26,14 +26,14 @@ public struct MyHistoryRequest: Encodable {
 
 public struct StartJourneyRequest: Encodable {
   public let stationId: Int
-  public let placeId: Int
+  public let placeId: String
   public let trainDepartureTime: String
   public let lat: Double
   public let lng: Double
 
   public init(
     stationId: Int,
-    placeId: Int,
+    placeId: String,
     trainDepartureTime: String,
     lat: Double,
     lng: Double
@@ -48,7 +48,7 @@ public struct StartJourneyRequest: Encodable {
   // Date를 받아서 ISO8601 형식으로 변환하는 편의 이니셜라이저
   public init(
     stationId: Int,
-    placeId: Int,
+    placeId: String,
     trainDepartureTime: Date,
     lat: Double,
     lng: Double
@@ -91,14 +91,15 @@ public struct ApiResponse<T: Codable>: Codable {
 
 public struct StartJourneyResponseDTO: Codable {
   public let visitingHistoryId: Int
-  public let userId: String
   public let stationId: Int
   public let stationName: String
   public let stationAddress: String
-  public let placeId: Int
+  public let placeId: String
   public let placeName: String
   public let placeCategory: String
   public let placeAddress: String
+  public let placeLat: Double
+  public let placeLng: Double
   public let startTime: String
   public let endTime: String?
   public let trainDepartureTime: String
@@ -106,27 +107,31 @@ public struct StartJourneyResponseDTO: Codable {
   public let isInProgress: Bool
   public let isSuccess: Bool
   public let createdAt: String
+  public let startLat: Double
+  public let startLng: Double
 
   public init(
     visitingHistoryId: Int,
-    userId: String,
     stationId: Int,
     stationName: String,
     stationAddress: String,
-    placeId: Int,
+    placeId: String,
     placeName: String,
     placeCategory: String,
     placeAddress: String,
+    placeLat: Double,
+    placeLng: Double,
     startTime: String,
     endTime: String? = nil,
     trainDepartureTime: String,
     totalDurationMinutes: Int,
     isInProgress: Bool,
     isSuccess: Bool,
-    createdAt: String
+    createdAt: String,
+    startLat: Double,
+    startLng: Double
   ) {
     self.visitingHistoryId = visitingHistoryId
-    self.userId = userId
     self.stationId = stationId
     self.stationName = stationName
     self.stationAddress = stationAddress
@@ -134,6 +139,8 @@ public struct StartJourneyResponseDTO: Codable {
     self.placeName = placeName
     self.placeCategory = placeCategory
     self.placeAddress = placeAddress
+    self.placeLat = placeLat
+    self.placeLng = placeLng
     self.startTime = startTime
     self.endTime = endTime
     self.trainDepartureTime = trainDepartureTime
@@ -141,6 +148,8 @@ public struct StartJourneyResponseDTO: Codable {
     self.isInProgress = isInProgress
     self.isSuccess = isSuccess
     self.createdAt = createdAt
+    self.startLat = startLat
+    self.startLng = startLng
   }
 }
 

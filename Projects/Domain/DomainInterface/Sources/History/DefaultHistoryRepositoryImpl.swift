@@ -66,7 +66,6 @@ final public class DefaultHistoryRepositoryImpl: HistoryInterface {
     // Mock response for testing
     return JourneyEntity(
       id: 1,
-      userId: "test-user-id",
       stationId: input.stationId,
       stationName: "테스트역",
       stationAddress: "테스트 주소",
@@ -74,13 +73,17 @@ final public class DefaultHistoryRepositoryImpl: HistoryInterface {
       placeName: "테스트 장소",
       placeCategory: "카페",
       placeAddress: "테스트 장소 주소",
+      placeLat: 37.5407599328,
+      placeLng: 126.973658303,
       startTime: Date(),
       endTime: nil,
       trainDepartureTime: input.trainDepartureTime,
       totalDurationMinutes: 0,
       isInProgress: true,
       isSuccess: false,
-      createdAt: Date()
+      createdAt: Date(),
+      startLat: input.lat,
+      startLng: input.lng
     )
   }
 
@@ -91,21 +94,24 @@ final public class DefaultHistoryRepositoryImpl: HistoryInterface {
     // Mock response for testing
     return JourneyEntity(
       id: journeyId,
-      userId: "test-user-id",
       stationId: 1,
       stationName: "테스트역",
       stationAddress: "테스트 주소",
-      placeId: 1,
+      placeId: "1",
       placeName: "테스트 장소",
       placeCategory: "카페",
       placeAddress: "테스트 장소 주소",
+      placeLat: 37.5407599328,
+      placeLng: 126.973658303,
       startTime: Date().addingTimeInterval(-3600),
       endTime: Date(),
       trainDepartureTime: Date(),
       totalDurationMinutes: 60,
       isInProgress: false,
       isSuccess: isCompleted,
-      createdAt: Date().addingTimeInterval(-3600)
+      createdAt: Date().addingTimeInterval(-3600),
+      startLat: 37.48005159976895,
+      startLng: 127.05369804815471
     )
   }
 }

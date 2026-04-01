@@ -96,7 +96,7 @@ private extension ExploreView {
   @ViewBuilder
   func headerSection() -> some View {
     ExploreSearchHeaderView(
-      stationName: store.userSession.travelStationName,
+      stationName: "\(store.userSession.travelStationName)역",
       searchText: store.searchText,
       selectedCategory: store.selectedCategory,
       showCategories: true,   // 카테고리 표시

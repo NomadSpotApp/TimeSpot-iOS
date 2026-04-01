@@ -93,6 +93,7 @@ public struct RouteFeature {
   @Dependency(\.getRouteUseCase) var getRouteUseCase
   @Dependency(\.locationUseCase) var locationUseCase
   @Dependency(\.historyRepository) var historyRepository
+  @Dependency(\.keychainManager) var keychainManager
 
 
   public var body: some Reducer<State, Action> {
@@ -173,7 +174,33 @@ extension RouteFeature {
         return .send(.async(.startNavigation(mapType: mapType, destination: destination, destinationName: destinationName)))
 
       case .startJourney:
-        return .send(.async(.startJourney))
+        // keychainManager에서 accessToken 확인
+        return .run { [userSession = state.userSession, selectedMapType = state.selectedMapTypeStorage] send in
+          let result = await Result {
+            await keychainManager.accessToken()
+          }
+
+          let accessToken = (try? result.get()) ?? ""
+
+          if accessToken.isEmpty {
+            // accessToken이 없으면 바로 네비게이션 시작
+            #logDebug("🔑 accessToken이 없습니다. 바로 네비게이션을 시작합니다.")
+
+            guard let endLat = userSession.routeDestinationLat,
+                  let endLng = userSession.routeDestinationLng else {
+              return
+            }
+
+            let destination = CLLocationCoordinate2D(latitude: endLat, longitude: endLng)
+            let destinationName = userSession.routeDestinationName.isEmpty ? "목적지" : userSession.routeDestinationName
+
+            await send(.async(.startNavigation(mapType: selectedMapType, destination: destination, destinationName: destinationName)))
+          } else {
+            // accessToken이 있으면 API 통신 후 네비게이션
+            #logDebug("🔑 accessToken이 있습니다. API 통신을 시작합니다.")
+            await send(.async(.startJourney))
+          }
+        }
     }
   }
 
@@ -263,12 +290,13 @@ extension RouteFeature {
           let placeIdString = userSession.selectedExplorePlaceID
 
           guard let stationId = Int(stationIdString),
-                let placeId = Int(placeIdString),
                 !stationIdString.isEmpty,
                 !placeIdString.isEmpty else {
             await send(.inner(.journeyStartResponse(.failure(.message("역 정보 또는 장소 정보가 없습니다.")))))
             return
           }
+
+          let placeId = placeIdString
 
           let input = StartJourneyInput(
             stationId: stationId,
@@ -370,8 +398,18 @@ extension RouteFeature {
 
         case .failure(let error):
           #logDebug("❌ 여정 시작 실패: \(error)")
-          // TODO: 에러 처리 (토스트 메시지 등)
-          return .none
+
+          // API 실패 시에도 길찾기는 시작
+          guard let endLat = state.userSession.routeDestinationLat,
+                let endLng = state.userSession.routeDestinationLng else {
+            return .none
+          }
+
+          let destination = CLLocationCoordinate2D(latitude: endLat, longitude: endLng)
+          let destinationName = state.userSession.routeDestinationName.isEmpty ? "목적지" : state.userSession.routeDestinationName
+          let mapType = state.selectedMapTypeStorage
+
+          return .send(.async(.startNavigation(mapType: mapType, destination: destination, destinationName: destinationName)))
         }
     }
   }

@@ -17,15 +17,20 @@ public extension JourneyResponseDTO {
     let fallbackFormatter = ISO8601DateFormatter()
     fallbackFormatter.formatOptions = [.withInternetDateTime]
 
+    // Custom formatter for server response format (without Z suffix)
+    let customFormatter = DateFormatter()
+    customFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+    customFormatter.timeZone = TimeZone.current
+
     func parseDate(_ dateString: String) -> Date {
       return dateFormatter.date(from: dateString)
           ?? fallbackFormatter.date(from: dateString)
+          ?? customFormatter.date(from: dateString)
           ?? Date()
     }
 
     return JourneyEntity(
       id: visitingHistoryId,
-      userId: userId,
       stationId: stationId,
       stationName: stationName,
       stationAddress: stationAddress,
@@ -33,13 +38,17 @@ public extension JourneyResponseDTO {
       placeName: placeName,
       placeCategory: placeCategory,
       placeAddress: placeAddress,
+      placeLat: placeLat,
+      placeLng: placeLng,
       startTime: parseDate(startTime),
       endTime: endTime.map(parseDate),
       trainDepartureTime: parseDate(trainDepartureTime),
       totalDurationMinutes: totalDurationMinutes,
       isInProgress: isInProgress,
       isSuccess: isSuccess,
-      createdAt: parseDate(createdAt)
+      createdAt: parseDate(createdAt),
+      startLat: startLat,
+      startLng: startLng
     )
   }
 }

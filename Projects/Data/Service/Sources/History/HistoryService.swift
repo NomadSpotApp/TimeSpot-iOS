@@ -48,7 +48,7 @@ extension HistoryService: BaseTargetType {
       case .startHistory:
         return .post
       case .endHistory:
-        return .post
+        return .put
     }
   }
 
