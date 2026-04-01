@@ -22,16 +22,15 @@ struct ExploreSpotListCardView: View {
     } label: {
       HStack(alignment: .top, spacing: 14) {
         VStack(alignment: .leading, spacing: 0) {
-        if !spot.badgeText.isEmpty {
-          Text(formatLongText(spot.badgeText))
-            .pretendardCustomFont(textStyle: .caption)
-            .foregroundStyle(.orange800)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .background(.orange200)
-            .clipShape(Capsule())
-            .padding(.bottom, 12)
-        }
+        // 체류 가능 시간 표시 (항상 stayableMinutes 표시)
+        Text("\(spot.stayableMinutes)분 체류 가능")
+          .pretendardCustomFont(textStyle: .caption)
+          .foregroundStyle(.orange800)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 2)
+          .background(.orange200)
+          .clipShape(Capsule())
+          .padding(.bottom, 12)
 
         VStack(alignment: .leading, spacing: 6) {
           titleRow

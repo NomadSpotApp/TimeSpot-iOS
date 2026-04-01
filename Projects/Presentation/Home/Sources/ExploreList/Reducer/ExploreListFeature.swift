@@ -444,7 +444,8 @@ private extension ExploreListFeature {
         distanceText: distanceText,
         walkTimeText: walkTimeText,
         address: place.address,
-        visitable: place.visitable
+        visitable: place.visitable,
+        stayableMinutes: place.stayableMinutes
       )
     }
   }

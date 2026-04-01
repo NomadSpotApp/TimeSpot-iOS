@@ -68,12 +68,32 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       resolvedLocation = nil
     }
 
+    // 체류시간 계산을 위한 추정 도보시간 (좌표 기반으로 계산)
+    let userLat = resolvedLocation?.coordinate.latitude ?? userSession.travelStationLat ?? 0
+    let userLon = resolvedLocation?.coordinate.longitude ?? userSession.travelStationLng ?? 0
+
+    // 역 좌표와 사용자 현재 위치 사이의 거리로 추정 도보시간 계산 (1분/67m 기준)
+    let stationLat = userSession.travelStationLat ?? 0
+    let stationLon = userSession.travelStationLng ?? 0
+    let estimatedWalkTime = calculateEstimatedWalkTime(
+      fromLat: stationLat,
+      fromLon: stationLon,
+      toLat: userLat,
+      toLon: userLon
+    )
+
+    // 체류 가능 시간 계산
+    let calculatedStayableMinutes = calculateStayableMinutes(
+      remainingMinutes: userSession.remainingMinutes,
+      walkTimeFromStation: estimatedWalkTime
+    )
+
     let input = PlaceDetailInput(
       placeId: placeId,
       stationId: Int(userSession.travelID) ?? 0,
-      userLat: resolvedLocation?.coordinate.latitude ?? userSession.travelStationLat ?? 0,
-      userLon: resolvedLocation?.coordinate.longitude ?? userSession.travelStationLng ?? 0,
-      remainingMinutes: 250
+      userLat: userLat,
+      userLon: userLon,
+      remainingMinutes: calculatedStayableMinutes
     )
 
     return try await repository.detailPlaces(input)
@@ -229,21 +249,22 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
   }
 
   private func makeBaseSpot(from entity: PlaceEntity) -> ExploreMapSpot {
-    ExploreMapSpot(
+    return ExploreMapSpot(
       id: String(entity.placeId),
       name: "",
       category: entity.category,
       coordinate: CLLocationCoordinate2D(latitude: entity.lat, longitude: entity.lon),
       hasDetail: false,
       imageURL: entity.imageURL,
-      badgeText: entity.stayableMinutes > 0 ? "\(entity.stayableMinutes)분 체류 가능" : "",
+      badgeText: "\(entity.stayableMinutes)분 체류 가능",
       subtitle: entity.category.title,
       statusText: "",
       closingText: "",
       distanceText: "",
       walkTimeText: "",
       address: entity.address,
-      visitable: entity.visitable
+      visitable: entity.visitable,
+      stayableMinutes: entity.stayableMinutes
     )
   }
 
@@ -296,14 +317,15 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       coordinate: coordinate,
       hasDetail: true,
       imageURL: entity.imageURL,
-      badgeText: entity.stayableMinutes > 0 ? "\(entity.stayableMinutes)분 체류 가능" : "",
+      badgeText: "\(entity.stayableMinutes)분 체류 가능",
       subtitle: entity.category.title,
       statusText: entity.visitable ? "영업 중" : "영업 종료",
       closingText: closingText,
       distanceText: distanceText,
       walkTimeText: walkTimeText,
       address: entity.address,
-      visitable: entity.visitable
+      visitable: entity.visitable,
+      stayableMinutes: entity.stayableMinutes
     )
   }
 
@@ -339,6 +361,50 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
     }
 
     return mergedSpots
+  }
+
+  /// 좌표 기반 추정 도보시간 계산
+  /// - Parameters:
+  ///   - fromLat: 출발지 위도
+  ///   - fromLon: 출발지 경도
+  ///   - toLat: 목적지 위도
+  ///   - toLon: 목적지 경도
+  /// - Returns: 추정 도보시간 (분)
+  private func calculateEstimatedWalkTime(
+    fromLat: Double,
+    fromLon: Double,
+    toLat: Double,
+    toLon: Double
+  ) -> Int {
+    let fromLocation = CLLocation(latitude: fromLat, longitude: fromLon)
+    let toLocation = CLLocation(latitude: toLat, longitude: toLon)
+    let distanceInMeters = fromLocation.distance(from: toLocation)
+
+    // 도보 속도: 1분당 67m (평균 도보 속도 4km/h 기준)
+    let walkingMinutes = max(Int(ceil(distanceInMeters / 67)), 1)
+    return walkingMinutes
+  }
+
+  /// 체류 시간 계산 로직
+  /// - Parameters:
+  ///   - remainingMinutes: 전체 잔여 시간
+  ///   - walkTimeFromStation: 편도 도보 시간
+  /// - Returns: 실제 체류 가능 시간
+  private func calculateStayableMinutes(
+    remainingMinutes: Int,
+    walkTimeFromStation: Int
+  ) -> Int {
+    // 왕복 도보 시간 = 편도 도보 시간 × 2
+    let roundTripWalkTime = walkTimeFromStation * 2
+
+    // 플랫폼 대기 시간 = 10분 (고정)
+    let platformWaitTime = 10
+
+    // 체류 가능 시간 = 남은 시간 - 왕복 도보 시간 - 플랫폼 대기 시간
+    let stayableTime = remainingMinutes - roundTripWalkTime - platformWaitTime
+
+    // 음수가 될 수 없으므로 0 이상으로 제한
+    return max(0, stayableTime)
   }
 }
 
