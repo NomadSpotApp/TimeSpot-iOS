@@ -75,7 +75,7 @@ public struct HistoryItemResponseDTO: Decodable, Equatable {
   public let visitingHistoryID: Int
   public let stationID: Int
   public let stationName: String
-  public let placeID: Int
+  public let placeID: String
   public let placeName: String
   public let placeCategory: String
   public let startTime: String
@@ -106,7 +106,7 @@ public struct HistoryItemResponseDTO: Decodable, Equatable {
     visitingHistoryID: Int,
     stationID: Int,
     stationName: String,
-    placeID: Int,
+    placeID: String,
     placeName: String,
     placeCategory: String,
     startTime: String,

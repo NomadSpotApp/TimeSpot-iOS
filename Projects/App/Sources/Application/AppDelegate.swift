@@ -243,6 +243,12 @@ extension AppDelegate {
           "deeplink_type": "push"
         ]
       )
+
+      // 푸시 알림 터치 시 현재 표시중인 알림 뷰 닫기
+      NotificationCenter.default.post(
+        name: .dismissRouteNotification,
+        object: nil
+      )
     }
 
     completionHandler()
