@@ -172,14 +172,35 @@ platform :ios do
         in_house: false
       )
 
-      # 자동으로 빌드 번호 증가
-      current_build_number = latest_testflight_build_number(
-        app_identifier: BUNDLE_ID,
-        platform: "ios"
-      )
+      # QA와 동일한 빌드 번호 자동 증가 로직
+      begin
+        current_build_number = latest_testflight_build_number(
+          app_identifier: BUNDLE_ID,
+          platform: "ios"
+        )
+        puts "📱 TestFlight 최신 빌드 번호: #{current_build_number}"
+      rescue => e
+        puts "⚠️ TestFlight 빌드 번호 조회 실패, 기본값 1 사용: #{e.message}"
+        current_build_number = 1
+      end
+
+      # App Store 라이브 버전 빌드 번호도 확인
+      begin
+        live_build_number = app_store_build_number(
+          app_identifier: BUNDLE_ID,
+          platform: "ios"
+        )
+        puts "🏪 App Store 라이브 빌드 번호: #{live_build_number}"
+
+        # 더 높은 빌드 번호 사용
+        current_build_number = [current_build_number, live_build_number].max
+      rescue => e
+        puts "⚠️ App Store 빌드 번호 조회 실패: #{e.message}"
+      end
+
       new_build_number = current_build_number + 1
-      puts "🔢 Current build number: #{current_build_number}"
-      puts "🔢 New build number: #{new_build_number}"
+      puts "🔢 현재 최고 빌드 번호: #{current_build_number}"
+      puts "🔢 새로운 빌드 번호: #{new_build_number}"
 
       # Extension+String.swift 파일에서 빌드 번호 업데이트
       extension_file_path = "../Plugins/ProjectTemplatePlugin/ProjectDescriptionHelpers/Project+Templete/Extension+String.swift"
@@ -190,14 +211,15 @@ platform :ios do
                                    "public static func appBuildVersion(buildVersion: String = \"#{new_build_number}\") -> String {")
 
       File.write(extension_file_path, updated_content)
-      puts "✅ Updated build number to #{new_build_number} in Extension+String.swift"
+      puts "✅ 빌드 번호를 #{new_build_number}로 업데이트 완료"
 
       # Tuist 프로젝트 재생성
       Dir.chdir("..") do
-        puts "🔧 Regenerating Tuist workspace with new build number..."
+        puts "🔧 Tuist workspace 재생성 중..."
         sh("tuist generate --no-open")
-        puts "✅ Tuist workspace regenerated"
+        puts "✅ Tuist workspace 재생성 완료"
       end
+
       match(
         type: "appstore",
         readonly: true,
@@ -206,29 +228,82 @@ platform :ios do
         app_identifier: ["io.TimeSpot.co"]
       )
 
-      ipa_path = build_app(
-        workspace: "#{APP_RELEASE_NAME}.xcworkspace",
-        scheme: "TimeSpot-Prod",
-        configuration: "Release",
-        output_directory: OUTPUT_DIR,
-        output_name: IPA_FILENAME,
-        export_method: "app-store",
-        clean: true,
-        silent: false,
-        verbose: true,
-        xcargs: "CODE_SIGN_IDENTITY='Apple Distribution' CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=#{TEAM_ID} " +
-                "COMPILER_INDEX_STORE_ENABLE=NO ENABLE_BITCODE=NO " +
-                "SWIFT_COMPILATION_MODE=wholemodule " +
-                "-allowProvisioningUpdates",
-        export_options: {
-          signingStyle: "manual",
-          uploadBitcode: false,
-          teamID: TEAM_ID,
-          provisioningProfiles: {
-            "#{BUNDLE_ID}" => "match AppStore #{BUNDLE_ID}"
+      ipa_path = nil
+      # QA와 동일한 workspace 처리 로직
+      Dir.chdir("..") do
+        puts "📁 현재 디렉토리: #{Dir.pwd}"
+        puts "📋 사용 가능한 파일들: #{Dir.entries('.')}"
+
+        # Try to generate workspace if missing
+        workspace_files = Dir.glob("*.xcworkspace")
+        if workspace_files.empty?
+          puts "🔧 workspace가 없습니다, 생성 중..."
+
+          # Check if tuist is available
+          tuist_available = system("which tuist > /dev/null 2>&1")
+          puts "Tuist 사용 가능: #{tuist_available}"
+
+          unless tuist_available
+            puts "🔧 brew로 tuist 설치 중..."
+            sh("brew install tuist")
+          end
+
+          begin
+            if File.exist?("make")
+              puts "🔧 ./make install 실행 중..."
+              sh("./make install")
+              puts "🔧 ./make generate 실행 중..."
+              sh("./make generate")
+            else
+              puts "🔧 tuist 직접 실행 중..."
+              sh("tuist install")
+              sh("tuist generate --no-open")
+            end
+          rescue => e
+            puts "❌ 생성 실패: #{e.message}"
+          end
+
+          workspace_files = Dir.glob("*.xcworkspace")
+          puts "🔍 발견된 workspace 파일들: #{workspace_files}"
+        end
+
+        if workspace_files.empty?
+          puts "❌ workspace를 찾을 수 없습니다!"
+          puts "🔍 디렉토리 내 모든 파일:"
+          Dir.entries('.').each { |f| puts "  #{f}" }
+          UI.user_error!("workspace 파일을 생성할 수 없습니다. tuist 설정과 플러그인을 확인해주세요.")
+        end
+
+        workspace_name = workspace_files.first
+        workspace_path = File.expand_path(workspace_name)
+        puts "✅ 사용할 workspace: #{workspace_name}"
+        puts "✅ 전체 workspace 경로: #{workspace_path}"
+
+        ipa_path = build_app(
+          workspace: workspace_path,
+          scheme: "TimeSpot-Prod",
+          configuration: "Release",
+          export_method: "app-store",
+          output_directory: File.expand_path("../#{OUTPUT_DIR}"),
+          output_name: IPA_FILENAME,
+          clean: false,
+          silent: true,
+          xcargs: "CODE_SIGN_IDENTITY='Apple Distribution' CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=#{TEAM_ID} " +
+                  "COMPILER_INDEX_STORE_ENABLE=NO ENABLE_BITCODE=NO " +
+                  "SWIFT_COMPILATION_MODE=wholemodule -parallelizeTargets " +
+                  "ENABLE_PARALLEL_SIGNING=YES DISABLE_MANUAL_TARGET_ORDER_BUILD_WARNING=YES " +
+                  "FRAMEWORK_SEARCH_PATHS='$(inherited)' LIBRARY_SEARCH_PATHS='$(inherited)' " +
+                  "-allowProvisioningUpdates -quiet",
+          export_options: {
+            signingStyle: "manual",
+            uploadBitcode: false,
+            teamID: TEAM_ID,
+            provisioningProfiles: {
+              "#{BUNDLE_ID}" => "match AppStore #{BUNDLE_ID}"
+            }
           }
-        }
-      )
+        )
+      end
 
       # clean_symbols_from_ipa(ipa_path: ipa_path)
 
@@ -254,6 +329,7 @@ platform :ios do
       UI.important("   1. https://appstoreconnect.apple.com 접속")
       UI.important("   2. TimeSpot 앱 선택")
       UI.important("   3. 버전 #{options[:version]} 심사 상태 확인")
+      UI.important("   4. 빌드 번호: #{new_build_number}")
       UI.important("")
       UI.success("✅ 빌드, 업로드, 심사 요청이 모두 성공적으로 완료되었습니다!")
       UI.success("🚀 이제 Apple의 심사를 기다리기만 하면 됩니다!")
