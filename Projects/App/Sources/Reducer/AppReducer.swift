@@ -144,14 +144,19 @@ extension AppReducer {
       // 대기 중인 딥링크가 있는지 먼저 확인
       if let pendingDeepLink = UserDefaults.standard.string(forKey: "pendingPushDeepLink") {
         #logDebug("📋 AppReducer: 대기 중인 딥링크 발견, 즉시 처리 = \(pendingDeepLink)")
-        UserDefaults.standard.removeObject(forKey: "pendingPushDeepLink")
 
-        // 시간 알림 딥링크이면 RouteNotificationView 포함한 Home 상태 생성
-        if pendingDeepLink.contains("min_before") || pendingDeepLink.contains("min_after") || pendingDeepLink.contains("departure_time") || pendingDeepLink.contains("end_journey") {
-          #logDebug("✅ AppReducer: RouteNotificationView 포함한 Home 상태 생성")
+        // visitingHistoryId 확인 - 유효하지 않으면 딥링크 무시
+        let visitingHistoryId = UserDefaults.standard.integer(forKey: "visitingHistoryId")
+        #logDebug("🔍 AppReducer: 현재 visitingHistoryId = \(visitingHistoryId)")
+
+        // 시간 알림 딥링크이면서 유효한 visitingHistoryId가 있을 때만 RouteNotificationView 표시
+        if (pendingDeepLink.contains("min_before") || pendingDeepLink.contains("min_after") || pendingDeepLink.contains("departure_time") || pendingDeepLink.contains("end_journey")) && visitingHistoryId > 0 {
+          #logDebug("✅ AppReducer: 유효한 여정이 있음, RouteNotificationView 포함한 Home 상태 생성")
+          UserDefaults.standard.removeObject(forKey: "pendingPushDeepLink")
           state = .home(.init(withRouteNotification: true, deepLink: pendingDeepLink))
         } else {
-          #logDebug("🔍 AppReducer: 일반 딥링크, 기본 Home 상태로 전환")
+          #logDebug("🔍 AppReducer: 여정이 없거나 일반 딥링크, 기본 Home 상태로 전환하고 딥링크 제거")
+          UserDefaults.standard.removeObject(forKey: "pendingPushDeepLink")
           state = .home(.init())
         }
         return .none
@@ -306,4 +311,5 @@ extension AppReducer {
 // MARK: - Notification Extensions
 extension Notification.Name {
   static let pushNotificationDeepLink = Notification.Name("pushNotificationDeepLink")
+  static let dismissRouteNotification = Notification.Name("dismissRouteNotification")
 }

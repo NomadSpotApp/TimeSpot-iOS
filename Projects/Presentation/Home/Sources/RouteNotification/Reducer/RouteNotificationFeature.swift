@@ -66,6 +66,7 @@ public struct RouteNotificationFeature {
     case backButtonTapped
     case departureButtonTapped
     case closeButtonTapped
+    case onAppear
   }
 
 
@@ -122,9 +123,14 @@ extension RouteNotificationFeature {
       return .send(.delegate(.presentHome))
 
     case .departureButtonTapped:
-      return .send(.async(.startNavigationToStation))
+      #logDebug("🔔 RouteNotificationFeature: 역으로 출발하기 버튼 탭됨")
+      return .concatenate(
+        .send(.async(.startNavigationToStation)),
+        .send(.delegate(.closeNotification))
+      )
 
     case .closeButtonTapped:
+      #logDebug("🔔 RouteNotificationFeature: 종료하기 버튼 탭됨")
       if state.notificationType == .endJourney {
         // 저장된 visitingHistoryId를 사용하여 여정 종료 API 호출
         let journeyId = state.visitingHistoryId
@@ -136,6 +142,9 @@ extension RouteNotificationFeature {
       } else {
         return .send(.delegate(.closeNotification))
       }
+
+    case .onAppear:
+      return .none
     }
   }
 
@@ -203,6 +212,10 @@ extension RouteNotificationFeature {
 
         // 여정 종료 성공 시 visitingHistoryId 초기화
         state.$visitingHistoryId.withLock { $0 = 0 }
+
+        // 대기 중인 딥링크도 제거하여 앱 재시작 시 알림 화면이 나타나지 않도록 함
+        UserDefaults.standard.removeObject(forKey: "pendingPushDeepLink")
+        #logDebug("🗑️ 여정 종료 후 pendingPushDeepLink 제거 완료")
 
         // 알림 닫기
         return .send(.delegate(.closeNotification))

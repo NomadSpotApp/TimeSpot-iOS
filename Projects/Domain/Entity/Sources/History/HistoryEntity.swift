@@ -49,7 +49,7 @@ public struct HistoryItemEntity: Equatable, Hashable, Identifiable {
   public let id: Int
   public let stationID: Int
   public let stationName: String
-  public let placeID: Int
+  public let placeID: String
   public let placeName: String
   public let placeCategory: String
   public let startTime: String
@@ -64,7 +64,7 @@ public struct HistoryItemEntity: Equatable, Hashable, Identifiable {
     id: Int,
     stationID: Int,
     stationName: String,
-    placeID: Int,
+    placeID: String,
     placeName: String,
     placeCategory: String,
     startTime: String,
