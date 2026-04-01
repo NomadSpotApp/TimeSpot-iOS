@@ -9,6 +9,7 @@ import  SwiftUI
 
 import ComposableArchitecture
 import TCACoordinators
+import Web
 
 public struct ProfileCoordinatorView: View {
   @Bindable var store: StoreOf<ProfileCoordinator>
@@ -43,6 +44,14 @@ public struct ProfileCoordinatorView: View {
 
         case .notification(let notificationStore):
           NotificationSettingView(store: notificationStore)
+            .navigationBarBackButtonHidden()
+            .transition(.asymmetric(
+              insertion: .move(edge: .trailing),
+              removal: .move(edge: .leading)
+            ))
+
+        case .web(let webStore):
+          WebView(store: webStore)
             .navigationBarBackButtonHidden()
             .transition(.asymmetric(
               insertion: .move(edge: .trailing),

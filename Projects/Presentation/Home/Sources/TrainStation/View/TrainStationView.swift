@@ -75,15 +75,15 @@ public struct TrainStationView: View {
 
 extension TrainStationView {
   private var filteredFavoriteStations: [StationRowModel] {
-    filterRows(store.favoriteRows)
+    filterRows(Array(store.favoriteRows))
   }
 
   private var filteredNearbyStations: [StationRowModel] {
-    filterRows(store.nearbyRows)
+    filterRows(Array(store.nearbyRows))
   }
 
   private var filteredMajorStations: [StationRowModel] {
-    filterRows(store.majorRows)
+    filterRows(Array(store.majorRows))
   }
 
   private func filterRows(_ rows: [StationRowModel]) -> [StationRowModel] {
@@ -249,15 +249,18 @@ extension TrainStationView {
       }
       .buttonStyle(.plain)
 
-      Button {
-        store.send(.view(.favoriteButtonTapped(row)))
-      } label: {
-        Image(systemName: row.isFavorite ? "star.fill" : "star")
-          .font(.system(size: 18, weight: .semibold))
-          .foregroundStyle(row.isFavorite ? .orange800 : .gray550)
-          .frame(width: 20, height: 20)
+      // 비회원이 아닌 경우에만 즐겨찾기 버튼 표시
+      if store.shouldShowFavoriteSection {
+        Button {
+          store.send(.view(.favoriteButtonTapped(row)))
+        } label: {
+          Image(systemName: row.isFavorite ? "star.fill" : "star")
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(row.isFavorite ? .orange800 : .gray550)
+            .frame(width: 20, height: 20)
+        }
+        .buttonStyle(.plain)
       }
-      .buttonStyle(.plain)
     }
     .padding(.leading, 20)
     .padding(.trailing, 24)

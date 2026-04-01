@@ -193,10 +193,10 @@ struct CustomConfirmationPopup: View {
   .customConfirmationPopup(
     item: .withdrawAccount(
       onConfirm: {
-        print("탈퇴하기 선택")
+        // 탈퇴하기 선택 - 프리뷰용 로그 제거
       },
       onCancel: {
-        print("취소 선택")
+        // 취소 선택 - 프리뷰용 로그 제거
       }
     )
   )
@@ -216,10 +216,10 @@ struct CustomConfirmationPopup: View {
     cancelTitle: "취소",
     isDestructive: true,
     onConfirm: {
-      print("탈퇴하기 선택")
+      // 탈퇴하기 선택 - 프리뷰용 로그 제거
     },
     onCancel: {
-      print("취소 선택")
+      // 취소 선택 - 프리뷰용 로그 제거
     }
   )
 }

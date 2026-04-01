@@ -34,7 +34,7 @@ public struct CustomNavigationBar: View {
       Image(asset: leftImage)
         .resizable()
         .scaledToFit()
-        .frame(width: 60, height: 60)
+        .frame(width: 48, height: 48)
         .onTapGesture { leftAction() }
 
 
@@ -44,13 +44,12 @@ public struct CustomNavigationBar: View {
         .pretendardCustomFont(textStyle: .titleBold)
         .foregroundStyle(.staticBlack)
 
-
       Spacer()
 
       Image(asset: rightImage)
         .resizable()
         .scaledToFit()
-        .frame(width: 60, height: 60)
+        .frame(width: 48, height: 48)
         .onTapGesture { rightAction() }
 
 

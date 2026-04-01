@@ -31,6 +31,10 @@ public struct APIHeader {
     tokenProvider.saveAccessToken(newToken)
   }
 
+  public static func clearAccessToken() {
+    tokenProvider.clearToken()
+  }
+
   public init() {}
 }
 

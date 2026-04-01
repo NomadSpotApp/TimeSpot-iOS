@@ -24,6 +24,20 @@ public struct HistoryUseCaseImpl: HistoryInterface {
   ) async throws -> HistoryEntity {
     return try await repository.myHistory(page: page, size: size, sort: sort)
   }
+
+  // MARK: - 여정 관리
+  public func startJourney(
+    input: StartJourneyInput
+  ) async throws -> JourneyEntity {
+    return try await repository.startJourney(input: input)
+  }
+
+  public func endJourney(
+    journeyId: Int,
+    isCompleted: Bool
+  ) async throws -> JourneyEntity {
+    return try await repository.endJourney(journeyId: journeyId, isCompleted: isCompleted)
+  }
 }
 
 

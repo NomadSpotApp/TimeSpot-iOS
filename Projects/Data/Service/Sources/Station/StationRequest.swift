@@ -8,24 +8,27 @@
 import Foundation
 
 public struct StationRequest: Encodable, Equatable {
-  public let lat: Double
-  public let lng: Double
+  public let userLat: Double
+  public let userLon: Double
   public let page: Int
   public let size: Int
   public let sort: String
+  public let radius: Int
 
   public init(
-    lat: Double,
-    lng: Double,
+    userLat: Double,
+    userLon: Double,
     page: Int = 1,
     size: Int = 10,
-    sort: String = "stationName,ASC"
+    sort: String = "stationName,ASC",
+    radius: Int = 20000
   ) {
-    self.lat = lat
-    self.lng = lng
+    self.userLat = userLat
+    self.userLon = userLon
     self.page = max(page, 1)
     self.size = max(size, 10)
     self.sort = sort
+    self.radius = radius
   }
 }
 

@@ -40,6 +40,11 @@ public struct AuthUseCaseImpl: AuthInterface {
     return repository.updateSessionCredential(with: tokens)
   }
 
+  public func registerNotification(
+    with deviceToken: String
+  ) async throws -> RegisterNotificationEntity {
+    return try await repository.registerNotification(with: deviceToken)
+  }
 }
 
 

@@ -12,6 +12,7 @@ public enum ExploreCategory: String, CaseIterable, Equatable, Sendable {
   case cafe
   case restaurant
   case activity
+  case shopping
   case etc
 
   public var title: String {
@@ -24,8 +25,10 @@ public enum ExploreCategory: String, CaseIterable, Equatable, Sendable {
       return "음식점"
     case .activity:
       return "액티비티"
-      case .etc:
-        return "기타"
+    case .shopping:
+      return "쇼핑"
+    case .etc:
+      return "기타"
     }
   }
 }

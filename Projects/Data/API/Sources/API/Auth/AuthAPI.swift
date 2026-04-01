@@ -12,6 +12,7 @@ public enum AuthAPI: String, CaseIterable {
   case logout
   case refresh
   case withDraw
+  case registerNotification
 
   public var description: String {
     switch self {
@@ -23,6 +24,8 @@ public enum AuthAPI: String, CaseIterable {
         return "/refresh"
       case .withDraw:
         return ""
+      case .registerNotification:
+        return "/devices"
     }
   }
 }

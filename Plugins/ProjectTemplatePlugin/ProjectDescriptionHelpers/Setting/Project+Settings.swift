@@ -48,6 +48,8 @@ extension Settings {
       .setCurrentProjectVersion(.appBuildVersion())
       .setCodeSignIdentity()
       .setCodeSignStyle()
+      .setCodeSignAllowEntitlementsModification(true)
+      .setUserScriptSandboxing(false)
       .setSwiftVersion("6.0")
       .setVersioningSystem()
       .setProvisioningProfileSpecifier("match Development \(Project.Environment.bundlePrefix)")

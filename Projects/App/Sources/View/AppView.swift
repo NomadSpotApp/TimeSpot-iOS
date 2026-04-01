@@ -53,5 +53,8 @@ struct AppView: View {
       .appDefault,
       value: store.state.animationID
     )
+    .onAppear {
+      store.send(.inner(.setupPushNotificationObserver))
+    }
   }
 }

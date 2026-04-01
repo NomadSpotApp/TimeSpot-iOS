@@ -6,11 +6,17 @@
 //
 
 import Foundation
+import Security
 
 import DomainInterface
 import Foundations
+import LogMacro
 
 final class KeychainTokenProvider: TokenProviding, @unchecked Sendable {
+  private enum Constants {
+    static let cachedAccessTokenKey = "cached_access_token"
+  }
+
   private let keychainManager: KeychainManagingInterface
 
   init(keychainManager: KeychainManagingInterface) {
@@ -23,10 +29,25 @@ final class KeychainTokenProvider: TokenProviding, @unchecked Sendable {
       return cached
     }
 
+    if let persistedToken = UserDefaults.standard.string(forKey: Constants.cachedAccessTokenKey),
+       !persistedToken.isEmpty {
+      TokenCache.shared.token = persistedToken
+      return persistedToken
+    }
+
+    if let keychainToken = readAccessTokenFromKeychain(), !keychainToken.isEmpty {
+      TokenCache.shared.token = keychainToken
+      UserDefaults.standard.set(keychainToken, forKey: Constants.cachedAccessTokenKey)
+      return keychainToken
+    }
+
     // 캐시가 없으면 비동기적으로 로드
     Task {
       let token = await keychainManager.accessToken()
       TokenCache.shared.token = token
+      if let token, !token.isEmpty {
+        UserDefaults.standard.set(token, forKey: Constants.cachedAccessTokenKey)
+      }
     }
 
     // 현재는 캐시된 값 또는 nil 반환
@@ -36,17 +57,54 @@ final class KeychainTokenProvider: TokenProviding, @unchecked Sendable {
   func saveAccessToken(_ token: String) {
     // 캐시 업데이트
     TokenCache.shared.token = token
+    UserDefaults.standard.set(token, forKey: Constants.cachedAccessTokenKey)
 
     // 백그라운드에서 비동기적으로 저장
     Task {
       do {
         try await keychainManager.saveAccessToken(token)
       } catch {
-        print("Failed to save access token: \(error)")
+        #logError("Failed to save access token", "\(error)")
         // 저장 실패 시 캐시도 초기화
         TokenCache.shared.token = nil
+        UserDefaults.standard.removeObject(forKey: Constants.cachedAccessTokenKey)
       }
     }
+  }
+
+  func clearToken() {
+    // 메모리 캐시 클리어
+    TokenCache.shared.token = nil
+
+    // UserDefaults에서 제거
+    UserDefaults.standard.removeObject(forKey: Constants.cachedAccessTokenKey)
+
+    // 백그라운드에서 키체인에서도 제거
+    Task {
+      do {
+        try await keychainManager.clear()
+      } catch {
+        #logError("Failed to clear tokens from keychain", "\(error)")
+      }
+    }
+  }
+
+  private func readAccessTokenFromKeychain() -> String? {
+    let service = Bundle.main.bundleIdentifier ?? "com.nomadspot.app"
+    let query: [CFString: Any] = [
+      kSecClass: kSecClassGenericPassword,
+      kSecAttrService: service,
+      kSecAttrAccount: "ACCESS_TOKEN",
+      kSecReturnData: true,
+      kSecMatchLimit: kSecMatchLimitOne
+    ]
+
+    var result: AnyObject?
+    let status = SecItemCopyMatching(query as CFDictionary, &result)
+    guard status == errSecSuccess, let data = result as? Data else {
+      return nil
+    }
+    return String(data: data, encoding: .utf8)
   }
 }
 

@@ -86,7 +86,7 @@ public extension UnifiedOAuthUseCase {
       token: payload.idToken
     )
 
-    print("애플 코드 \(payload.authorizationCode ?? "")")
+    #logDebug("애플 코드", "\(payload.authorizationCode ?? "")")
 
     self.$userSession.withLock {
       $0.name = savedAppleUserName ?? ""

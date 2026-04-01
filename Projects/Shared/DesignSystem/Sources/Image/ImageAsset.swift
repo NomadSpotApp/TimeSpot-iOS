@@ -32,6 +32,7 @@ public enum ImageAsset: String {
   case tapEtc
   case tapFood
   case location
+  case rowCheck
 
 
 
@@ -39,6 +40,16 @@ public enum ImageAsset: String {
   case naverMap
   case googleMap
   case appleMap
+  case shoppingPin
+  case cafePin
+  case etcPin
+  case foodPin
+  case gamePin
+  case spotPin
+  case endLocation
+  case startLocation
+  case emptyExplore
+  case stationLocation
 
   case onBoardingLogo1
   case onBoardingLogo2
@@ -46,6 +57,13 @@ public enum ImageAsset: String {
   case homeLogo
   case logo
   case loginlogo
+  case appLogo
+  case locationBadge
+  case fiveMinutesNotification
+  case tenMinutesNotification
+  case fifteenMinutesNotification
+  case startNotification
+  case endJourney
 
 
   case warning

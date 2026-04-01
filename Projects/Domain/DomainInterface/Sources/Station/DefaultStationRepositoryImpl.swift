@@ -12,14 +12,14 @@ final public class DefaultStationRepositoryImpl: StationInterface {
   public init() {}
 
   public func fetchStations(
-    lat: Double,
-    lng: Double,
+    userLat: Double,
+    userLon: Double,
     page: Int,
     size: Int
   ) async throws -> StationListEntity {
     let favoriteStations: [StationSummaryEntity] = [
-      .init(stationID: 1, name: "서울", lines: ["경부선"]),
-      .init(stationID: 4, name: "동대구", lines: ["경부선"])
+      .init(favoriteID: 101, stationID: 1, name: "서울", lines: ["경부선"]),
+      .init(favoriteID: 102, stationID: 4, name: "동대구", lines: ["경부선"])
     ]
 
     let nearbyStations: [StationSummaryEntity] = [
@@ -59,7 +59,7 @@ final public class DefaultStationRepositoryImpl: StationInterface {
   }
 
   public func deleteFavoriteStation(
-    stationID: Int
+    favoriteID: Int
   ) async throws -> FavoriteStationMutationEntity {
     FavoriteStationMutationEntity(
       code: 200,

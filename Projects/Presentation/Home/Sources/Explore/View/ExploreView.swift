@@ -9,15 +9,25 @@
 import SwiftUI
 import ComposableArchitecture
 import CoreLocation
+import UIKit
 
 import DesignSystem
 import Entity
+import LogMacro
 
 public struct ExploreView: View {
-  @Bindable var store: StoreOf<ExploreReducer>
+  @Bindable var store: StoreOf<ExploreFeature>
   @Environment(\.dismiss) private var dismiss
 
-  public init(store: StoreOf<ExploreReducer>) {
+  private var cardTravelDistance: CGFloat {
+    UIScreen.main.bounds.width - 8
+  }
+
+  private var cardSwipeThreshold: CGFloat {
+    (UIScreen.main.bounds.width - 32) / 2
+  }
+
+  public init(store: StoreOf<ExploreFeature>) {
     self.store = store
   }
 
@@ -25,14 +35,24 @@ public struct ExploreView: View {
     ZStack {
       mapView()
 
-      VStack(spacing: 0) {
-        headerSection()
-          .padding(.top, 8)
-          .padding(.horizontal, 20)
+      // 🦴 마커 로딩 중일 때는 스켈레톤 전체 화면으로 표시
+      if store.isLoadingPlaces && store.spots.isEmpty {
+        ExploreSkeletonView()
+          .transition(.opacity)
+          .animation(.easeInOut(duration: 0.3), value: store.isLoadingPlaces && store.spots.isEmpty)
+      } else {
+        // ✅ 마커 로딩 완료 후 실제 UI 표시
+        VStack(spacing: 0) {
+          headerSection()
+            .padding(.top, 8)
+            .padding(.horizontal, 16)
 
-        Spacer()
+          Spacer()
 
-        currentLocationButton()
+          bottomSection()
+        }
+        .transition(.scale.combined(with: .opacity))
+        .animation(.easeInOut(duration: 0.3), value: !(store.isLoadingPlaces && store.spots.isEmpty))
       }
     }
     .onAppear {
@@ -51,214 +71,84 @@ private extension ExploreView {
     NaverMapComponent(
       locationPermissionStatus: store.locationPermissionStatus,
       currentLocation: store.currentLocation,
-      routeInfo: store.routeInfo,
+      routeInfo: nil,
       destination: store.selectedDestination,
-      returnToLocation: store.shouldReturnToCurrentLocation
+      travelStation: nil,
+      spots: store.spots,
+      selectedSpotID: store.userSession.selectedExploreSpotID.isEmpty
+        ? nil
+        : store.userSession.selectedExploreSpotID,
+      returnToLocationTrigger: store.returnToCurrentLocationTrigger,
+      autoFitTrigger: 0, // ExploreView에서는 자동 피팅 사용하지 않음
+      onSpotTapped: { spotID in
+        store.send(.view(.spotTapped(spotID)))
+      },
+      onMapTapped: {
+        store.send(.view(.spotCardChanged(nil)))
+      },
+      onCameraIdle: { coordinate in
+        store.send(.view(.mapCenterChanged(coordinate)))
+      }
     )
     .ignoresSafeArea(.all)
   }
 
   @ViewBuilder
   func headerSection() -> some View {
-    VStack(spacing: 0) {
-      HStack(spacing: 12) {
-        backButton()
-        searchBar()
-      }
-
-      categoryScrollView()
-        .padding(.top, 12)
-    }
+    ExploreSearchHeaderView(
+      stationName: "\(store.userSession.travelStationName)역",
+      searchText: store.searchText,
+      selectedCategory: store.selectedCategory,
+      showCategories: true,   // 카테고리 표시
+      isSearchable: false,    // 검색창 아닌 텍스트로 표시
+      onBackTap: { dismiss() },
+      onSearchTextChanged: { store.send(.view(.searchTextChanged($0))) },
+      onCategoryTap: { store.send(.view(.categoryTapped($0))) },
+      onSearchBarTap: nil
+    )
   }
 
   @ViewBuilder
-  func backButton() -> some View {
-    Button {
-      dismiss()
-    } label: {
-      Image(asset: .leftArrow)
-        .resizable()
-        .scaledToFit()
-        .frame(width: 56, height: 56)
-        .background(.staticWhite)
-        .clipShape(Circle())
-        .shadow(color: .black.opacity(0.08), radius: 12, y: 2)
-    }
-    .buttonStyle(.plain)
-  }
+  func bottomSection() -> some View {
+    let selectedSpot = store.state.selectedSpot
+    let hasSelectedSpotCard = selectedSpot != nil
 
-  @ViewBuilder
-  func searchBar() -> some View {
-    HStack(spacing: 8) {
-      Image(systemName: "magnifyingglass")
-        .font(.system(size: 16, weight: .medium))
-        .foregroundStyle(.gray600)
-
-      ZStack(alignment: .leading) {
-        if store.searchText.isEmpty {
-          Text("\(store.userSession.travelStationName)역")
-            .pretendardFont(family: .Regular, size: 18)
-            .foregroundStyle(.gray600)
+    VStack(spacing: 16) {
+      ExploreFloatingControlsView(
+        showsListButton: hasSelectedSpotCard,
+        controlsBottomPadding: 0,
+        onListTap: {
+          store.send(.delegate(.presentExploreList))
+        },
+        onCurrentLocationTap: {
+          store.send(.view(.returnToCurrentLocation))
         }
+      )
 
-        TextField(
-          "",
-          text: Binding(
-            get: { store.searchText },
-            set: { store.send(.view(.searchTextChanged($0))) }
-          )
-        )
-        .pretendardFont(family: .Regular, size: 18)
-        .foregroundStyle(.staticBlack)
-        .textInputAutocapitalization(.never)
-        .autocorrectionDisabled()
-      }
-    }
-    .padding(.horizontal, 24)
-    .frame(height: 56)
-    .background(.staticWhite)
-    .clipShape(RoundedRectangle(cornerRadius: 28))
-    .shadow(color: .black.opacity(0.08), radius: 12, y: 2)
-  }
-
-  @ViewBuilder
-  func categoryScrollView() -> some View {
-    ScrollViewReader { proxy in
-      ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: 8) {
-          ForEach(ExploreCategory.allCases, id: \.self) { category in
-            categoryChip(category)
-            .id(category)
+      if let selectedSpot {
+        ExploreSelectedSpotCardView(
+          currentSpot: selectedSpot,
+          adjacentSpot: store.state.adjacentSpot(cardTravelDistance: cardTravelDistance),
+          store: store,
+          currentOffset: store.cardBaseOffset + store.cardDragOffset,
+          adjacentOffset: store.state.adjacentCardOffset(cardTravelDistance: cardTravelDistance),
+          cardOpacity: store.state.cardOpacity(cardTravelDistance: cardTravelDistance),
+          onCardTap: {
+            store.send(.view(.detailTapped))
+          },
+          onRouteTap: {
+            store.send(.delegate(.presentRoute))
+          },
+          onDragChanged: { value in
+            store.send(.view(.cardDragChanged(value.translation.width)))
+          },
+          onDragEnded: { value in
+            store.send(.view(.cardDragEnded(value.translation.width)))
           }
-        }
-        .padding(.horizontal, 2)
-      }
-      .onAppear {
-        scrollToCategory(store.selectedCategory, with: proxy, animated: false)
-      }
-      .onChange(of: store.selectedCategory) { _, category in
-        DispatchQueue.main.async {
-          scrollToCategory(category, with: proxy)
-        }
+        )
+        .padding(.horizontal, 16)
       }
     }
-  }
-
-  @ViewBuilder
-  func categoryChip(_ category: ExploreCategory) -> some View {
-    let isSelected = store.selectedCategory == category
-
-    Button {
-      store.send(.view(.categoryTapped(category)))
-    } label: {
-      HStack(spacing: 4) {
-        categoryIcon(for: category, isSelected: isSelected)
-
-        Text(category.title)
-          .pretendardFont(family: .Medium, size: 14)
-          .foregroundStyle(isSelected ? .staticBlack : .gray700)
-      }
-      .padding(.vertical, 10)
-      .padding(.horizontal, 16)
-      .background(isSelected ? .orange200 : .staticWhite)
-      .overlay {
-        Capsule()
-          .stroke(isSelected ? .orange800 : .gray300, lineWidth: 1)
-      }
-      .clipShape(Capsule())
-      .shadow(color: .black.opacity(isSelected ? 0.04 : 0.08), radius: 8, y: 2)
-    }
-    .buttonStyle(.plain)
-  }
-
-  @ViewBuilder
-  func currentLocationButton() -> some View {
-    HStack {
-      Spacer()
-
-      Button {
-        store.send(.view(.returnToCurrentLocation))
-      } label: {
-        Image(asset: .location)
-          .resizable()
-          .scaledToFit()
-          .frame(width: 24, height: 24)
-          .frame(width: 48, height: 48)
-          .background(.staticWhite, in: Circle())
-          .shadow(color: .black.opacity(0.12), radius: 8, y: 2)
-      }
-      .padding(.trailing, 16)
-      .padding(.bottom, 36)
-    }
-  }
-
-  func scrollToCategory(
-    _ category: ExploreCategory,
-    with proxy: ScrollViewProxy,
-    animated: Bool = true
-  ) {
-    let targetCategory: ExploreCategory
-    switch category {
-    case .all, .cafe:
-      targetCategory = .all
-    case .restaurant:
-      targetCategory = .cafe
-    case .activity:
-      targetCategory = .restaurant
-    case .etc:
-      targetCategory = .activity
-    @unknown default:
-      targetCategory = .all
-    }
-
-    let action = {
-      proxy.scrollTo(targetCategory, anchor: .leading)
-    }
-
-    if animated {
-      withAnimation(.easeInOut(duration: 0.2)) {
-        action()
-      }
-    } else {
-      action()
-    }
-  }
-
-  @ViewBuilder
-  func categoryIcon(
-    for category: ExploreCategory,
-    isSelected: Bool
-  ) -> some View {
-    switch category {
-    case .all:
-      Image(asset: isSelected ? .tapAll : .all)
-        .resizable()
-        .scaledToFit()
-        .frame(width: 16, height: 16)
-    case .cafe:
-        Image(asset: isSelected ? .tapCaffe  : .cafe)
-          .resizable()
-          .scaledToFit()
-          .frame(width: 16, height: 16)
-    case .restaurant:
-      Image(asset: isSelected ? .tapFood : .food)
-        .resizable()
-        .scaledToFit()
-        .frame(width: 16, height: 16)
-    case .activity:
-      Image(asset: isSelected ? .tapGame : .game)
-        .resizable()
-        .scaledToFit()
-        .frame(width: 16, height: 16)
-        .foregroundStyle(isSelected ? .orange800 : .gray700)
-
-      case .etc:
-        Image(asset: isSelected ? .tapEtc : .etc)
-          .resizable()
-          .scaledToFit()
-          .frame(width: 16, height: 16)
-          .foregroundStyle(isSelected ? .orange800 : .gray700)
-
-    }
+    .padding(.bottom, 36)
   }
 }

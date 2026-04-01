@@ -2,8 +2,7 @@
 //  LocationPermissionOverlay.swift
 //  Home
 //
-//  Created by Roy on 2026-03-11
-//  Copyright © 2026 TimeSpot, Ltd., All rights reserved.
+// Created by Wonji Suh 2026-03-11
 //
 
 import SwiftUI
@@ -78,7 +77,6 @@ extension LocationPermissionOverlay {
             LocationPermissionOverlay.openSettings()
         },
         onRetryButtonTapped: {
-            print("Retry tapped")
         }
     )
 }

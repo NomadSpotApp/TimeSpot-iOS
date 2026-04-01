@@ -118,22 +118,22 @@ extension InfoPlistDictionary {
             .string("${REVERSED_CLIENT_ID}")
           ])
         ]),
-        // 구글 지도
-        .dictionary([
-          "CFBundleURLName": .string("google-maps"),
-          "CFBundleURLSchemes": .array([
-            .string("googlemaps"),
-            .string("comgooglemaps")
-          ])
-        ]),
-        // 네이버 지도
-        .dictionary([
-          "CFBundleURLName": .string("naver-maps"),
-          "CFBundleURLSchemes": .array([
-            .string("nmap"),
-            .string("nmapmobile")
-          ])
-        ])
+        // 구글 지도 (제거 - 외부 앱 호출용이므로 불필요)
+        // .dictionary([
+        //   "CFBundleURLName": .string("google-maps"),
+        //   "CFBundleURLSchemes": .array([
+        //     .string("googlemaps"),
+        //     .string("comgooglemaps")
+        //   ])
+        // ]),
+        // 네이버 지도 (제거 - 외부 앱 호출용이므로 불필요)
+        // .dictionary([
+        //   "CFBundleURLName": .string("naver-maps"),
+        //   "CFBundleURLSchemes": .array([
+        //     .string("nmap"),
+        //     .string("nmapmobile")
+        //   ])
+        // ])
       ])
     ]
     return self.merging(dict) { (_, new) in new }
@@ -239,5 +239,24 @@ extension InfoPlistDictionary {
 
   func setNMFGovClientSecret(_ value: String) -> InfoPlistDictionary {
     return self.merging(["NMFGovClientSecret": .string(value)]) { (_, new) in new }
+  }
+
+  // LSApplicationQueriesSchemes 설정 (다른 앱의 URL 스킴 호출을 위해 필요)
+  func setLSApplicationQueriesSchemes() -> InfoPlistDictionary {
+    let schemes = [
+      // 네이버 지도
+      "nmap",
+      "nmapmobile",
+      "navermap",
+      // 구글 지도
+      "googlemaps",
+      "comgooglemaps",
+      // 카카오맵
+      "kakaomap",
+      // 기본 지도들
+      "maps"
+    ]
+
+    return self.merging(["LSApplicationQueriesSchemes": .array(schemes.map { .string($0) })]) { (_, new) in new }
   }
 }

@@ -18,6 +18,7 @@ public protocol AuthInterface: Sendable {
   func logout() async throws -> LogoutEntity
   func withDraw() async throws -> LogoutEntity
   func updateSessionCredential(with tokens: AuthTokens)
+  func registerNotification(with deviceToken: String) async throws -> RegisterNotificationEntity
 }
 
 /// Auth Repository의 DependencyKey 구조체

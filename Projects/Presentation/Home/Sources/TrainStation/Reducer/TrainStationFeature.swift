@@ -9,6 +9,8 @@
 import Foundation
 import CoreLocation
 import ComposableArchitecture
+import LogMacro
+import IdentifiedCollections
 
 import DomainInterface
 import UseCase
@@ -34,11 +36,12 @@ public struct TrainStationFeature {
     var shouldShowFavoriteSection: Bool = false
     var selectedStation: Station
     var selectedStationID: Int?
-    var favoriteRows: [StationRowModel] = []
-    var nearbyRows: [StationRowModel] = []
-    var majorRows: [StationRowModel] = []
+    var favoriteRows: IdentifiedArrayOf<StationRowModel> = []
+    var nearbyRows: IdentifiedArrayOf<StationRowModel> = []
+    var majorRows: IdentifiedArrayOf<StationRowModel> = []
     var isLoading: Bool = false
     var errorMessage: String?
+    @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
 
     public init(
       selectedStation: Station = .seoul,
@@ -74,7 +77,7 @@ public struct TrainStationFeature {
     case checkAccessToken
     case fetchStations
     case addFavoriteStation(Int)
-    case deleteFavoriteStation(Int)
+    case deleteFavoriteStation(favoriteID: Int, stationID: Int)
   }
 
   //MARK: - 앱내에서 사용하는 액션
@@ -84,7 +87,7 @@ public struct TrainStationFeature {
     case fetchStationsFailed(String)
     case addFavoriteStationResponse
     case addFavoriteStationFailed(String)
-    case deleteFavoriteStationResponse
+    case deleteFavoriteStationResponse(Int)
     case deleteFavoriteStationFailed(String)
   }
 
@@ -125,6 +128,8 @@ extension TrainStationFeature {
     switch action {
     case .onAppear:
       state.isLoading = true
+
+      // 항상 토큰 재확인 후 즐겨찾기 섹션 표시 여부 결정
       return .merge(
         .send(.async(.checkAccessToken)),
         .send(.async(.fetchStations))
@@ -136,9 +141,12 @@ extension TrainStationFeature {
       state.selectedStationID = row.stationID
       return .send(.delegate(.stationSelected(row)))
     case .favoriteButtonTapped(let row):
-      guard state.shouldShowFavoriteSection else { return .none }
+      // 비회원이거나 즐겨찾기 섹션이 비활성화된 경우 즐겨찾기 기능 사용 불가
+      guard state.shouldShowFavoriteSection && !state.userSession.isGuest else { return .none }
+
       if row.isFavorite {
-        return .send(.async(.deleteFavoriteStation(row.stationID)))
+        guard let favoriteID = row.favoriteID else { return .none }
+        return .send(.async(.deleteFavoriteStation(favoriteID: favoriteID, stationID: row.stationID)))
       } else {
         return .send(.async(.addFavoriteStation(row.stationID)))
       }
@@ -159,15 +167,32 @@ extension TrainStationFeature {
       .cancellable(id: CancelID.checkAccessToken)
     case .fetchStations:
       return .run { [stationUseCase] send in
-        let locationManager = await LocationPermissionManager.shared
-        let location = await MainActor.run { locationManager.currentLocation }
-        let lat = location?.coordinate.latitude ?? 37.5666805
-        let lng = location?.coordinate.longitude ?? 126.9784147
+        // 현재 위치를 적극적으로 가져오기
+        var location: CLLocation?
+
+        // 먼저 캐시된 위치 확인
+        location = await MainActor.run {
+          LocationPermissionManager.shared.currentLocation
+        }
+
+        // 캐시된 위치가 없으면 새로 요청
+        if location == nil {
+          do {
+            location = try await LocationPermissionManager.shared.requestCurrentLocation()
+          } catch {
+            #logDebug("❌ 현재 위치 가져오기 실패: \(error.localizedDescription)")
+          }
+        }
+
+        let userLat = location?.coordinate.latitude ?? 37.5666805
+        let userLon = location?.coordinate.longitude ?? 126.9784147
+
+        #logDebug("📍 사용 중인 위치: \(userLat), \(userLon)")
 
         do {
           let entity = try await stationUseCase.fetchStations(
-            lat: lat,
-            lng: lng,
+            userLat: userLat,
+            userLon: userLon,
             page: 1,
             size: 30
           )
@@ -183,16 +208,26 @@ extension TrainStationFeature {
           _ = try await stationUseCase.addFavoriteStation(stationID: stationID)
           await send(.inner(.addFavoriteStationResponse))
         } catch {
+          let nsError = error as NSError
+          if nsError.domain == "StationFavoriteError", nsError.code == 409 {
+            await send(.inner(.addFavoriteStationResponse))
+            return
+          }
           await send(.inner(.addFavoriteStationFailed(error.localizedDescription)))
         }
       }
       .cancellable(id: CancelID.favoriteMutation, cancelInFlight: true)
-    case .deleteFavoriteStation(let stationID):
+    case .deleteFavoriteStation(let favoriteID, let stationID):
       return .run { [stationUseCase] send in
         do {
-          _ = try await stationUseCase.deleteFavoriteStation(stationID: stationID)
-          await send(.inner(.deleteFavoriteStationResponse))
+          _ = try await stationUseCase.deleteFavoriteStation(favoriteID: favoriteID)
+          await send(.inner(.deleteFavoriteStationResponse(stationID)))
         } catch {
+          let nsError = error as NSError
+          if nsError.domain == "StationFavoriteError", nsError.code == 404 {
+            await send(.inner(.deleteFavoriteStationResponse(stationID)))
+            return
+          }
           await send(.inner(.deleteFavoriteStationFailed(error.localizedDescription)))
         }
       }
@@ -215,14 +250,34 @@ extension TrainStationFeature {
     action: InnerAction
   ) -> Effect<Action> {
     switch action {
-    case .accessTokenChecked(let shouldShowFavoriteSection):
-      state.shouldShowFavoriteSection = shouldShowFavoriteSection
+    case .accessTokenChecked(let hasAccessToken):
+      state.shouldShowFavoriteSection = hasAccessToken
+
+      // UserSession의 isGuest 상태도 함께 업데이트
+      state.$userSession.withLock {
+        $0.isGuest = !hasAccessToken
+      }
+
+
       return .none
     case .fetchStationsResponse(let entity):
-      state.favoriteRows = makeFavoriteRows(entity.favoriteStations)
-      state.nearbyRows = makeNearbyRows(entity.nearbyStations)
-      state.majorRows = makeMajorRows(entity.stations.content)
-      applyFavoriteState(state: &state)
+      state.favoriteRows = StationRowModel.makeFavoriteRows(from: entity.favoriteStations)
+      state.nearbyRows = StationRowModel.makeNearbyRows(from: entity.nearbyStations)
+      state.majorRows = StationRowModel.makeMajorRows(from: entity.stations.content)
+
+      // Avoid overlapping access by copying to local variables
+      let favoriteRows = state.favoriteRows
+      var nearbyRows = state.nearbyRows
+      var majorRows = state.majorRows
+
+      StationRowModel.applyFavoriteState(
+        favoriteRows: favoriteRows,
+        nearbyRows: &nearbyRows,
+        majorRows: &majorRows
+      )
+
+      state.nearbyRows = nearbyRows
+      state.majorRows = majorRows
       state.isLoading = false
       return .none
     case .fetchStationsFailed(let message):
@@ -234,8 +289,49 @@ extension TrainStationFeature {
     case .addFavoriteStationFailed(let message):
       state.errorMessage = message
       return .none
-    case .deleteFavoriteStationResponse:
-      return .send(.async(.fetchStations))
+    case .deleteFavoriteStationResponse(let stationID):
+      state.favoriteRows.removeAll { $0.stationID == stationID }
+
+      let updatedNearbyRows = state.nearbyRows.map { row in
+        guard row.stationID == stationID else { return row }
+        let updatedEntity = StationEntity(
+          id: row.stationEntity.id,
+          favoriteID: nil,
+          station: row.stationEntity.station,
+          name: row.stationEntity.name,
+          badges: row.stationEntity.badges,
+          latitude: row.stationEntity.latitude,
+          longitude: row.stationEntity.longitude,
+          isFavorite: false
+        )
+        return StationRowModel(
+          stationEntity: updatedEntity,
+          distanceText: row.distanceText,
+          rowType: "nearby"
+        )
+      }
+      state.nearbyRows = IdentifiedArray(uniqueElements: updatedNearbyRows)
+
+      let updatedMajorRows = state.majorRows.map { row in
+        guard row.stationID == stationID else { return row }
+        let updatedEntity = StationEntity(
+          id: row.stationEntity.id,
+          favoriteID: nil,
+          station: row.stationEntity.station,
+          name: row.stationEntity.name,
+          badges: row.stationEntity.badges,
+          latitude: row.stationEntity.latitude,
+          longitude: row.stationEntity.longitude,
+          isFavorite: false
+        )
+        return StationRowModel(
+          stationEntity: updatedEntity,
+          distanceText: row.distanceText,
+          rowType: "station"
+        )
+      }
+      state.majorRows = IdentifiedArray(uniqueElements: updatedMajorRows)
+      return .none
     case .deleteFavoriteStationFailed(let message):
       state.errorMessage = message
       return .none
@@ -243,107 +339,18 @@ extension TrainStationFeature {
   }
 }
 
-extension TrainStationFeature.State: Hashable {}
-
-private extension TrainStationFeature {
-  func makeFavoriteRows(_ stations: [StationSummaryEntity]) -> [StationRowModel] {
-    Array(
-      Dictionary(
-        stations.map { station in
-          (normalizedStationName(station.name), station)
-        },
-        uniquingKeysWith: { first, _ in first }
-      ).values
-    )
-    .sorted { normalizedStationName($0.name) < normalizedStationName($1.name) }
-    .map { station in
-      let normalizedName = normalizedStationName(station.name)
-      return StationRowModel(
-        id: "favorite-\(station.stationID)",
-        favoriteID: station.stationID,
-        station: Station(displayName: normalizedName),
-        stationID: station.stationID,
-        stationName: normalizedName,
-        badges: station.lines,
-        distanceText: nil,
-        isFavorite: true
-      )
-    }
-  }
-
-  func makeNearbyRows(_ stations: [StationSummaryEntity]) -> [StationRowModel] {
-    Array(stations.sorted { normalizedStationName($0.name) < normalizedStationName($1.name) }.prefix(3)).map { station in
-      let normalizedName = normalizedStationName(station.name)
-      return StationRowModel(
-        id: "nearby-\(station.stationID)",
-        favoriteID: nil,
-        station: Station(displayName: normalizedName),
-        stationID: station.stationID,
-        stationName: normalizedName,
-        badges: station.lines,
-        distanceText: "2.3km",
-        isFavorite: false
-      )
-    }
-  }
-
-  func makeMajorRows(_ stations: [StationSummaryEntity]) -> [StationRowModel] {
-    stations
-      .sorted { normalizedStationName($0.name) < normalizedStationName($1.name) }
-      .map { station in
-      let normalizedName = normalizedStationName(station.name)
-      return StationRowModel(
-        id: "station-\(station.stationID)",
-        favoriteID: nil,
-        station: Station(displayName: normalizedName),
-        stationID: station.stationID,
-        stationName: normalizedName,
-        badges: station.lines,
-        distanceText: nil,
-        isFavorite: false
-      )
-    }
-  }
-
-  func applyFavoriteState(state: inout State) {
-    let favoriteNameMap = Dictionary(
-      uniqueKeysWithValues: state.favoriteRows.map {
-        (normalizedStationName($0.stationName), $0.stationID)
-      }
-    )
-
-    state.nearbyRows = state.nearbyRows.map { row in
-      let favoriteID = favoriteNameMap[normalizedStationName(row.stationName)]
-      return StationRowModel(
-        id: row.id,
-        favoriteID: favoriteID,
-        station: row.station,
-        stationID: row.stationID,
-        stationName: row.stationName,
-        badges: row.badges,
-        distanceText: row.distanceText,
-        isFavorite: favoriteID != nil
-      )
-    }
-
-    state.majorRows = state.majorRows.map { row in
-      let favoriteID = favoriteNameMap[normalizedStationName(row.stationName)]
-      return StationRowModel(
-        id: row.id,
-        favoriteID: favoriteID,
-        station: row.station,
-        stationID: row.stationID,
-        stationName: row.stationName,
-        badges: row.badges,
-        distanceText: row.distanceText,
-        isFavorite: favoriteID != nil
-      )
-    }
-  }
-
-  func normalizedStationName(_ name: String) -> String {
-    name
-      .replacingOccurrences(of: "역", with: "")
-      .trimmingCharacters(in: .whitespacesAndNewlines)
+extension TrainStationFeature.State: Hashable {
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(searchText)
+    hasher.combine(shouldShowFavoriteSection)
+    hasher.combine(selectedStation)
+    hasher.combine(selectedStationID)
+    hasher.combine(favoriteRows)
+    hasher.combine(nearbyRows)
+    hasher.combine(majorRows)
+    hasher.combine(isLoading)
+    hasher.combine(errorMessage)
+    hasher.combine(userSession)
   }
 }
+

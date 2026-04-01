@@ -37,4 +37,30 @@ public class HistoryRepositoryImpl: HistoryInterface , @unchecked Sendable {
     return dto.data.toDomain()
   }
 
+  public func startJourney(
+    input: StartJourneyInput
+  ) async throws -> JourneyEntity {
+    let body = StartJourneyRequest(
+      stationId: input.stationId,
+      placeId: input.placeId,
+      trainDepartureTime: input.trainDepartureTime,
+      lat: input.lat,
+      lng: input.lng
+    )
+    let dto: StartJourneyDTOModel = try await provider.request(.startHistory(body: body))
+    return dto.data.toDomain()
+  }
+
+  public func endJourney(
+    journeyId: Int,
+    isCompleted: Bool
+  ) async throws -> JourneyEntity {
+    let body = EndJourneyRequest(
+      journeyId: journeyId,
+      isCompleted: isCompleted
+    )
+    let dto: EndJourneyDTOModel = try await provider.request(.endHistory(body: body))
+    return dto.data.toDomain()
+  }
+
 }

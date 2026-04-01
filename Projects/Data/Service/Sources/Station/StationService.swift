@@ -13,9 +13,10 @@ import Foundations
 import AsyncMoya
 
 public enum StationService {
-  case allStation(body: StationRequest)
+  case allStation(body: StationRequest) // For guest users
+  case memberStations(body: StationRequest) // For authenticated members
   case addFavoriteStation(body: AddFavoriteStationRequest)
-  case deleteFavoriteStation(deleteStationId: Int)
+  case deleteFavoriteStation(favoriteID: Int)
 }
 
 
@@ -28,12 +29,12 @@ extension StationService: BaseTargetType {
 
   public var urlPath: String {
     switch self {
-    case .allStation:
+    case .allStation, .memberStations:
       return StationAPI.allStation.description
-    case .addFavoriteStation:
-      return StationAPI.addFavoriteStation.description
-    case .deleteFavoriteStation(let deleteStationId):
-      return StationAPI.deleteFavoriteStation(deleteStationId: deleteStationId).description
+    case .addFavoriteStation(let body):
+        return StationAPI.addFavoriteStation(stationID: body.stationID).description
+    case .deleteFavoriteStation(let stationID):
+      return StationAPI.deleteFavoriteStation(stationID: stationID).description
     }
   }
 
@@ -43,7 +44,7 @@ extension StationService: BaseTargetType {
 
   public var method: Moya.Method {
     switch self {
-    case .allStation:
+    case .allStation, .memberStations:
       return .get
     case .addFavoriteStation:
       return .post
@@ -54,7 +55,7 @@ extension StationService: BaseTargetType {
 
   public var parameters: [String : Any]? {
     switch self {
-    case .allStation(let body):
+    case .allStation(let body), .memberStations(let body):
       return body.toDictionary
     case .addFavoriteStation(let body):
       return body.toDictionary
@@ -66,9 +67,11 @@ extension StationService: BaseTargetType {
   public var headers: [String : String]? {
     switch self {
     case .allStation:
-      return APIHeader.notAccessTokenHeader
+        return APIHeader.accessTokenKeyChain.isEmpty ? APIHeader.notAccessTokenHeader : APIHeader.baseHeader // Guest users
+    case .memberStations:
+      return APIHeader.baseHeader // Authenticated members
     case .addFavoriteStation, .deleteFavoriteStation:
-      return APIHeader.baseHeader
+      return APIHeader.baseHeader // 인증 필요한 API
     }
   }
 }

@@ -48,8 +48,8 @@ public final class AppDIManager {
       .register(HistoryInterface.self) { HistoryRepositoryImpl() }
     // MARK: - 역
       .register(StationInterface.self) { StationRepositoryImpl() }
-
-
+    // MARK: - 장소
+      .register(PlaceInterface.self) { PlaceRepositoryImpl() }
 
       .configure()
   }

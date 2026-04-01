@@ -16,14 +16,14 @@ public struct StationUseCaseImpl: StationInterface {
   public init() {}
 
   public func fetchStations(
-    lat: Double,
-    lng: Double,
+    userLat: Double,
+    userLon: Double,
     page: Int,
     size: Int
   ) async throws -> StationListEntity {
     try await repository.fetchStations(
-      lat: lat,
-      lng: lng,
+      userLat: userLat,
+      userLon: userLon,
       page: page,
       size: size
     )
@@ -36,9 +36,9 @@ public struct StationUseCaseImpl: StationInterface {
   }
 
   public func deleteFavoriteStation(
-    stationID: Int
+    favoriteID: Int
   ) async throws -> FavoriteStationMutationEntity {
-    try await repository.deleteFavoriteStation(stationID: stationID)
+    try await repository.deleteFavoriteStation(favoriteID: favoriteID)
   }
 }
 
