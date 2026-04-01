@@ -15,6 +15,15 @@ public protocol HistoryInterface: Sendable {
     size: Int,
     sort: TravelHistorySort
   ) async throws -> HistoryEntity
+
+  func startJourney(
+    input: StartJourneyInput
+  ) async throws -> JourneyEntity
+
+  func endJourney(
+    journeyId: Int,
+    isCompleted: Bool
+  ) async throws -> JourneyEntity
 }
 
 public struct HistoryRepositoryDependency: DependencyKey {

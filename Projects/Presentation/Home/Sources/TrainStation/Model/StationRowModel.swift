@@ -7,17 +7,55 @@
 
 import Foundation
 import Entity
+import Utill
+import IdentifiedCollections
 
 public struct StationRowModel: Identifiable, Equatable, Hashable {
-  public let id: String
-  public let favoriteID: Int?
-  public let station: Station?
-  public let stationID: Int
-  public let stationName: String
-  public let badges: [String]
+  public let stationEntity: StationEntity
   public let distanceText: String?
-  public let isFavorite: Bool
 
+  // UI 편의 속성들
+  public var id: String {
+    "\(rowType)-\(stationEntity.id)"
+  }
+  public var favoriteID: Int? {
+    stationEntity.favoriteID
+  }
+  public var station: Station? {
+    stationEntity.station
+  }
+  public var stationID: Int {
+    stationEntity.id
+  }
+  public var stationName: String {
+    stationEntity.name
+  }
+  public var badges: [String] {
+    stationEntity.badges
+  }
+  public var lat: Double? {
+    stationEntity.latitude
+  }
+  public var lng: Double? {
+    stationEntity.longitude
+  }
+  public var isFavorite: Bool {
+    stationEntity.isFavorite
+  }
+
+  private let rowType: String
+
+  public init(
+    stationEntity: StationEntity,
+    distanceText: String? = nil,
+    rowType: String = "station"
+  ) {
+    self.stationEntity = stationEntity
+    self.distanceText = distanceText
+    self.rowType = rowType
+  }
+
+  // 편의 생성자 (기존 코드 호환성을 위해)
   public init(
     id: String,
     favoriteID: Int? = nil,
@@ -25,16 +63,181 @@ public struct StationRowModel: Identifiable, Equatable, Hashable {
     stationID: Int,
     stationName: String,
     badges: [String],
+    lat: Double? = nil,
+    lng: Double? = nil,
     distanceText: String?,
     isFavorite: Bool
   ) {
-    self.id = id
-    self.favoriteID = favoriteID
-    self.station = station
-    self.stationID = stationID
-    self.stationName = stationName
-    self.badges = badges
-    self.distanceText = distanceText
-    self.isFavorite = isFavorite
+    let entity = StationEntity(
+      id: stationID,
+      favoriteID: favoriteID,
+      station: station,
+      name: stationName,
+      badges: badges,
+      latitude: lat,
+      longitude: lng,
+      isFavorite: isFavorite
+    )
+
+    let rowType = id.components(separatedBy: "-").first ?? "station"
+
+    self.init(
+      stationEntity: entity,
+      distanceText: distanceText,
+      rowType: rowType
+    )
+  }
+}
+
+// MARK: - Mapping Functions
+extension StationRowModel {
+  static func makeFavoriteRows(from stations: [StationSummaryEntity]) -> IdentifiedArrayOf<StationRowModel> {
+    let uniqueStations = Array(
+      Dictionary(
+        stations.map { station in
+          (station.name.normalizedStationName, station)
+        },
+        uniquingKeysWith: { first, _ in first }
+      ).values
+    )
+    .sorted { $0.name.normalizedStationName < $1.name.normalizedStationName }
+
+    let rows = uniqueStations.map { station in
+      let normalizedName = station.name.normalizedStationName
+      let stationEnum = Station(displayName: normalizedName)
+      let displayName = stationEnum?.displayName ?? normalizedName
+
+      let entity = StationEntity(
+        id: station.stationID,
+        favoriteID: station.favoriteID ?? station.stationID,
+        station: stationEnum,
+        name: displayName,
+        badges: station.lines,
+        latitude: station.lat,
+        longitude: station.lng,
+        isFavorite: true
+      )
+
+      return StationRowModel(
+        stationEntity: entity,
+        distanceText: nil,
+        rowType: "favorite"
+      )
+    }
+
+    return IdentifiedArray(uniqueElements: rows)
+  }
+
+  static func makeNearbyRows(from stations: [StationSummaryEntity]) -> IdentifiedArrayOf<StationRowModel> {
+    let rows = Array(stations.sorted { $0.name.normalizedStationName < $1.name.normalizedStationName }.prefix(3)).map { station in
+      let normalizedName = station.name.normalizedStationName
+      let stationEnum = Station(displayName: normalizedName)
+      let displayName = stationEnum?.displayName ?? normalizedName
+
+      let entity = StationEntity(
+        id: station.stationID,
+        favoriteID: nil,
+        station: stationEnum,
+        name: displayName,
+        badges: station.lines,
+        latitude: station.lat,
+        longitude: station.lng,
+        isFavorite: false
+      )
+
+      return StationRowModel(
+        stationEntity: entity,
+        distanceText: "2.3km",
+        rowType: "nearby"
+      )
+    }
+
+    return IdentifiedArray(uniqueElements: rows)
+  }
+
+  static func makeMajorRows(from stations: [StationSummaryEntity]) -> IdentifiedArrayOf<StationRowModel> {
+    let rows = stations
+      .sorted { $0.name.normalizedStationName < $1.name.normalizedStationName }
+      .map { station in
+      let normalizedName = station.name.normalizedStationName
+      let stationEnum = Station(displayName: normalizedName)
+      let displayName = stationEnum?.displayName ?? normalizedName
+
+      let entity = StationEntity(
+        id: station.stationID,
+        favoriteID: nil,
+        station: stationEnum,
+        name: displayName,
+        badges: station.lines,
+        latitude: station.lat,
+        longitude: station.lng,
+        isFavorite: false
+      )
+
+      return StationRowModel(
+        stationEntity: entity,
+        distanceText: nil,
+        rowType: "station"
+      )
+    }
+
+    return IdentifiedArray(uniqueElements: rows)
+  }
+
+
+  static func applyFavoriteState(
+    favoriteRows: IdentifiedArrayOf<StationRowModel>,
+    nearbyRows: inout IdentifiedArrayOf<StationRowModel>,
+    majorRows: inout IdentifiedArrayOf<StationRowModel>
+  ) {
+    // 복잡한 표현식을 분리하여 컴파일러 타입 체킹 성능 향상
+    let favoriteNamePairs = favoriteRows.compactMap { row -> (String, Int)? in
+      let identifier = row.favoriteID ?? row.stationID
+      return (row.stationName.normalizedStationName, identifier)
+    }
+    let favoriteNameMap: [String: Int] = Dictionary(uniqueKeysWithValues: favoriteNamePairs)
+
+    // 복잡한 표현식을 분리하여 컴파일러 타입 체킹 성능 향상
+    let updatedNearbyRows = Self.updateRowsWithFavoriteStatus(
+      rows: nearbyRows,
+      favoriteNameMap: favoriteNameMap,
+      rowType: "nearby"
+    )
+    nearbyRows = IdentifiedArray(uniqueElements: updatedNearbyRows)
+
+    let updatedMajorRows = Self.updateRowsWithFavoriteStatus(
+      rows: majorRows,
+      favoriteNameMap: favoriteNameMap,
+      rowType: "station"
+    )
+    majorRows = IdentifiedArray(uniqueElements: updatedMajorRows)
+  }
+
+  // 복잡한 표현식을 분리한 헬퍼 함수
+  private static func updateRowsWithFavoriteStatus(
+    rows: IdentifiedArrayOf<StationRowModel>,
+    favoriteNameMap: [String: Int],
+    rowType: String
+  ) -> [StationRowModel] {
+    return rows.map { row in
+      let favoriteID = favoriteNameMap[row.stationName.normalizedStationName]
+
+      let updatedEntity = StationEntity(
+        id: row.stationEntity.id,
+        favoriteID: favoriteID,
+        station: row.stationEntity.station,
+        name: row.stationEntity.name,
+        badges: row.stationEntity.badges,
+        latitude: row.stationEntity.latitude,
+        longitude: row.stationEntity.longitude,
+        isFavorite: favoriteID != nil
+      )
+
+      return StationRowModel(
+        stationEntity: updatedEntity,
+        distanceText: row.distanceText,
+        rowType: rowType
+      )
+    }
   }
 }

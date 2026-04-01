@@ -14,6 +14,10 @@ import UseCase
 
 @Reducer
 public struct ProfileFeature {
+  private enum Constants {
+    static let historyPageSize = 50
+  }
+
   public init() {}
 
   @ObservableState
@@ -26,6 +30,7 @@ public struct ProfileFeature {
     var isHistoryLoading: Bool = false
     var isHistoryLoadingMore: Bool = false
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
+    @Shared(.appStorage("selectedMapType")) var selectedMapTypeStorage: ExternalMapType = .naverMap
 
     public init() {}
   }
@@ -160,7 +165,11 @@ extension ProfileFeature {
         }
         return .run { [travelHistorySort = state.travelHistorySort] send in
           let result = await Result {
-            try await historyUseCase.myHistory(page: page, size: 10, sort: travelHistorySort)
+            try await historyUseCase.myHistory(
+              page: page,
+              size: Constants.historyPageSize,
+              sort: travelHistorySort
+            )
           }
           .mapError(ProfileError.from)
           await send(.inner(.fetchMyHistoryResponse(result, reset: reset)))
@@ -199,6 +208,9 @@ extension ProfileFeature {
             state.$userSession.withLock {
               $0.name = state.profileEntity?.nickname ?? ""
               $0.mapType = state.profileEntity?.mapType ?? .appleMap
+            }
+            state.$selectedMapTypeStorage.withLock {
+              $0 = state.profileEntity?.mapType ?? .appleMap
             }
             return .none
 

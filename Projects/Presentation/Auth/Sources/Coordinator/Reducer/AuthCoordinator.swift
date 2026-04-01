@@ -8,6 +8,7 @@
 import ComposableArchitecture
 import TCACoordinators
 import OnBoarding
+import Web
 
 @Reducer
 public struct AuthCoordinator {
@@ -85,6 +86,10 @@ extension AuthCoordinator {
     action: IndexedRouterActionOf<AuthScreen>
   ) -> Effect<Action> {
     switch action {
+      case .routeAction(id: _, action: .login(.delegate(.presentGuestLookAround))):
+        return .routeWithDelaysIfUnsupported(state.routes, action: \.router) {
+          $0.push(.onBoarding(.init()))
+        }
 
       case .routeAction(id: _, action: .login(.delegate(.presentOnBoarding))):
         return .send(.inner(.pushOnBoarding))
@@ -94,6 +99,13 @@ extension AuthCoordinator {
 
       case .routeAction(id: _, action: .onBoarding(.navigation(.onBoardingCompleted))):
         return .send(.navigation(.presentMain))
+
+      case .routeAction(id: _, action: .login(.delegate(.presentPrivacyWeb))):
+        state.routes.push(.web(.init(url: "https://www.notion.so/329f94ae438b807d95dcd0f5f8abf66a?source=copy_link")))
+        return .none
+
+      case .routeAction(id: _, action: .web(.backToRoot)):
+        return .send(.view(.backAction))
 
       default:
         return .none
@@ -160,6 +172,7 @@ extension AuthCoordinator {
   public enum AuthScreen {
     case login(LoginFeature)
     case onBoarding(OnBoardingFeature)
+    case web(WebFeature)
   }
 }
 

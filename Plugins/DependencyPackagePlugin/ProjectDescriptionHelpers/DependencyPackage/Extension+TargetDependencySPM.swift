@@ -10,9 +10,12 @@ import ProjectDescription
 public extension TargetDependency.SPM {
   static let asyncMoya = TargetDependency.external(name: "AsyncMoya", condition: .none)
   static let composableArchitecture = TargetDependency.external(name: "ComposableArchitecture", condition: .none)
+  static let kingfisher = TargetDependency.external(name: "Kingfisher", condition: .none)
   static let tcaCoordinator = TargetDependency.external(name: "TCACoordinators", condition: .none)
   static let weaveDI = TargetDependency.external(name: "WeaveDI", condition: .none)
 
   static let googleSignIn = TargetDependency.external(name: "GoogleSignIn", condition: .none)
   static let appAuth: TargetDependency = .external(name: "AppAuth")
+  static let FirebaseCrashlytics = TargetDependency.external(name: "FirebaseCrashlytics", condition: .none)
+  static let sdWebImage = TargetDependency.external(name: "SDWebImageSwiftUI", condition: .none)
 }

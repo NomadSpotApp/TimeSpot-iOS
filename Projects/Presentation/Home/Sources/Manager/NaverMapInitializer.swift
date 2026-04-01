@@ -2,7 +2,7 @@
 //  NaverMapInitializer.swift
 //  Home
 //
-//  Created by Claude on 3/12/26.
+//  Created by Wonji Suh on 3/12/26.
 //
 
 import Foundation

@@ -58,6 +58,10 @@ public struct HomeFeature {
     var hasAppearedOnce: Bool = false
     var shouldResetAfterExplore: Bool = false
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
+
+    // 지속적 저장이 필요한 역 위치
+    @Shared(.appStorage("nearestStationLat")) var persistedStationLat: Double = 0.0
+    @Shared(.appStorage("nearestStationLng")) var persistedStationLng: Double = 0.0
   }
 
   enum CustomAlertMode: Equatable, Hashable {
@@ -195,13 +199,15 @@ extension HomeFeature {
       guard let station = row.station else { return .none }
       state.selectedStation = station
       state.selectedStationID = row.stationID
-      state.selectedStationName = row.stationName
+        state.selectedStationName = row.stationName
       state.isSelected = false
       state.hasSelectedStation = true
       state.trainStation = nil
       state.$userSession.withLock {
         $0.travelID = String(row.stationID)
         $0.travelStationName = row.stationName
+        $0.travelStationLat = row.lat
+        $0.travelStationLng = row.lng
       }
       return .merge(
         .cancel(id: TrainStationFeature.CancelID.checkAccessToken),
@@ -255,9 +261,40 @@ extension HomeFeature {
 
     case .departureTimeChanged(let date):
       state.currentTime = now
-      state.departureTime = date
+
+      // DatePicker에서 받은 날짜의 시와 분만 추출
+      let calendar = Calendar.current
+      let selectedComponents = calendar.dateComponents([.hour, .minute], from: date)
+
+      guard let selectedHour = selectedComponents.hour,
+            let selectedMinute = selectedComponents.minute else {
+        return .none
+      }
+
+      // 현재 시간을 기준으로 오늘 날짜에 선택된 시간을 설정
+      var targetComponents = calendar.dateComponents([.year, .month, .day], from: state.currentTime)
+      targetComponents.hour = selectedHour
+      targetComponents.minute = selectedMinute
+      targetComponents.second = 0
+
+      guard let targetDate = calendar.date(from: targetComponents) else {
+        return .none
+      }
+
+      // 선택된 시간이 현재 시간보다 이전이면 다음날로 설정
+      let finalDate = if targetDate <= state.currentTime {
+        calendar.date(byAdding: .day, value: 1, to: targetDate) ?? targetDate
+      } else {
+        targetDate
+      }
+
+      state.departureTime = finalDate
       state.departureTimePickerVisible = false
       state.isDepartureTimeSet = true
+      state.$userSession.withLock {
+        $0.remainingMinutes = state.remainingTotalMinutes
+        $0.departureTime = state.departureTime
+      }
       guard state.shouldShowDepartureWarningToast else {
         return .none
       }
@@ -285,18 +322,18 @@ extension HomeFeature {
 
     case .requestHomeLocationPermission:
       return .run { _ in
-        let locationManager = await LocationPermissionManager.shared
-        let currentStatus = await locationManager.authorizationStatus
+        let currentStatus = await MainActor.run {
+          LocationPermissionManager.shared.authorizationStatus
+        }
 
         guard currentStatus == .notDetermined else { return }
 
-        _ = await locationManager.requestLocationPermission()
+        _ = await LocationPermissionManager.shared.requestLocationPermission()
       }
 
     case .requestExploreLocationPermission:
       return .run { send in
-        let locationManager = await LocationPermissionManager.shared
-        let status = await locationManager.requestLocationPermission()
+        let status = await LocationPermissionManager.shared.requestLocationPermission()
         let isGranted = status == .authorizedWhenInUse || status == .authorizedAlways
         await send(.inner(.exploreLocationPermissionChecked(isGranted)))
       }
@@ -385,19 +422,46 @@ extension HomeFeature {
       state.$userSession.withLock {
         $0.travelID = ""
         $0.travelStationName = ""
+        $0.travelStationLat = nil
+        $0.travelStationLng = nil
+        $0.remainingMinutes = 0
+        $0.departureTime = nil
+        $0.routeDistance = 0
+        $0.routeDuration = 0
+        $0.nearestStationName = ""
+        $0.nearestStationLat = nil
+        $0.nearestStationLng = nil
       }
+
+      // appStorage도 초기화
+      state.$persistedStationLat.withLock { $0 = 0.0 }
+      state.$persistedStationLng.withLock { $0 = 0.0 }
       return .none
     }
   }
 }
 
 extension HomeFeature.State {
+  var maxDepartureTime: Date {
+    let calendar = Calendar.current
+    let now = Date()
+    let nextDay = calendar.date(byAdding: .day, value: 1, to: now) ?? now
+
+    // 다음날 23:59:59까지 선택 가능하도록 설정
+    var components = calendar.dateComponents([.year, .month, .day], from: nextDay)
+    components.hour = 23
+    components.minute = 59
+    components.second = 59
+
+    return calendar.date(from: components) ?? nextDay
+  }
+
   var remainingTotalMinutes: Int {
     (remainingTime.hour ?? 0) * 60 + (remainingTime.minute ?? 0)
   }
 
   var isStationReady: Bool {
-    hasSelectedStation || selectedStation == .seoul
+    hasSelectedStation
   }
 
   var isExploreNearbyEnabled: Bool {
@@ -432,6 +496,7 @@ extension HomeFeature.State {
     String(format: "%02d", remainingTime.minute ?? 0)
   }
 }
+
 
 // MARK: - HomeReducer.State + Hashable
 extension HomeFeature.State: Hashable {

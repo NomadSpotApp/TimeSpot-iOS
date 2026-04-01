@@ -39,24 +39,46 @@ public struct StationListResponseDTO: Decodable, Equatable {
 }
 
 public struct StationSummaryResponseDTO: Decodable, Equatable {
+  public let favoriteID: Int?
   public let stationID: Int
   public let name: String
   public let lines: [String]
+  public let lat: Double?
+  public let lng: Double?
 
   enum CodingKeys: String, CodingKey {
+    case favoriteID = "favoriteId"
     case stationID = "stationId"
     case name
     case lines
+    case lat
+    case lng
   }
 
   public init(
+    favoriteID: Int? = nil,
     stationID: Int,
     name: String,
-    lines: [String]
+    lines: [String],
+    lat: Double? = nil,
+    lng: Double? = nil
   ) {
+    self.favoriteID = favoriteID
     self.stationID = stationID
     self.name = name
     self.lines = lines
+    self.lat = lat
+    self.lng = lng
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.favoriteID = try container.decodeIfPresent(Int.self, forKey: .favoriteID)
+    self.stationID = try container.decode(Int.self, forKey: .stationID)
+    self.name = try container.decode(String.self, forKey: .name)
+    self.lines = try container.decode([String].self, forKey: .lines)
+    self.lat = try container.decodeIfPresent(Double.self, forKey: .lat)
+    self.lng = try container.decodeIfPresent(Double.self, forKey: .lng)
   }
 }
 

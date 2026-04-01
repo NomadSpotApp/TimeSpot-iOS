@@ -11,7 +11,8 @@ let project = Project.makeAppModule(
   scripts: [],
   dependencies: [
     .Presentation(implements: .Presentation),
-    .Data(implements: .Repository)
+    .Data(implements: .Repository),
+    .SPM.FirebaseCrashlytics
   ],
   sources: ["Sources/**"],
   resources: ["Resources/**", "FontAsset/**"],

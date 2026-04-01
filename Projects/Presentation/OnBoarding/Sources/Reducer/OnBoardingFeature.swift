@@ -30,6 +30,7 @@ public struct OnBoardingFeature {
     var selectedMap: ExternalMapType? = nil
     var loginEntity: LoginEntity? = nil
     @Shared(.inMemory(SharedKeys.userSession)) var userSession: UserSession = .empty
+    @Shared(.appStorage("selectedMapType")) var selectedMapTypeStorage: ExternalMapType = .naverMap
   }
 
   public enum Action: ViewAction, BindableAction {
@@ -76,6 +77,7 @@ public struct OnBoardingFeature {
   }
 
   @Dependency(\.signUpUseCase) var signUpUseCase
+  @Dependency(\.keychainManager) var keychainManager
 
   public var body: some Reducer<State, Action> {
     BindingReducer()
@@ -140,6 +142,11 @@ extension OnBoardingFeature {
         state.$userSession.withLock {
           $0.mapType = mapType
         }
+        // AppStorage에도 저장
+        state.$selectedMapTypeStorage.withLock {
+          $0 = mapType
+        }
+        #logDebug("온보딩에서 mapType 선택: \(mapType)")
       return .none
     }
   }
@@ -153,11 +160,20 @@ extension OnBoardingFeature {
         return .run { [
           userSession = state.userSession
         ] send in
+          // Keychain에서 accessToken 확인
+          let accessToken = await keychainManager.accessToken()
+
+          // 비회원인 경우 (isGuest = true 또는 accessToken이 없음) API 통신 없이 바로 onBoardingCompleted로 이동
+          if userSession.isGuest && accessToken?.isEmpty != false {
+            await send(.navigation(.onBoardingCompleted))
+            return
+          }
+
           let signupResult = await Result {
             try await signUpUseCase.registerUser(userSession: userSession)
           }
             .mapError(SignUpError.from)
-          return await send(.inner(.signUpResponse(signupResult)))
+          await send(.inner(.signUpResponse(signupResult)))
         }
         .cancellable(id: CancelID.signup, cancelInFlight: true)
     }
@@ -207,7 +223,8 @@ extension OnBoardingFeature.State: Equatable {
     lhs.stepRange == rhs.stepRange &&
     lhs.activeStep == rhs.activeStep &&
     lhs.selectedMap == rhs.selectedMap &&
-    lhs.loginEntity == rhs.loginEntity
+    lhs.loginEntity == rhs.loginEntity &&
+    lhs.selectedMapTypeStorage == rhs.selectedMapTypeStorage
   }
 }
 extension OnBoardingFeature.State {
@@ -215,6 +232,6 @@ extension OnBoardingFeature.State {
     hasher.combine(customAlert != nil)
     hasher.combine(activeStep)
     hasher.combine(selectedMap)
+    hasher.combine(selectedMapTypeStorage)
   }
 }
-

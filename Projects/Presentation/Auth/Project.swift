@@ -12,11 +12,12 @@ let project = Project.makeModule(
   product: .staticFramework,
   settings:  .settings(),
   dependencies: [
-    .Domain(implements: .UseCase),
-    .Shared(implements: .Shared),
     .SPM.composableArchitecture,
     .SPM.tcaCoordinator,
-    .Presentation(implements: .OnBoarding)
+    .Domain(implements: .UseCase),
+    .Shared(implements: .Shared),
+    .Presentation(implements: .OnBoarding),
+    .Presentation(implements: .Web)
   ],
   sources: ["Sources/**"]
 )

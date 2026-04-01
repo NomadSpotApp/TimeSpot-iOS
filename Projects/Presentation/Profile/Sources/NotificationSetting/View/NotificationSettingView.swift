@@ -44,6 +44,9 @@ public struct NotificationSettingView: View {
       }
       .padding(.horizontal, 16)
     }
+    .onAppear {
+      store.send(.view(.onAppear))
+    }
   }
 }
 
@@ -53,49 +56,54 @@ extension NotificationSettingView {
   fileprivate func notificationOptionMenuView() -> some View {
     VStack(spacing: 0) {
       Spacer()
-        .frame(height: 48)
+        .frame(height: 16)
 
-      VStack(spacing: 0) {
-        ForEach(NotificationOption.allCases) { option in
-          Button {
-            store.send(.view(.notificationOptionTapped(option)))
-          } label: {
-            HStack(spacing: 12) {
-              Text(option.title)
-                .pretendardCustomFont(textStyle: .bodyMedium)
-                .foregroundStyle(.gray900)
+      if store.isLoading {
+        NotificationSettingSkeletonView()
+      } else {
+        LazyVStack(spacing: 0) {
+          ForEach(NotificationOption.allCases) { option in
+            Button {
+              store.send(.view(.notificationOptionTapped(option)))
+            } label: {
+              HStack(spacing: 12) {
+                Text(option.title)
+                  .pretendardCustomFont(textStyle: .bodyMedium)
+                  .foregroundStyle(.gray900)
 
-              Spacer()
+                Spacer()
 
-              if store.selectedOptions.contains(option) {
-                Image(systemName: "checkmark")
-                  .font(.system(size: 18, weight: .medium))
-                  .foregroundStyle(.gray550)
+                if store.selectedOptions.contains(option) {
+                  Image(asset: .rowCheck)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 24, height: 24)
+                }
               }
+              .frame(height: 58)
+              .padding(.horizontal, 20)
+              .contentShape(Rectangle())
             }
-            .frame(height: 58)
-            .padding(.horizontal, 20)
-            .contentShape(Rectangle())
-          }
-          .buttonStyle(.plain)
+            .buttonStyle(.plain)
 
-          if option != .fifteenMinutesBefore {
-            Rectangle()
-              .fill(.enableColor)
-              .frame(height: 1)
-              .padding(.horizontal, 14)
+            if option != .fifteenMinutesBefore {
+              Rectangle()
+                .fill(.enableColor)
+                .frame(height: 1)
+                .padding(.horizontal, 14)
+            }
           }
         }
+        .background(
+          RoundedRectangle(cornerRadius: 24)
+            .fill(.gray200)
+        )
+        .overlay {
+          RoundedRectangle(cornerRadius: 24)
+            .stroke(.enableColor, lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 24))
       }
-      .background(
-        RoundedRectangle(cornerRadius: 24)
-          .fill(.gray200)
-      )
-      .overlay {
-        RoundedRectangle(cornerRadius: 24)
-          .stroke(.enableColor, lineWidth: 1)
-      }
-      .clipShape(RoundedRectangle(cornerRadius: 24))
     }
   }
 }

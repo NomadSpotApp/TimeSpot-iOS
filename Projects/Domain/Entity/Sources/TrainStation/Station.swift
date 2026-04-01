@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum Station: String, CaseIterable, Equatable, Hashable, Identifiable {
+public enum Station: String, CaseIterable, Equatable, Hashable, Identifiable, Sendable {
   case seoul
   case yongsan
   case gwangmyeong

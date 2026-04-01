@@ -14,6 +14,7 @@ let project = Project.makeModule(
     .Domain(implements: .UseCase),
     .Shared(implements: .Shared),
     .SPM.composableArchitecture,
+    .SPM.kingfisher,
     .SPM.tcaCoordinator,
     .Presentation(implements: .Profile),
     .xcframework(path: "./Resources/framework/NMapsMap.xcframework"),

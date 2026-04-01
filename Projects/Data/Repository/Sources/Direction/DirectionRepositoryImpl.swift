@@ -45,15 +45,12 @@ public final class DirectionRepositoryImpl: DirectionInterface, @unchecked Senda
     let goalCoord = "\(destination.longitude),\(destination.latitude)"
 
     do {
-      #logDebug(" [DirectionRepositoryImpl] 하이브리드 경로 검색 (경로: 네이버 Directions 15 + 시간: Apple MapKit)")
+
 
       // 1-2. 병렬로 네이버 API와 Apple MapKit 호출 (성능 개선)
-      #logDebug(" [DirectionRepositoryImpl] 병렬 API 호출 시작")
       async let pathResponse: NaverWalkingResponse = provider.request(.walking(start: startCoord, goal: goalCoord, option: Constants.multiOptions))
       async let appleResult = calculateWalkingTime(from: start, to: destination)
 
-      #logDebug(" [DirectionRepositoryImpl] 네이버 Directions 15로 실시간 경로 조회")
-      #logDebug(" [DirectionRepositoryImpl] Apple MapKit으로 도보 시간/거리 계산")
       let (naverResponse, appleData) = try await (pathResponse, appleResult)
 
       // 3. 하이브리드 결과 생성: 네이버 경로 + Apple 도보 시간/거리
@@ -91,10 +88,8 @@ public final class DirectionRepositoryImpl: DirectionInterface, @unchecked Senda
       return (duration: durationInMinutes, distance: distanceInMeters)
 
     } catch let mkError as MKError {
-      #logDebug(" [MKError] Apple MapKit 경로 계산 실패: \(mkError.localizedDescription)")
       throw DirectionError.invalidResponse
     } catch {
-      #logDebug(" [UnknownError] Apple MapKit 계산 실패: \(error)")
       throw DirectionError.invalidResponse
     }
   }

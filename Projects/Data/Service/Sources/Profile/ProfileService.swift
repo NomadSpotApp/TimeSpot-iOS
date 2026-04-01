@@ -17,6 +17,8 @@ import AsyncMoya
 public enum ProfileService {
   case fetchProfile
   case editProfile(body: ProfileRequest)
+  case fetchNotification
+  case editNotification(body: EditNotificationRequest)
 }
 
 
@@ -34,6 +36,12 @@ extension ProfileService: BaseTargetType {
 
       case .editProfile:
         return ProfileAPI.editUser.description
+
+      case .fetchNotification:
+        return ProfileAPI.fetchNotification.description
+
+      case .editNotification:
+        return ProfileAPI.editNotification.description
     }
   }
 
@@ -43,20 +51,26 @@ extension ProfileService: BaseTargetType {
 
   public var method: Moya.Method {
     switch self {
-      case .fetchProfile:
+      case .fetchProfile, .fetchNotification:
         return .get
 
       case .editProfile:
         return .post
+
+      case .editNotification:
+        return .put
     }
   }
 
   public var parameters: [String : Any]? {
     switch self {
-      case .fetchProfile:
+      case .fetchProfile, .fetchNotification:
         return nil
 
       case .editProfile(let body):
+        return body.toDictionary
+
+      case .editNotification(let body):
         return body.toDictionary
     }
   }

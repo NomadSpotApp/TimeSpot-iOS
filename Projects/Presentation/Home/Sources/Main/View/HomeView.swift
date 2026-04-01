@@ -31,11 +31,11 @@ public struct HomeView: View {
 
     enum TimeCapsule {
       static let height: CGFloat = 77
-      static let cornerRadius: CGFloat = 28
+      static let cornerRadius: CGFloat = 24
     }
 
     enum TimeDisplay {
-      static let cornerRadius: CGFloat = 36
+      static let cornerRadius: CGFloat = 28
     }
   }
 
@@ -149,7 +149,7 @@ extension HomeView {
         Image(asset: .profile)
           .resizable()
           .scaledToFit()
-          .frame(width: 56, height: 56)
+          .frame(width: 48, height: 48)
       }
       .buttonStyle(.plain)
     }
@@ -170,7 +170,7 @@ extension HomeView {
           .foregroundStyle(.gray900.opacity(0.9))
           .padding(.bottom, 4)
 
-        Text(store.selectedStation.homeTitle)
+        Text(store.hasSelectedStation ? store.selectedStation.displayName : store.selectedStation.homeTitle)
           .pretendardFont(family: .Bold, size: 64)
           .foregroundStyle(store.isSelected || store.hasSelectedStation ? .gray900 : .slateGray)
           .tracking(-2.2)
@@ -214,7 +214,6 @@ extension HomeView {
     DatePicker(
       HomeFeature.Strings.departureTimeSelection,
       selection: $store.departureTime,
-      in: store.currentTime...,
       displayedComponents: [.hourAndMinute]
     )
     .datePickerStyle(.wheel)

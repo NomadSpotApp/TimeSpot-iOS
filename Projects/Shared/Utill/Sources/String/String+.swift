@@ -138,4 +138,142 @@ public extension String {
       return iso.date(from: fixed)
     }()
   }
+
+  func formattedClosingTimeText() -> String {
+    if let time = self.split(separator: " ").last {
+      let hhmm = String(time.prefix(5))
+      return "\(hhmm)에 영업종료"
+    }
+    return self
+  }
+
+  var stayableMinutesDisplayText: String {
+    let text = self
+      .replacingOccurrences(of: " 체류 가능", with: "")
+      .replacingOccurrences(of: "약 ", with: "")
+    let value = text.isEmpty ? "0분" : text
+    return "약 \(value)"
+  }
+
+  func walkMinutesDisplayText(
+    spotName: String,
+    subtitle: String,
+    distanceText: String
+  ) -> String {
+    let text = self
+      .replacingOccurrences(of: "\(spotName)에서 약 ", with: "")
+      .replacingOccurrences(of: "\(subtitle)에서 약 ", with: "")
+      .replacingOccurrences(of: "\(distanceText) ", with: "")
+      .components(separatedBy: "약 ")
+      .last?
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+
+    return (text?.isEmpty == false ? text! : "0분")
+  }
+
+  var normalizedURL: URL? {
+    let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return nil }
+
+    if let url = URL(string: trimmed) {
+      return url
+    }
+
+    let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+    return encoded.flatMap(URL.init(string:))
+  }
+
+  var minutesValue: Int {
+    Int(
+      replacingOccurrences(of: "약 ", with: "")
+        .replacingOccurrences(of: "분", with: "")
+    ) ?? 0
+  }
+
+  static func openingHoursText(status: String?, closing: String?) -> String {
+    switch (status?.nilIfEmpty, closing?.nilIfEmpty) {
+    case let (status?, closing?):
+      return "\(status)  \(closing)"
+    case let (status?, nil):
+      return status
+    case let (nil, closing?):
+      return closing
+    case (nil, nil):
+      return "영업 시간 정보 준비 중"
+    }
+  }
+
+  var formattedPlaceNameForDisplay: String {
+    var value = self
+
+    let patterns = [
+      #"(?<=[가-힣A-Za-z0-9])(서울역|용산역|청량리역|강릉역|수서역|부산역|대전역|동대구역)"#,
+      #"(?<=(서울역|용산역|청량리역|강릉역|수서역|부산역|대전역|동대구역))(?=[가-힣A-Za-z0-9])"#,
+      #"(?<=[가-힣A-Za-z0-9])(롯데아울렛|현대아울렛|신세계아울렛)"#
+    ]
+
+    for pattern in patterns {
+      value = value.replacingOccurrences(
+        of: pattern,
+        with: pattern.contains("(?=") ? " " : " $1",
+        options: .regularExpression
+      )
+    }
+
+    value = value.replacingOccurrences(
+      of: #"\s+"#,
+      with: " ",
+      options: .regularExpression
+    )
+
+    return value.trimmingCharacters(in: .whitespacesAndNewlines)
+  }
+
+  var nilIfEmpty: String? {
+    isEmpty ? nil : self
+  }
+
+  // MARK: - Station Utils
+  var normalizedStationName: String {
+    self
+      .replacingOccurrences(of: "역", with: "")
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+  }
+}
+
+// MARK: - Distance Formatting
+public extension Int {
+  /// 미터 단위 거리를 적절한 단위로 포맷팅
+  /// 1000m 이상은 km로, 그 이하는 m로 표시
+  var formattedDistance: String {
+    if self >= 1000 {
+      let kilometers = Double(self) / 1000.0
+
+      // 1.0km, 2.5km 등으로 표시 (소수점 1자리까지, 불필요한 .0은 제거)
+      if kilometers == Double(Int(kilometers)) {
+        return "\(Int(kilometers))km"
+      } else {
+        return String(format: "%.1fkm", kilometers)
+      }
+    } else {
+      return "\(self)m"
+    }
+  }
+
+  /// 분 단위 시간을 포맷팅
+  /// 60분 이상은 시간으로, 그 이하는 분으로 표시
+  var formattedDuration: String {
+    if self >= 60 {
+      let hours = self / 60
+      let minutes = self % 60
+
+      if minutes == 0 {
+        return "\(hours)시간"
+      } else {
+        return "\(hours)시간 \(minutes)분"
+      }
+    } else {
+      return "\(self)분"
+    }
+  }
 }
