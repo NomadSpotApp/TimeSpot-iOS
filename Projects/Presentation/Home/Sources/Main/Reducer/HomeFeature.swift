@@ -407,8 +407,8 @@ extension HomeFeature {
       }
 
       // appStorage도 초기화
-      state.persistedStationLat = 0.0
-      state.persistedStationLng = 0.0
+      state.$persistedStationLat.withLock { $0 = 0.0 }
+      state.$persistedStationLng.withLock { $0 = 0.0 }
       return .none
     }
   }

@@ -6,13 +6,21 @@
 //
 import Foundation
 
-public enum HistoryAPI: String, CaseIterable {
+public enum HistoryAPI {
   case myHistory
+  case startHistory
+  case endHistory(historyId: Int)
 
   public var description: String {
     switch self {
       case .myHistory:
         return ""
+
+      case .startHistory:
+        return ""
+
+      case .endHistory(let historyId):
+        return "\(historyId)"
     }
   }
 }

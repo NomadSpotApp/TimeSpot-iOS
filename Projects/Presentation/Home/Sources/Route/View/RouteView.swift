@@ -197,8 +197,8 @@ private extension RouteView {
   private func routeStartButton() -> some View {
     CustomButton(
       action: {
-        // TCA action 사용
-        store.send(.view(.startNavigation))
+        // 여정 시작 API 호출
+        store.send(.view(.startJourney))
       },
       title: "길찾기 시작",
       config: CustomButtonConfig.create(),

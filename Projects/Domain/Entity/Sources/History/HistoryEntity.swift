@@ -90,3 +90,60 @@ public struct HistoryItemEntity: Equatable, Hashable, Identifiable {
     self.createdAt = createdAt
   }
 }
+
+// MARK: - Journey Entity
+
+public struct JourneyEntity: Equatable, Hashable, Identifiable {
+  public let id: Int // visitingHistoryId
+  public let userId: String
+  public let stationId: Int
+  public let stationName: String
+  public let stationAddress: String
+  public let placeId: Int
+  public let placeName: String
+  public let placeCategory: String
+  public let placeAddress: String
+  public let startTime: Date
+  public let endTime: Date?
+  public let trainDepartureTime: Date
+  public let totalDurationMinutes: Int
+  public let isInProgress: Bool
+  public let isSuccess: Bool
+  public let createdAt: Date
+
+  public init(
+    id: Int,
+    userId: String,
+    stationId: Int,
+    stationName: String,
+    stationAddress: String,
+    placeId: Int,
+    placeName: String,
+    placeCategory: String,
+    placeAddress: String,
+    startTime: Date,
+    endTime: Date? = nil,
+    trainDepartureTime: Date,
+    totalDurationMinutes: Int,
+    isInProgress: Bool,
+    isSuccess: Bool,
+    createdAt: Date
+  ) {
+    self.id = id
+    self.userId = userId
+    self.stationId = stationId
+    self.stationName = stationName
+    self.stationAddress = stationAddress
+    self.placeId = placeId
+    self.placeName = placeName
+    self.placeCategory = placeCategory
+    self.placeAddress = placeAddress
+    self.startTime = startTime
+    self.endTime = endTime
+    self.trainDepartureTime = trainDepartureTime
+    self.totalDurationMinutes = totalDurationMinutes
+    self.isInProgress = isInProgress
+    self.isSuccess = isSuccess
+    self.createdAt = createdAt
+  }
+}

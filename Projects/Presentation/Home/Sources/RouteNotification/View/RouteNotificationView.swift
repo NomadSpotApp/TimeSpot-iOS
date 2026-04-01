@@ -28,7 +28,8 @@ public struct RouteNotificationView: View {
         subtitle: "지금 하는 활동을 차분히 마무리해 주세요.",
         image: .fifteenMinutesNotification,
         store: store,
-        showBottomElements: true
+        showBottomElements: true,
+        isEndJourney: false
       )
     case .tenMin:
       NotificationContentView(
@@ -38,7 +39,8 @@ public struct RouteNotificationView: View {
         subtitle: "이제 슬슬 일어날 준비를 해볼까요?",
         image: .tenMinutesNotification,
         store: store,
-        showBottomElements: false
+        showBottomElements: false,
+        isEndJourney: false
       )
     case .fiveMin:
       NotificationContentView(
@@ -48,7 +50,8 @@ public struct RouteNotificationView: View {
         subtitle: "잠시 후 출발할 수 있도록 미리 준비해주세요.",
         image: .fiveMinutesNotification,
         store: store,
-        showBottomElements: true
+        showBottomElements: true,
+        isEndJourney: false
       )
     case .now:
       NotificationContentView(
@@ -58,7 +61,19 @@ public struct RouteNotificationView: View {
         subtitle: "지금 바로 역으로 향해야 15분 전에\n플랫폼에 도착할 수 있어요.",
         image: .startNotification,
         store: store,
-        showBottomElements: true
+        showBottomElements: true,
+        isEndJourney: false
+      )
+    case .endJourney:
+      NotificationContentView(
+        titlePart1: "무사히 탑승하셨나요?",
+        highlightText: "",
+        titlePart3: "",
+        subtitle: "오늘 대기 시간이 맞진 여행이 되었어요.\n이제 편안한 여정 되세요!",
+        image: .endJourney,
+        store: store,
+        showBottomElements: false,
+        isEndJourney: true
       )
     }
   }

@@ -33,6 +33,9 @@ public struct DeeplinkRouter: Sendable {
         case "departure_time":
             // 출발 시간 알림 딥링크
             return parseRouteDeeplink(url: url)
+        case "end_journey":
+            // 여정 종료 알림 딥링크
+            return parseRouteDeeplink(url: url)
         case let host where host.contains("min_before") || host.contains("min_after"):
             // 시간 알림 관련 딥링크는 route로 처리
             return parseRouteDeeplink(url: url)
