@@ -134,6 +134,15 @@ graph TD
     C -.-> K[API Services]
 ```
 
+### 📊 의존성 그래프 (Tuist Graph)
+
+<div align="center">
+
+![Dependency Graph](graph.png)
+*프로젝트 모듈 간 의존성 관계도 (자동 생성)*
+
+</div>
+
 ### 🔄 의존성 방향 원칙
 
 ```
