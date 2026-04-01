@@ -191,9 +191,6 @@ extension AppDelegate {
   }
 }
 
-extension Notification.Name {
-  static let pushNotificationDeepLink = Notification.Name("pushNotificationDeepLink")
-}
 
 enum UserDefaultsKey: String {
   case pendingPushDeepLink

@@ -19,6 +19,7 @@ public struct UserSession: Equatable, Hashable {
   public var travelStationLat: Double?
   public var travelStationLng: Double?
   public var remainingMinutes: Int
+  public var departureTime: Date?
   public var selectedExploreSpotID: String
   public var selectedExplorePlaceID: String
   public var explorePlacesFetchedAt: Date?
@@ -29,6 +30,13 @@ public struct UserSession: Equatable, Hashable {
   public var routeDestinationLat: Double?  // 목적지 위도
   public var routeDestinationLng: Double?  // 목적지 경도
   public var routeDestinationName: String  // 목적지 이름
+
+  // MARK: - 경로 정보
+  public var routeDistance: Int  // 경로 거리 (미터)
+  public var routeDuration: Int  // 경로 소요시간 (분)
+  public var nearestStationName: String  // 가장 가까운 역 이름
+  public var nearestStationLat: Double?  // 가장 가까운 역 위도
+  public var nearestStationLng: Double?  // 가장 가까운 역 경도
 
   public init(
     name: String = "",
@@ -42,6 +50,7 @@ public struct UserSession: Equatable, Hashable {
     travelStationLat: Double? = nil,
     travelStationLng: Double? = nil,
     remainingMinutes: Int = 0,
+    departureTime: Date? = nil,
     selectedExploreSpotID: String = "",
     selectedExplorePlaceID: String = "",
     explorePlacesFetchedAt: Date? = nil,
@@ -49,7 +58,12 @@ public struct UserSession: Equatable, Hashable {
     routeStartLng: Double? = nil,
     routeDestinationLat: Double? = nil,
     routeDestinationLng: Double? = nil,
-    routeDestinationName: String = ""
+    routeDestinationName: String = "",
+    routeDistance: Int = 0,
+    routeDuration: Int = 0,
+    nearestStationName: String = "",
+    nearestStationLat: Double? = nil,
+    nearestStationLng: Double? = nil
   ) {
     self.name = name
     self.email = email
@@ -62,6 +76,7 @@ public struct UserSession: Equatable, Hashable {
     self.travelStationLat = travelStationLat
     self.travelStationLng = travelStationLng
     self.remainingMinutes = remainingMinutes
+    self.departureTime = departureTime
     self.selectedExploreSpotID = selectedExploreSpotID
     self.selectedExplorePlaceID = selectedExplorePlaceID
     self.explorePlacesFetchedAt = explorePlacesFetchedAt
@@ -70,6 +85,11 @@ public struct UserSession: Equatable, Hashable {
     self.routeDestinationLat = routeDestinationLat
     self.routeDestinationLng = routeDestinationLng
     self.routeDestinationName = routeDestinationName
+    self.routeDistance = routeDistance
+    self.routeDuration = routeDuration
+    self.nearestStationName = nearestStationName
+    self.nearestStationLat = nearestStationLat
+    self.nearestStationLng = nearestStationLng
   }
 }
 

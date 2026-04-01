@@ -58,6 +58,10 @@ public struct HomeFeature {
     var hasAppearedOnce: Bool = false
     var shouldResetAfterExplore: Bool = false
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
+
+    // 지속적 저장이 필요한 역 위치
+    @Shared(.appStorage("nearestStationLat")) var persistedStationLat: Double = 0.0
+    @Shared(.appStorage("nearestStationLng")) var persistedStationLng: Double = 0.0
   }
 
   enum CustomAlertMode: Equatable, Hashable {
@@ -262,6 +266,7 @@ extension HomeFeature {
       state.isDepartureTimeSet = true
       state.$userSession.withLock {
         $0.remainingMinutes = state.remainingTotalMinutes
+        $0.departureTime = state.departureTime
       }
       guard state.shouldShowDepartureWarningToast else {
         return .none
@@ -393,7 +398,17 @@ extension HomeFeature {
         $0.travelStationLat = nil
         $0.travelStationLng = nil
         $0.remainingMinutes = 0
+        $0.departureTime = nil
+        $0.routeDistance = 0
+        $0.routeDuration = 0
+        $0.nearestStationName = ""
+        $0.nearestStationLat = nil
+        $0.nearestStationLng = nil
       }
+
+      // appStorage도 초기화
+      state.persistedStationLat = 0.0
+      state.persistedStationLng = 0.0
       return .none
     }
   }

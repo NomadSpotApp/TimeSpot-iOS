@@ -11,6 +11,7 @@ import Home
 import ComposableArchitecture
 import Entity
 import LogMacro
+import UseCase
 
 @Reducer
 public struct AppReducer: Sendable {
@@ -21,7 +22,6 @@ public struct AppReducer: Sendable {
     case splash(SplashReducer.State)
     case home(HomeCoordinator.State)
     case auth(AuthCoordinator.State)
-
 
     public init() {
       self = .splash(.init())
@@ -51,12 +51,16 @@ public struct AppReducer: Sendable {
     case presentView
     case presentRoot
     case presentAuth
+    case handlePushNotificationDeepLink(String)
   }
 
   //MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
     case updateToHome
     case updateToAuth
+    case setupPushNotificationObserver
+    case handlePushDeepLink(String)
+    case checkPendingPushDeepLink
   }
 
   //MARK: - 비동기 처리 액션
@@ -135,14 +139,37 @@ extension AppReducer {
       }
 
     case .presentRoot:
+      #logDebug("🏠 AppReducer: Home 상태로 전환, 대기 중인 딥링크 확인")
+
+      // 대기 중인 딥링크가 있는지 먼저 확인
+      if let pendingDeepLink = UserDefaults.standard.string(forKey: "pendingPushDeepLink") {
+        #logDebug("📋 AppReducer: 대기 중인 딥링크 발견, 즉시 처리 = \(pendingDeepLink)")
+        UserDefaults.standard.removeObject(forKey: "pendingPushDeepLink")
+
+        // 시간 알림 딥링크이면 RouteNotificationView 포함한 Home 상태 생성
+        if pendingDeepLink.contains("min_before") || pendingDeepLink.contains("min_after") || pendingDeepLink.contains("departure_time") {
+          #logDebug("✅ AppReducer: RouteNotificationView 포함한 Home 상태 생성")
+          state = .home(.init(withRouteNotification: true, deepLink: pendingDeepLink))
+        } else {
+          #logDebug("🔍 AppReducer: 일반 딥링크, 기본 Home 상태로 전환")
+          state = .home(.init())
+        }
+        return .none
+      } else {
+        #logDebug("🔍 AppReducer: 대기 중인 딥링크 없음, 일반 Home 상태로 전환")
         state = .home(.init())
-      return .none
+        return .none
+      }
 
     case .presentAuth:
       state = .auth(.init())
       return .concatenate(
         .cancel(id: CancelID.mainEffects),
       )
+
+    case .handlePushNotificationDeepLink(let urlString):
+      #logDebug("🔗 AppReducer: 푸쉬 딥링크 처리 = \(urlString)")
+      return .send(.inner(.handlePushDeepLink(urlString)))
 
     }
   }
@@ -170,7 +197,55 @@ extension AppReducer {
     state: inout State,
     action: InnerAction
   ) -> Effect<Action> {
-    return .none
+    switch action {
+    case .updateToHome:
+      return .none
+
+    case .updateToAuth:
+      return .none
+
+    case .setupPushNotificationObserver:
+      #logDebug("📱 AppReducer: 푸쉬 알림 옵저버 설정")
+      return .run { send in
+        for await notification in NotificationCenter.default.notifications(named: .pushNotificationDeepLink) {
+          if let urlString = notification.userInfo?["url"] as? String {
+            #logDebug("📱 AppReducer: 푸쉬 딥링크 수신 = \(urlString)")
+            await send(.view(.handlePushNotificationDeepLink(urlString)))
+          }
+        }
+      }
+
+    case .handlePushDeepLink(let urlString):
+      #logDebug("🔗 AppReducer: 딥링크 처리 = \(urlString)")
+
+      // Home 상태일 때만 HomeCoordinator로 전달
+      switch state {
+      case .home:
+        #logDebug("✅ AppReducer: Home 상태, HomeCoordinator로 딥링크 전달")
+        // 시간 알림 딥링크면 RouteView로 이동
+        if urlString.contains("min_before") || urlString.contains("min_after") || urlString.contains("departure_time") {
+          #logDebug("🚀 AppReducer: 시간 알림 딥링크 감지, HomeCoordinator로 전달")
+          return .send(.scope(.home(.inner(.presentRouteFromPushNotification(urlString)))))
+        }
+        #logDebug("❌ AppReducer: 시간 알림 딥링크가 아님")
+        return .none
+      case .auth, .splash:
+        #logDebug("⏳ AppReducer: 아직 Home 상태가 아님, 나중에 처리 필요")
+        return .none
+      }
+
+    case .checkPendingPushDeepLink:
+      #logDebug("🔍 AppReducer: 대기 중인 푸쉬 딥링크 확인")
+      return .run { send in
+        if let pendingDeepLink = UserDefaults.standard.string(forKey: "pendingPushDeepLink") {
+          #logDebug("📋 AppReducer: 대기 중인 딥링크 발견 = \(pendingDeepLink)")
+          UserDefaults.standard.removeObject(forKey: "pendingPushDeepLink")
+          await send(.inner(.handlePushDeepLink(pendingDeepLink)))
+        } else {
+          #logDebug("🔍 AppReducer: 대기 중인 딥링크 없음")
+        }
+      }
+    }
   }
 
   private func handleNavigationAction(
@@ -226,4 +301,9 @@ extension AppReducer {
         }
     }
   }
+}
+
+// MARK: - Notification Extensions
+extension Notification.Name {
+  static let pushNotificationDeepLink = Notification.Name("pushNotificationDeepLink")
 }
