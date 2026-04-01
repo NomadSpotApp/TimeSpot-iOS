@@ -11,6 +11,7 @@ import WeaveDI
 import Home
 import Kingfisher
 import LogMacro
+import Firebase
 
 
 final class AppDelegate: UIResponder, UIApplicationDelegate, @MainActor UNUserNotificationCenterDelegate {
@@ -28,12 +29,14 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, @MainActor UNUserNo
 
     // Kingfisher 캐시 최적화 설정
     configureImageCaching()
-
+    FirebaseApp.configure()
     // 네이버맵 초기화 (Home 모듈의 NaverMapInitializer 사용)
     NaverMapInitializer.initialize()
 
     let center = UNUserNotificationCenter.current()
     center.delegate = self
+
+
 
     // iOS 17+ 호환 배지 초기화
 //    if #available(iOS 17.0, *) {
