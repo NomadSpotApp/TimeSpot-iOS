@@ -129,24 +129,15 @@ public struct ExploreDetailView: View {
     .onAppear {
       store.send(.view(.onAppear))
     }
-    .refreshable {
-      // 캐시된 이미지 다시 확인
-    }
     .onChange(of: store.shouldDismiss) { _, shouldDismiss in
       guard shouldDismiss else { return }
       dismiss()
     }
-    .onChange(of: store.showLowStayTimeToast) { _, showToast in
-      if showToast {
-        ToastManager.shared.showWarning("체류시간이 10분 미만입니다")
-        store.send(.view(.hideLowStayTimeToast))
-      }
-    }
     .customAlert($store.scope(state: \.customAlert, action: \.scope.customAlert))
     .toastOverlay(
-      position: .bottom,
+      position: .top,
       horizontalPadding: 20,
-      bottomPadding: 170 // 고정 버튼(상단 41 + 버튼 + 하단 34) 위에 토스트 표시
+      topPadding: 30 // 상단 네비게이션 바 아래에 토스트 표시
     )
   }
 }

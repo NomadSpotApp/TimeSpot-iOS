@@ -23,6 +23,7 @@ public struct ExploreMapSpot: Identifiable {
   public let walkTimeText: String
   public let address: String
   public let visitable: Bool
+  public let stayableMinutes: Int
 
   public init(
     id: String,
@@ -38,7 +39,8 @@ public struct ExploreMapSpot: Identifiable {
     distanceText: String,
     walkTimeText: String,
     address: String,
-    visitable: Bool = true
+    visitable: Bool = true,
+    stayableMinutes: Int = 0
   ) {
     self.id = id
     self.name = name
@@ -54,6 +56,7 @@ public struct ExploreMapSpot: Identifiable {
     self.walkTimeText = walkTimeText
     self.address = address
     self.visitable = visitable
+    self.stayableMinutes = stayableMinutes
   }
 }
 
@@ -74,6 +77,7 @@ extension ExploreMapSpot: Equatable {
     && lhs.walkTimeText == rhs.walkTimeText
     && lhs.address == rhs.address
     && lhs.visitable == rhs.visitable
+    && lhs.stayableMinutes == rhs.stayableMinutes
   }
 }
 

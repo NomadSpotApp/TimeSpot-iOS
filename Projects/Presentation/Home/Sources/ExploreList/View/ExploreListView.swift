@@ -49,7 +49,7 @@ public struct ExploreListView: View {
         } else {
           ExploreSearchHeaderView(
             stationName: store.userSession.travelStationName,
-            searchText: store.searchText,
+            searchText: "\(store.searchText)역",
             selectedCategory: store.selectedCategory,
             showCategories: true,   // 카테고리 표시
             isSearchable: true,     // 검색 기능 활성화

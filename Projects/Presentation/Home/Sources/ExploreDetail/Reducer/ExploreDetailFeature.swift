@@ -26,7 +26,6 @@ public struct ExploreDetailFeature {
     public var shouldDismiss: Bool = false
     @Presents public var customAlert: CustomAlertState<CustomAlertAction>?
     public var customAlertMode: CustomAlertMode?
-    public var showLowStayTimeToast: Bool = false
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
 
     // 스크롤 관련 상태
@@ -51,14 +50,12 @@ public struct ExploreDetailFeature {
   }
 
   public enum CustomAlertMode: Equatable {
-    case visitUnavailable
     case networkError
   }
 
   @CasePathable
   public enum View {
     case onAppear
-    case hideLowStayTimeToast
     case routeButtonTapped
     case titlePositionChanged(CGFloat)
   }
@@ -109,10 +106,6 @@ extension ExploreDetailFeature {
     switch action {
     case .onAppear:
       return .send(.async(.fetchPlaceDetail))
-
-    case .hideLowStayTimeToast:
-      state.showLowStayTimeToast = false
-      return .none
 
     case .routeButtonTapped:
       // UserSession에 목적지 정보 저장
@@ -189,7 +182,7 @@ extension ExploreDetailFeature {
     switch action {
     case .customAlert(.presented(.confirmTapped)):
       switch state.customAlertMode {
-      case .visitUnavailable, .networkError:
+      case .networkError:
         state.customAlert = nil
         state.customAlertMode = nil
         state.shouldDismiss = true
@@ -221,21 +214,25 @@ extension ExploreDetailFeature {
       case .success(let detail):
         state.placeDetail = detail
         state.errorMessage = nil
-        if isVisitUnavailable(detail: detail, fetchedAt: state.userSession.explorePlacesFetchedAt) {
-          state.customAlertMode = .visitUnavailable
-          state.customAlert = .alert(
-            title: "방문 불가능해요",
-            message: "남은 체류 시간이 없어서 이전 화면으로 돌아갈게요.",
-            confirmTitle: "확인",
-            cancelTitle: "취소"
-          )
-        } else {
-          // 체류시간이 10분 미만이면 토스트 표시
-          let remainingMinutes = calculateRemainingStayableMinutes(detail: detail, fetchedAt: state.userSession.explorePlacesFetchedAt)
-          if remainingMinutes > 0 && remainingMinutes < 10 {
-            state.showLowStayTimeToast = true
+
+        let remainingMinutes = calculateRemainingStayableMinutes(detail: detail, fetchedAt: state.userSession.explorePlacesFetchedAt)
+
+        // 체류시간에 따라 토스트 표시 (팝업 제거)
+        if remainingMinutes <= 0 {
+          return .run { _ in
+            await MainActor.run {
+              ToastManager.shared.showWarning("남은 체류 시간이 없어서 방문이 어려워요")
+            }
+          }
+        } else if remainingMinutes < 10 {
+          return .run { _ in
+            await MainActor.run {
+              ToastManager.shared.showWarning("남은 체류 시간이 \(remainingMinutes)분 밖에 없어요")
+            }
           }
         }
+        return .none
+
       case .failure(let error):
         state.errorMessage = error.errorDescription
         state.customAlertMode = .networkError
@@ -245,8 +242,8 @@ extension ExploreDetailFeature {
           confirmTitle: "확인",
           cancelTitle: "취소"
         )
+        return .none
       }
-      return .none
     }
   }
 
