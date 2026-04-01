@@ -130,7 +130,7 @@ struct ExploreSearchHeaderView: View {
       .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
     } else {
       HStack {
-        Text("\(formatLongText(stationName))역")
+        Text("\(formatLongText(stationName))")
           .pretendardFont(family: .Medium, size: 18)
           .foregroundStyle(.staticBlack)
 

@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import UserNotifications
 import WeaveDI
 import Home
 import Kingfisher
@@ -152,6 +153,27 @@ extension AppDelegate {
 
   }
 
+  // 백그라운드 Push 알림 수신
+  func application(
+    _ application: UIApplication,
+    didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+    fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+  ) {
+    // customPayload에서 historyId 추출하여 appStorage에 저장 (백그라운드에서도 처리)
+    if let customPayload = userInfo["customPayload"] as? [String: Any],
+       let historyId = customPayload["historyId"] as? Int {
+      #logDebug("🔔 백그라운드 Push 알림에서 historyId 받음: \(historyId)")
+      UserDefaults.standard.set(historyId, forKey: "visitingHistoryId")
+    } else if let customPayload = userInfo["customPayload"] as? [String: Any],
+              let historyIdString = customPayload["historyId"] as? String,
+              let historyId = Int(historyIdString) {
+      #logDebug("🔔 백그라운드 Push 알림에서 historyId 받음 (문자열): \(historyId)")
+      UserDefaults.standard.set(historyId, forKey: "visitingHistoryId")
+    }
+
+    completionHandler(.newData)
+  }
+
   // 포그라운드 알림 표시
   @MainActor
   func userNotificationCenter(
@@ -159,6 +181,20 @@ extension AppDelegate {
     willPresent notification: UNNotification,
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
+    let userInfo = notification.request.content.userInfo
+
+    // customPayload에서 historyId 추출하여 appStorage에 저장 (포그라운드에서도 처리)
+    if let customPayload = userInfo["customPayload"] as? [String: Any],
+       let historyId = customPayload["historyId"] as? Int {
+      #logDebug("🔔 포그라운드 Push 알림에서 historyId 받음: \(historyId)")
+      UserDefaults.standard.set(historyId, forKey: "visitingHistoryId")
+    } else if let customPayload = userInfo["customPayload"] as? [String: Any],
+              let historyIdString = customPayload["historyId"] as? String,
+              let historyId = Int(historyIdString) {
+      #logDebug("🔔 포그라운드 Push 알림에서 historyId 받음 (문자열): \(historyId)")
+      UserDefaults.standard.set(historyId, forKey: "visitingHistoryId")
+    }
+
     completionHandler([.banner, .badge, .sound])
   }
 
@@ -170,6 +206,28 @@ extension AppDelegate {
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
     let userInfo = response.notification.request.content.userInfo
+
+    // 푸시 알림 payload 분석 (디버그)
+    #logDebug("🔔 푸시 알림 payload 분석 시작")
+    #logDebug("🔔 Available keys: \(Array(userInfo.keys))")
+    for (key, value) in userInfo {
+      #logDebug("🔔 Key: \(key), Value: \(value), Type: \(type(of: value))")
+    }
+    if let customPayload = userInfo["customPayload"] as? [String: Any] {
+      #logDebug("🔔 customPayload 컨테이너 내용: \(customPayload)")
+    }
+
+    // customPayload에서 historyId 추출하여 appStorage에 저장
+    if let customPayload = userInfo["customPayload"] as? [String: Any],
+       let historyId = customPayload["historyId"] as? Int {
+      #logDebug("🔔 Push 알림에서 historyId 받음: \(historyId)")
+      UserDefaults.standard.set(historyId, forKey: "visitingHistoryId")
+    } else if let customPayload = userInfo["customPayload"] as? [String: Any],
+              let historyIdString = customPayload["historyId"] as? String,
+              let historyId = Int(historyIdString) {
+      #logDebug("🔔 Push 알림에서 historyId 받음 (문자열): \(historyId)")
+      UserDefaults.standard.set(historyId, forKey: "visitingHistoryId")
+    }
 
     if let urlString = self.deeplinkRouter.extractDeepLink(from: userInfo) {
       #logDebug("🔗 Processing push notification deep link: \(urlString)")

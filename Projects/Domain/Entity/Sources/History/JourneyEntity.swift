@@ -25,8 +25,8 @@ public struct JourneyEntity: Equatable, Hashable, Identifiable {
   public let isInProgress: Bool
   public let isSuccess: Bool
   public let createdAt: Date
-  public let startLat: Double
-  public let startLng: Double
+  public let startLat: Double?
+  public let startLng: Double?
 
   public init(
     id: Int,
@@ -46,8 +46,8 @@ public struct JourneyEntity: Equatable, Hashable, Identifiable {
     isInProgress: Bool,
     isSuccess: Bool,
     createdAt: Date,
-    startLat: Double,
-    startLng: Double
+    startLat: Double? = nil,
+    startLng: Double? = nil
   ) {
     self.id = id
     self.stationId = stationId

@@ -125,17 +125,31 @@ public struct NotificationContentView: View {
         .multilineTextAlignment(.center)
         .lineLimit(nil)
 
-      Spacer()
-        .frame(height: 24)
+      if isEndJourney {
 
-      Image(asset: image)
-        .resizable()
-        .scaledToFit()
+        Spacer()
+          .frame(height: 33)
+
+        Image(asset: image)
+          .resizable()
+          .scaledToFit()
+          .frame(maxHeight: 320)
+
+      } else {
+
+        Spacer()
+          .frame(height: 24)
+
+        Image(asset: image)
+          .resizable()
+          .scaledToFit()
+      }
+
 
       if isEndJourney {
         // 여정 종료: 종료하기 버튼만 표시
         Spacer()
-          .frame(height: 40)
+          .frame(height: 140)
 
         RouteNotificationButton(
           title: "종료하기",
@@ -146,7 +160,7 @@ public struct NotificationContentView: View {
         .padding(.horizontal, 24)
 
         Spacer()
-          .frame(height: 40)
+          .frame(height: 24)
       } else if showBottomElements {
         Spacer()
           .frame(height: 28)
