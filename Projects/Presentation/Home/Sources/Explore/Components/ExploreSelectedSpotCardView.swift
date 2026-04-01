@@ -43,6 +43,68 @@ struct ExploreSelectedSpotCardView: View {
     )
   }
 
+  /// 체류 가능 시간 계산
+  private func calculateStayableMinutes(for spot: ExploreMapSpot) -> Int {
+    // 도보 시간이 있으면 해당 시간 사용, 없으면 거리 기반 추정
+    let walkTime: Int
+    if let walkTimeText = spot.walkTimeText.components(separatedBy: "약 ").last?.components(separatedBy: "분").first,
+       let time = Int(walkTimeText) {
+      walkTime = time
+    } else {
+      // 거리 기반 추정 도보시간 (1분/67m)
+      let distance = Int(spot.distanceText.components(separatedBy: "m").first ?? "0") ?? 0
+      walkTime = max(Int(ceil(Double(distance) / 67.0)), 1)
+    }
+
+    // 왕복 도보 시간 = 편도 도보 시간 × 2
+    let roundTripWalkTime = walkTime * 2
+
+    // 플랫폼 대기 시간 = 10분 (고정)
+    let platformWaitTime = 10
+
+    // 체류 가능 시간 = 남은 시간 - 왕복 도보 시간 - 플랫폼 대기 시간
+    let stayableTime = spot.stayableMinutes - roundTripWalkTime - platformWaitTime
+
+    // 음수 방지
+    return max(0, stayableTime)
+  }
+
+  /// 접근 가능 여부 판단 (두 가지 조건)
+  private func isSpotAccessible(_ spot: ExploreMapSpot) -> Bool {
+    // 조건 1: 기본 방문 가능 여부
+    guard spot.visitable else { return false }
+
+    // 조건 2: 체류시간 계산 결과 5분 이상
+    return calculateStayableMinutes(for: spot) >= 5
+  }
+
+  /// 버튼 텍스트
+  private func buttonTitle(for spot: ExploreMapSpot) -> String {
+    if !spot.visitable {
+      return "방문 불가"
+    } else {
+      let calculatedStayableMinutes = calculateStayableMinutes(for: spot)
+      if calculatedStayableMinutes == 0 {
+        return "체류시간 부족"
+      } else if calculatedStayableMinutes < 5 {
+        return "체류시간 부족"
+      } else {
+        return "경로 확인하기"
+      }
+    }
+  }
+
+  /// 버튼 배경색
+  private func buttonBackgroundColor(for spot: ExploreMapSpot) -> Color {
+    isSpotAccessible(spot) ? .navy900 : .gray500
+  }
+
+  /// 포맷된 거리 텍스트 (1000m 이상은 km로 표시)
+  private func formattedDistanceText(for spot: ExploreMapSpot) -> String {
+    let distance = Int(spot.distanceText.components(separatedBy: "m").first ?? "0") ?? 0
+    return distance.formattedDistance
+  }
+
   private func cardContent(for spot: ExploreMapSpot) -> some View {
     VStack(alignment: .leading, spacing: 0) {
       HStack(alignment: .top, spacing: 12) {
@@ -102,7 +164,7 @@ struct ExploreSelectedSpotCardView: View {
           if !spot.distanceText.isEmpty || !spot.walkTimeText.isEmpty {
             HStack(spacing: 8) {
               if !spot.distanceText.isEmpty {
-                Text(formatLongText(spot.distanceText))
+                Text(formatLongText(formattedDistanceText(for: spot)))
                   .pretendardCustomFont(textStyle: .bodyBold)
                   .foregroundStyle(.gray830)
               }
@@ -121,22 +183,26 @@ struct ExploreSelectedSpotCardView: View {
         spotImage(for: spot)
       }
       .contentShape(Rectangle())
-      .onTapGesture(perform: onCardTap)
+      .onTapGesture {
+        if isSpotAccessible(spot) {
+          onCardTap()
+        }
+      }
       .padding(.horizontal, 16)
       .padding(.top, 16)
       .padding(.bottom, 20)
 
-      Button(action: spot.visitable ? onRouteTap : {}) {
-        Text(spot.visitable ? "경로 확인하기" : "방문 불가")
+      Button(action: isSpotAccessible(spot) ? onRouteTap : {}) {
+        Text(buttonTitle(for: spot))
           .pretendardCustomFont(textStyle: .bodyBold)
           .foregroundStyle(.staticWhite)
           .frame(maxWidth: .infinity)
           .frame(height: 55)
-          .background(spot.visitable ? .navy900 : .gray500)
+          .background(buttonBackgroundColor(for: spot))
           .clipShape(RoundedRectangle(cornerRadius: 25))
       }
       .buttonStyle(.plain)
-      .disabled(!spot.visitable)
+      .disabled(!isSpotAccessible(spot))
       .padding(.horizontal, 16)
       .padding(.bottom, 12)
     }

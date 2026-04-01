@@ -311,7 +311,7 @@ extension ExploreDetailFeature.State {
 
   var distanceText: String {
     if let placeDetail = placeDetail {
-      return "\(placeDetail.distanceFromStation)m"
+      return placeDetail.distanceFromStation.formattedDistance
     }
     return ""
   }

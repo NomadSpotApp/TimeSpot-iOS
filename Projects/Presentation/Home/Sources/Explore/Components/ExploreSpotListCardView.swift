@@ -61,7 +61,7 @@ struct ExploreSpotListCardView: View {
 
         HStack(spacing: 8) {
           if !spot.distanceText.isEmpty {
-            Text(formatLongText(spot.distanceText))
+            Text(formatLongText(formattedDistanceText))
               .pretendardFont(family: .SemiBold, size: 16)
               .foregroundStyle(.staticBlack)
               .fixedSize()
@@ -203,4 +203,9 @@ struct ExploreSpotListCardView: View {
     .frame(width: 92, height: 112)
   }
 
+  /// 포맷된 거리 텍스트 (1000m 이상은 km로 표시)
+  private var formattedDistanceText: String {
+    let distance = Int(spot.distanceText.components(separatedBy: "m").first ?? "0") ?? 0
+    return distance.formattedDistance
+  }
 }
