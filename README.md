@@ -2,7 +2,8 @@
 
 <div align="center">
 
-<img width="150" alt="TimeSpot Logo" src="Assets/timespot_icon.png">
+<img width="150" alt="TimeSpot Logo" src="https://github.com/user-attachments/assets/b5425aa7-8301-4692-afb9-acb2234afcdf">
+
 
 **여행의 새로운 시작, 대기 시간을 활용한 스마트한 여정**
 
