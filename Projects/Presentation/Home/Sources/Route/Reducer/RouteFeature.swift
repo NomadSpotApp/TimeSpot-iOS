@@ -14,6 +14,18 @@ import CoreLocation
 import UseCase
 import LogMacro
 
+// MARK: - Journey Error
+public enum JourneyError: Error {
+  case message(String)
+
+  public var localizedDescription: String {
+    switch self {
+    case .message(let string):
+      return string
+    }
+  }
+}
+
 
 @Reducer
 public struct RouteFeature {
@@ -25,6 +37,7 @@ public struct RouteFeature {
     @Shared(.appStorage("selectedMapType")) var selectedMapTypeStorage: ExternalMapType = .naverMap
     @Shared(.appStorage("nearestStationLat")) var persistedStationLat: Double = 0.0
     @Shared(.appStorage("nearestStationLng")) var persistedStationLng: Double = 0.0
+    @Shared(.appStorage("visitingHistoryId")) var visitingHistoryId: Int = 0
     public var locationPermissionStatus: CLAuthorizationStatus = .notDetermined
     public var currentLocation: CLLocation?
     public var routeInfo: RouteInfo?
@@ -49,6 +62,7 @@ public struct RouteFeature {
     case onAppear
     case searchRoute
     case startNavigation
+    case startJourney
   }
 
 
@@ -59,6 +73,7 @@ public struct RouteFeature {
     case waitForLocationThenSearchRoute
     case searchRoute(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D)
     case startNavigation(mapType: ExternalMapType, destination: CLLocationCoordinate2D, destinationName: String)
+    case startJourney
   }
 
   //MARK: - 앱내에서 사용하는 액션
@@ -66,6 +81,7 @@ public struct RouteFeature {
     case locationPermissionStatusChanged(CLAuthorizationStatus)
     case locationUpdated(CLLocation)
     case routeSearchResponse(Result<RouteInfo, DirectionError>)
+    case journeyStartResponse(Result<JourneyEntity, JourneyError>)
   }
 
   //MARK: - NavigationAction
@@ -76,6 +92,7 @@ public struct RouteFeature {
 
   @Dependency(\.getRouteUseCase) var getRouteUseCase
   @Dependency(\.locationUseCase) var locationUseCase
+  @Dependency(\.historyRepository) var historyRepository
 
 
   public var body: some Reducer<State, Action> {
@@ -154,6 +171,9 @@ extension RouteFeature {
         let mapType = state.selectedMapTypeStorage
 
         return .send(.async(.startNavigation(mapType: mapType, destination: destination, destinationName: destinationName)))
+
+      case .startJourney:
+        return .send(.async(.startJourney))
     }
   }
 
@@ -229,6 +249,42 @@ extension RouteFeature {
             destinationName: destinationName
           )
         }
+
+      case .startJourney:
+        return .run { [userSession = state.userSession, currentLocation = state.currentLocation] send in
+          guard let departureTime = userSession.departureTime,
+                let currentLocation = currentLocation else {
+            await send(.inner(.journeyStartResponse(.failure(.message("필요한 정보가 부족합니다.")))))
+            return
+          }
+
+          // UserSession에서 필요한 정보 추출
+          let stationIdString = userSession.travelID
+          let placeIdString = userSession.selectedExplorePlaceID
+
+          guard let stationId = Int(stationIdString),
+                let placeId = Int(placeIdString),
+                !stationIdString.isEmpty,
+                !placeIdString.isEmpty else {
+            await send(.inner(.journeyStartResponse(.failure(.message("역 정보 또는 장소 정보가 없습니다.")))))
+            return
+          }
+
+          let input = StartJourneyInput(
+            stationId: stationId,
+            placeId: placeId,
+            trainDepartureTime: departureTime,
+            lat: currentLocation.coordinate.latitude,
+            lng: currentLocation.coordinate.longitude
+          )
+
+          do {
+            let journey = try await historyRepository.startJourney(input: input)
+            await send(.inner(.journeyStartResponse(.success(journey))))
+          } catch {
+            await send(.inner(.journeyStartResponse(.failure(.message(error.localizedDescription)))))
+          }
+        }
     }
   }
 
@@ -283,14 +339,40 @@ extension RouteFeature {
           // 목적지를 가장 가까운 역으로 appStorage에 저장 (지속적 저장)
           if let destLat = state.userSession.routeDestinationLat,
              let destLng = state.userSession.routeDestinationLng {
-            state.persistedStationLat = destLat
-            state.persistedStationLng = destLng
+            state.$persistedStationLat.withLock { $0 = destLat }
+            state.$persistedStationLng.withLock { $0 = destLng }
           }
 
         case .failure(let error):
           state.routeError = error.localizedDescription
         }
         return .none
+
+      case .journeyStartResponse(let result):
+        switch result {
+        case .success(let journey):
+          #logDebug("✅ 여정 시작 성공: \(journey.id)")
+
+          // visitingHistoryId를 appStorage에 저장
+          state.$visitingHistoryId.withLock { $0 = journey.id }
+
+          // 여정 시작 성공 시 길찾기 시작
+          guard let endLat = state.userSession.routeDestinationLat,
+                let endLng = state.userSession.routeDestinationLng else {
+            return .none
+          }
+
+          let destination = CLLocationCoordinate2D(latitude: endLat, longitude: endLng)
+          let destinationName = state.userSession.routeDestinationName.isEmpty ? "목적지" : state.userSession.routeDestinationName
+          let mapType = state.selectedMapTypeStorage
+
+          return .send(.async(.startNavigation(mapType: mapType, destination: destination, destinationName: destinationName)))
+
+        case .failure(let error):
+          #logDebug("❌ 여정 시작 실패: \(error)")
+          // TODO: 에러 처리 (토스트 메시지 등)
+          return .none
+        }
     }
   }
 }
@@ -305,6 +387,7 @@ extension RouteFeature.State: Hashable {
     hasher.combine(isLoadingRoute)
     hasher.combine(routeError)
     hasher.combine(userSession)
+    hasher.combine(visitingHistoryId)
   }
 }
 
@@ -330,6 +413,8 @@ extension RouteFeature.AsyncAction {
       let lngEqual = lhsDestination.longitude == rhsDestination.longitude
       let nameEqual = lhsName == rhsName
       return typeEqual && latEqual && lngEqual && nameEqual
+    case (.startJourney, .startJourney):
+      return true
     default:
       return false
     }
@@ -348,6 +433,10 @@ extension RouteFeature.InnerAction {
     case (.routeSearchResponse(.success(let lhsRoute)), .routeSearchResponse(.success(let rhsRoute))):
       return lhsRoute.distance == rhsRoute.distance && lhsRoute.duration == rhsRoute.duration
     case (.routeSearchResponse(.failure(let lhsError)), .routeSearchResponse(.failure(let rhsError))):
+      return lhsError.localizedDescription == rhsError.localizedDescription
+    case (.journeyStartResponse(.success(let lhsJourney)), .journeyStartResponse(.success(let rhsJourney))):
+      return lhsJourney.id == rhsJourney.id
+    case (.journeyStartResponse(.failure(let lhsError)), .journeyStartResponse(.failure(let rhsError))):
       return lhsError.localizedDescription == rhsError.localizedDescription
     default:
       return false

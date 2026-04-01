@@ -147,7 +147,7 @@ extension AppReducer {
         UserDefaults.standard.removeObject(forKey: "pendingPushDeepLink")
 
         // 시간 알림 딥링크이면 RouteNotificationView 포함한 Home 상태 생성
-        if pendingDeepLink.contains("min_before") || pendingDeepLink.contains("min_after") || pendingDeepLink.contains("departure_time") {
+        if pendingDeepLink.contains("min_before") || pendingDeepLink.contains("min_after") || pendingDeepLink.contains("departure_time") || pendingDeepLink.contains("end_journey") {
           #logDebug("✅ AppReducer: RouteNotificationView 포함한 Home 상태 생성")
           state = .home(.init(withRouteNotification: true, deepLink: pendingDeepLink))
         } else {
@@ -223,7 +223,7 @@ extension AppReducer {
       case .home:
         #logDebug("✅ AppReducer: Home 상태, HomeCoordinator로 딥링크 전달")
         // 시간 알림 딥링크면 RouteView로 이동
-        if urlString.contains("min_before") || urlString.contains("min_after") || urlString.contains("departure_time") {
+        if urlString.contains("min_before") || urlString.contains("min_after") || urlString.contains("departure_time") || urlString.contains("end_journey") {
           #logDebug("🚀 AppReducer: 시간 알림 딥링크 감지, HomeCoordinator로 전달")
           return .send(.scope(.home(.inner(.presentRouteFromPushNotification(urlString)))))
         }

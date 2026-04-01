@@ -9,7 +9,25 @@
 import Foundation
 import ComposableArchitecture
 import CoreLocation
+import Entity
 import UseCase
+import LogMacro
+
+// MARK: - Journey Error
+public enum JourneyEndError: Error, Equatable {
+  case message(String)
+
+  public var localizedDescription: String {
+    switch self {
+    case .message(let string):
+      return string
+    }
+  }
+
+  public static func from(_ error: Error) -> JourneyEndError {
+    return .message(error.localizedDescription)
+  }
+}
 
 
 @Reducer
@@ -17,6 +35,7 @@ public struct RouteNotificationFeature {
   public init() {}
 
   @Dependency(\.getRouteUseCase) var getRouteUseCase
+  @Dependency(\.historyRepository) var historyRepository
 
   @ObservableState
   public struct State: Equatable {
@@ -24,96 +43,13 @@ public struct RouteNotificationFeature {
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
     @Shared(.appStorage("nearestStationLat")) var persistedStationLat: Double = 0.0
     @Shared(.appStorage("nearestStationLng")) var persistedStationLng: Double = 0.0
+    @Shared(.appStorage("visitingHistoryId")) var visitingHistoryId: Int = 0
 
     public init(notificationType: NotificationType = .now) {
       self.notificationType = notificationType
     }
   }
 
-  public enum NotificationType: Equatable, CaseIterable {
-    case now        // 지금 바로 출발
-    case fiveMin    // 5분 전
-    case tenMin     // 10분 전
-    case fifteenMin // 15분 전
-
-    public var title: String {
-      switch self {
-      case .now:
-        return "지금 바로 출발해야 해요!"
-      case .fiveMin:
-        return "5분 뒤면 역으로 출발 일어날 채비를 할 시간이에요."
-      case .tenMin:
-        return "10분 뒤면 역으로 출발해야 해요!"
-      case .fifteenMin:
-        return "역으로 출발하기까지 15분 남았어요!"
-      }
-    }
-
-    public var subtitle: String {
-      switch self {
-      case .now:
-        return "지금 바로 역으로 향해야 15분 전에 플랫폼에 도착할 수 있어요."
-      case .fiveMin:
-        return "잠시 후 출발할 수 있도록 미리 준비해주세요."
-      case .tenMin:
-        return "이제 슬슬 일어날 준비를 해볼까요?"
-      case .fifteenMin:
-        return "지금 하는 활동을 차분히 마무리해 주세요."
-      }
-    }
-
-    public static func from(deepLink: String) -> NotificationType {
-      guard let url = URL(string: deepLink) else {
-        return .now
-      }
-
-      // URL host/path 체크 (timespot://departure_time 등)
-      let pathComponents = url.pathComponents.filter { $0 != "/" }
-      let hostOrPath = url.host ?? pathComponents.first ?? ""
-
-      switch hostOrPath {
-      case "departure_time":
-        return .now
-      case let path where path.contains("15_min_before"):
-        return .fifteenMin
-      case let path where path.contains("10_min_before"):
-        return .tenMin
-      case let path where path.contains("5_min_before"):
-        return .fiveMin
-      default:
-        break
-      }
-
-      // URL에서 notificationType 파라미터 추출
-      if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-         let notificationTypeParam = components.queryItems?.first(where: { $0.name == "notificationType" })?.value {
-
-        switch notificationTypeParam {
-        case "BEFORE_15_MINUTES":
-          return .fifteenMin
-        case "BEFORE_10_MINUTES":
-          return .tenMin
-        case "BEFORE_5_MINUTES":
-          return .fiveMin
-        case "DEPARTURE_TIME":
-          return .now
-        default:
-          return .now
-        }
-      }
-
-      // 기존 방식도 유지 (fallback)
-      if deepLink.contains("15_min_before") {
-        return .fifteenMin
-      } else if deepLink.contains("10_min_before") {
-        return .tenMin
-      } else if deepLink.contains("5_min_before") {
-        return .fiveMin
-      } else {
-        return .now
-      }
-    }
-  }
 
   public enum Action: ViewAction, BindableAction {
     case binding(BindingAction<State>)
@@ -137,10 +73,12 @@ public struct RouteNotificationFeature {
   //MARK: - AsyncAction 비동기 처리 액션
   public enum AsyncAction: Equatable {
     case startNavigationToStation
+    case endJourneyApiCall(journeyId: Int, isCompleted: Bool)
   }
 
   //MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
+    case journeyEndResponse(Result<JourneyEntity, JourneyEndError>)
   }
 
   //MARK: - DelegateAction
@@ -187,7 +125,17 @@ extension RouteNotificationFeature {
       return .send(.async(.startNavigationToStation))
 
     case .closeButtonTapped:
-      return .send(.delegate(.closeNotification))
+      if state.notificationType == .endJourney {
+        // 저장된 visitingHistoryId를 사용하여 여정 종료 API 호출
+        let journeyId = state.visitingHistoryId
+        guard journeyId > 0 else {
+          #logDebug("❌ visitingHistoryId가 없습니다.")
+          return .send(.delegate(.closeNotification))
+        }
+        return .send(.async(.endJourneyApiCall(journeyId: journeyId, isCompleted: true)))
+      } else {
+        return .send(.delegate(.closeNotification))
+      }
     }
   }
 
@@ -216,6 +164,16 @@ extension RouteNotificationFeature {
           destinationName: destinationName
         )
       }
+
+    case .endJourneyApiCall(let journeyId, let isCompleted):
+      return .run { send in
+        let result = await Result {
+          try await historyRepository.endJourney(journeyId: journeyId, isCompleted: isCompleted)
+        }
+        .mapError(JourneyEndError.from)
+
+        await send(.inner(.journeyEndResponse(result)))
+      }
     }
   }
 
@@ -238,12 +196,34 @@ extension RouteNotificationFeature {
     action: InnerAction
   ) -> Effect<Action> {
     switch action {
+    case .journeyEndResponse(let result):
+      switch result {
+      case .success(let journey):
+        #logDebug("✅ 여정 종료 성공: \(journey.id)")
 
+        // 여정 종료 성공 시 visitingHistoryId 초기화
+        state.$visitingHistoryId.withLock { $0 = 0 }
+
+        // 알림 닫기
+        return .send(.delegate(.closeNotification))
+      case .failure(let error):
+        #logDebug("❌ 여정 종료 실패: \(error.localizedDescription)")
+        // TODO: 에러 처리 (토스트 메시지 등)
+        return .none
+      }
     }
   }
 }
 
-extension RouteNotificationFeature.State: Hashable {}
+extension RouteNotificationFeature.State: Hashable {
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(notificationType)
+    hasher.combine(userSession)
+    hasher.combine(persistedStationLat)
+    hasher.combine(persistedStationLng)
+    hasher.combine(visitingHistoryId)
+  }
+}
 
 extension RouteNotificationFeature.State {
   public var formattedDepartureTime: String {
@@ -252,5 +232,33 @@ extension RouteNotificationFeature.State {
     }
 
     return "열차 시간: \(departureTime.formattedKoreanTime())"
+  }
+}
+
+// MARK: - Equatable Extensions
+
+extension RouteNotificationFeature.InnerAction {
+  public static func == (lhs: RouteNotificationFeature.InnerAction, rhs: RouteNotificationFeature.InnerAction) -> Bool {
+    switch (lhs, rhs) {
+    case (.journeyEndResponse(.success(let lhsJourney)), .journeyEndResponse(.success(let rhsJourney))):
+      return lhsJourney.id == rhsJourney.id
+    case (.journeyEndResponse(.failure(let lhsError)), .journeyEndResponse(.failure(let rhsError))):
+      return lhsError.localizedDescription == rhsError.localizedDescription
+    default:
+      return false
+    }
+  }
+}
+
+extension RouteNotificationFeature.AsyncAction {
+  public static func == (lhs: RouteNotificationFeature.AsyncAction, rhs: RouteNotificationFeature.AsyncAction) -> Bool {
+    switch (lhs, rhs) {
+    case (.startNavigationToStation, .startNavigationToStation):
+      return true
+    case (.endJourneyApiCall(let lhsId, let lhsCompleted), .endJourneyApiCall(let rhsId, let rhsCompleted)):
+      return lhsId == rhsId && lhsCompleted == rhsCompleted
+    default:
+      return false
+    }
   }
 }

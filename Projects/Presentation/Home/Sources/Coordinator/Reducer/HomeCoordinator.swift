@@ -10,6 +10,7 @@ import TCACoordinators
 import Profile
 import CoreLocation
 import Entity
+import UseCase
 import LogMacro
 
 @Reducer
@@ -29,7 +30,7 @@ public struct HomeCoordinator {
     public init(withRouteNotification: Bool, deepLink: String? = nil) {
       if withRouteNotification, let deepLink = deepLink {
         // 딥링크에 따른 알림 타입 결정
-        let notificationType = RouteNotificationFeature.NotificationType.from(deepLink: deepLink)
+        let notificationType = NotificationType.from(deepLink: deepLink)
 
         // 홈을 root로 하고 RouteNotificationView를 즉시 push (스와이프 뒤로가기 지원)
         self.routes = [
@@ -295,7 +296,7 @@ extension HomeCoordinator {
     case let .presentRouteFromPushNotification(deepLink):
       #logDebug("🚀 HomeCoordinator: presentRouteFromPushNotification 액션 처리 시작")
 
-      let notificationType = RouteNotificationFeature.NotificationType.from(deepLink: deepLink)
+      let notificationType = NotificationType.from(deepLink: deepLink)
       #logDebug("📋 HomeCoordinator: 딥링크 = \(deepLink), 알림 타입 = \(notificationType)")
 
       // 현재 routes 상태 로그

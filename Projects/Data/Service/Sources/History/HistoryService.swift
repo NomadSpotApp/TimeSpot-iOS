@@ -14,6 +14,8 @@ import AsyncMoya
 
 public enum HistoryService {
   case myHistory(body: MyHistoryRequest)
+  case startHistory(body: StartJourneyRequest)
+  case endHistory(body: EndJourneyRequest)
 }
 
 
@@ -28,6 +30,10 @@ extension HistoryService: BaseTargetType {
     switch self {
       case .myHistory:
         return HistoryAPI.myHistory.description
+      case .startHistory:
+        return HistoryAPI.startHistory.description
+      case .endHistory(let body):
+        return HistoryAPI.endHistory(historyId: body.journeyId).description
     }
   }
 
@@ -39,12 +45,22 @@ extension HistoryService: BaseTargetType {
     switch self {
       case .myHistory:
         return .get
+      case .startHistory:
+        return .post
+      case .endHistory:
+        return .post
     }
   }
 
   public var parameters: [String : Any]? {
     switch self {
       case .myHistory(let body):
+        return body.toDictionary
+
+      case .startHistory(let body):
+        return body.toDictionary
+
+      case .endHistory(let body):
         return body.toDictionary
     }
   }

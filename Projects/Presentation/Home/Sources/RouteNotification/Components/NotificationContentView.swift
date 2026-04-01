@@ -17,6 +17,7 @@ public struct NotificationContentView: View {
   private let image: ImageAsset
   private let store: StoreOf<RouteNotificationFeature>
   private let showBottomElements: Bool
+  private let isEndJourney: Bool
 
   public init(
     titlePart1: String,
@@ -25,7 +26,8 @@ public struct NotificationContentView: View {
     subtitle: String,
     image: ImageAsset,
     store: StoreOf<RouteNotificationFeature>,
-    showBottomElements: Bool
+    showBottomElements: Bool,
+    isEndJourney: Bool = false
   ) {
     self.titlePart1 = titlePart1
     self.highlightText = highlightText
@@ -34,6 +36,7 @@ public struct NotificationContentView: View {
     self.image = image
     self.store = store
     self.showBottomElements = showBottomElements
+    self.isEndJourney = isEndJourney
   }
 
   public var body: some View {
@@ -44,63 +47,72 @@ public struct NotificationContentView: View {
 
 
       // 메인 타이틀
-      VStack(spacing: 0) {
-        // titlePart1이 있고 줄바꿈이 있는 경우 (15분 케이스)
-        if !titlePart1.isEmpty && titlePart1.contains("\n") {
-          Text(titlePart1.replacingOccurrences(of: "\n", with: ""))
-            .pretendardCustomFont(textStyle: .heading1)
-            .foregroundStyle(.gray900)
-            .multilineTextAlignment(.center)
-
-          HStack(spacing: 0) {
-            Text(highlightText)
-              .pretendardCustomFont(textStyle: .heading1)
-              .foregroundStyle(.orange800)
-
-            Text(titlePart3)
-              .pretendardCustomFont(textStyle: .heading1)
-              .foregroundStyle(.gray900)
-          }
-        }
-        // titlePart3가 있고 줄바꿈이 있는 경우 (5분 케이스)
-        else if titlePart3.contains("\n") {
-          let parts = titlePart3.components(separatedBy: "\n")
-
-          HStack(spacing: 0) {
-            Text(highlightText)
-              .pretendardCustomFont(textStyle: .heading1)
-              .foregroundStyle(.orange800)
-
-            if parts.count > 0 {
-              Text(parts[0])
-                .pretendardCustomFont(textStyle: .heading1)
-                .foregroundStyle(.gray900)
-            }
-          }
-
-          if parts.count > 1 {
-            Text(parts[1])
+      if isEndJourney {
+        // 여정 종료: 단순한 텍스트
+        Text(titlePart1)
+          .pretendardCustomFont(textStyle: .heading1)
+          .foregroundStyle(.gray900)
+          .multilineTextAlignment(.center)
+      } else {
+        // 기존 로직
+        VStack(spacing: 0) {
+          // titlePart1이 있고 줄바꿈이 있는 경우 (15분 케이스)
+          if !titlePart1.isEmpty && titlePart1.contains("\n") {
+            Text(titlePart1.replacingOccurrences(of: "\n", with: ""))
               .pretendardCustomFont(textStyle: .heading1)
               .foregroundStyle(.gray900)
               .multilineTextAlignment(.center)
-          }
-        }
-        // 그 외의 경우 (10분, 지금 바로 케이스) - 한 줄로 표시
-        else {
-          HStack(spacing: 0) {
-            Text(highlightText)
-              .pretendardCustomFont(textStyle: .heading1)
-              .foregroundStyle(.orange800)
 
-            if !titlePart3.isEmpty {
+            HStack(spacing: 0) {
+              Text(highlightText)
+                .pretendardCustomFont(textStyle: .heading1)
+                .foregroundStyle(.orange800)
+
               Text(titlePart3)
                 .pretendardCustomFont(textStyle: .heading1)
                 .foregroundStyle(.gray900)
             }
           }
+          // titlePart3가 있고 줄바꿈이 있는 경우 (5분 케이스)
+          else if titlePart3.contains("\n") {
+            let parts = titlePart3.components(separatedBy: "\n")
+
+            HStack(spacing: 0) {
+              Text(highlightText)
+                .pretendardCustomFont(textStyle: .heading1)
+                .foregroundStyle(.orange800)
+
+              if parts.count > 0 {
+                Text(parts[0])
+                  .pretendardCustomFont(textStyle: .heading1)
+                  .foregroundStyle(.gray900)
+              }
+            }
+
+            if parts.count > 1 {
+              Text(parts[1])
+                .pretendardCustomFont(textStyle: .heading1)
+                .foregroundStyle(.gray900)
+                .multilineTextAlignment(.center)
+            }
+          }
+          // 그 외의 경우 (10분, 지금 바로 케이스) - 한 줄로 표시
+          else {
+            HStack(spacing: 0) {
+              Text(highlightText)
+                .pretendardCustomFont(textStyle: .heading1)
+                .foregroundStyle(.orange800)
+
+              if !titlePart3.isEmpty {
+                Text(titlePart3)
+                  .pretendardCustomFont(textStyle: .heading1)
+                  .foregroundStyle(.gray900)
+              }
+            }
+          }
         }
+        .multilineTextAlignment(.center)
       }
-      .multilineTextAlignment(.center)
 
 
       Spacer()
@@ -120,7 +132,22 @@ public struct NotificationContentView: View {
         .resizable()
         .scaledToFit()
 
-      if showBottomElements {
+      if isEndJourney {
+        // 여정 종료: 종료하기 버튼만 표시
+        Spacer()
+          .frame(height: 40)
+
+        RouteNotificationButton(
+          title: "종료하기",
+          backgroundColor: .navy900,
+          foregroundColor: .white,
+          action: { store.send(.view(.closeButtonTapped)) }
+        )
+        .padding(.horizontal, 24)
+
+        Spacer()
+          .frame(height: 40)
+      } else if showBottomElements {
         Spacer()
           .frame(height: 28)
 

@@ -62,6 +62,7 @@ public enum ImageAsset: String {
   case tenMinutesNotification
   case fifteenMinutesNotification
   case startNotification
+  case endJourney
 
 
   case warning

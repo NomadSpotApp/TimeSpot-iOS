@@ -59,4 +59,53 @@ final public class DefaultHistoryRepositoryImpl: HistoryInterface {
       isLastPage: true
     )
   }
+
+  public func startJourney(
+    input: StartJourneyInput
+  ) async throws -> JourneyEntity {
+    // Mock response for testing
+    return JourneyEntity(
+      id: 1,
+      userId: "test-user-id",
+      stationId: input.stationId,
+      stationName: "테스트역",
+      stationAddress: "테스트 주소",
+      placeId: input.placeId,
+      placeName: "테스트 장소",
+      placeCategory: "카페",
+      placeAddress: "테스트 장소 주소",
+      startTime: Date(),
+      endTime: nil,
+      trainDepartureTime: input.trainDepartureTime,
+      totalDurationMinutes: 0,
+      isInProgress: true,
+      isSuccess: false,
+      createdAt: Date()
+    )
+  }
+
+  public func endJourney(
+    journeyId: Int,
+    isCompleted: Bool
+  ) async throws -> JourneyEntity {
+    // Mock response for testing
+    return JourneyEntity(
+      id: journeyId,
+      userId: "test-user-id",
+      stationId: 1,
+      stationName: "테스트역",
+      stationAddress: "테스트 주소",
+      placeId: 1,
+      placeName: "테스트 장소",
+      placeCategory: "카페",
+      placeAddress: "테스트 장소 주소",
+      startTime: Date().addingTimeInterval(-3600),
+      endTime: Date(),
+      trainDepartureTime: Date(),
+      totalDurationMinutes: 60,
+      isInProgress: false,
+      isSuccess: isCompleted,
+      createdAt: Date().addingTimeInterval(-3600)
+    )
+  }
 }
