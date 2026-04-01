@@ -1,17 +1,14 @@
 //
-//  JourneyDTOModel.swift
-//  Model
+//  JourneyEntity.swift
+//  Entity
 //
 //  Created by Wonji Suh  on 4/1/26.
 //
 
 import Foundation
 
-public typealias StartJourneyDTOModel = BaseResponseDTO<JourneyResponseDTO>
-public typealias EndJourneyDTOModel = BaseResponseDTO<JourneyResponseDTO>
-
-public struct JourneyResponseDTO: Decodable, Equatable {
-  public let visitingHistoryId: Int
+public struct JourneyEntity: Equatable, Hashable, Identifiable {
+  public let id: Int // visitingHistoryId
   public let stationId: Int
   public let stationName: String
   public let stationAddress: String
@@ -21,40 +18,18 @@ public struct JourneyResponseDTO: Decodable, Equatable {
   public let placeAddress: String
   public let placeLat: Double
   public let placeLng: Double
-  public let startTime: String
-  public let endTime: String?
-  public let trainDepartureTime: String
+  public let startTime: Date
+  public let endTime: Date?
+  public let trainDepartureTime: Date
   public let totalDurationMinutes: Int
   public let isInProgress: Bool
   public let isSuccess: Bool
-  public let createdAt: String
+  public let createdAt: Date
   public let startLat: Double
   public let startLng: Double
 
-  enum CodingKeys: String, CodingKey {
-    case visitingHistoryId
-    case stationId
-    case stationName
-    case stationAddress
-    case placeId
-    case placeName
-    case placeCategory
-    case placeAddress
-    case placeLat
-    case placeLng
-    case startTime
-    case endTime
-    case trainDepartureTime
-    case totalDurationMinutes
-    case isInProgress
-    case isSuccess
-    case createdAt
-    case startLat
-    case startLng
-  }
-
   public init(
-    visitingHistoryId: Int,
+    id: Int,
     stationId: Int,
     stationName: String,
     stationAddress: String,
@@ -64,17 +39,17 @@ public struct JourneyResponseDTO: Decodable, Equatable {
     placeAddress: String,
     placeLat: Double,
     placeLng: Double,
-    startTime: String,
-    endTime: String? = nil,
-    trainDepartureTime: String,
+    startTime: Date,
+    endTime: Date? = nil,
+    trainDepartureTime: Date,
     totalDurationMinutes: Int,
     isInProgress: Bool,
     isSuccess: Bool,
-    createdAt: String,
+    createdAt: Date,
     startLat: Double,
     startLng: Double
   ) {
-    self.visitingHistoryId = visitingHistoryId
+    self.id = id
     self.stationId = stationId
     self.stationName = stationName
     self.stationAddress = stationAddress

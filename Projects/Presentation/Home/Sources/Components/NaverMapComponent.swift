@@ -129,7 +129,7 @@ public struct NaverMapComponent: UIViewRepresentable {
     }()
 
     // 🗺️ 경로 모드일 때는 더 넓은 범위를 보여주기 위해 줌 레벨 조정
-    let zoomLevel: Double = routeInfo != nil ? 9.0 : 15.0
+    let zoomLevel: Double = routeInfo != nil ? 7.0 : 15.0
 
     let cameraPosition = NMFCameraPosition(
       NMGLatLng(lat: initialLatitude, lng: initialLongitude),
@@ -184,7 +184,7 @@ public struct NaverMapComponent: UIViewRepresentable {
           lng: location.coordinate.longitude
         )
 
-        let zoomLevel: Double = routeInfo != nil ? 9.0 : 16.0
+        let zoomLevel: Double = routeInfo != nil ? 7.0 : 16.0
 
         moveCamera(
           on: uiView,

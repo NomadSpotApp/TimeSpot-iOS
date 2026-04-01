@@ -73,7 +73,7 @@ public struct RouteNotificationFeature {
   //MARK: - AsyncAction 비동기 처리 액션
   public enum AsyncAction: Equatable {
     case startNavigationToStation
-    case endJourneyApiCall(journeyId: Int, isCompleted: Bool)
+    case endJourney(journeyId: Int, isCompleted: Bool)
   }
 
   //MARK: - 앱내에서 사용하는 액션
@@ -132,7 +132,7 @@ extension RouteNotificationFeature {
           #logDebug("❌ visitingHistoryId가 없습니다.")
           return .send(.delegate(.closeNotification))
         }
-        return .send(.async(.endJourneyApiCall(journeyId: journeyId, isCompleted: true)))
+        return .send(.async(.endJourney(journeyId: journeyId, isCompleted: true)))
       } else {
         return .send(.delegate(.closeNotification))
       }
@@ -165,7 +165,7 @@ extension RouteNotificationFeature {
         )
       }
 
-    case .endJourneyApiCall(let journeyId, let isCompleted):
+    case .endJourney(let journeyId, let isCompleted):
       return .run { send in
         let result = await Result {
           try await historyRepository.endJourney(journeyId: journeyId, isCompleted: isCompleted)
@@ -255,7 +255,7 @@ extension RouteNotificationFeature.AsyncAction {
     switch (lhs, rhs) {
     case (.startNavigationToStation, .startNavigationToStation):
       return true
-    case (.endJourneyApiCall(let lhsId, let lhsCompleted), .endJourneyApiCall(let rhsId, let rhsCompleted)):
+    case (.endJourney(let lhsId, let lhsCompleted), .endJourney(let rhsId, let rhsCompleted)):
       return lhsId == rhsId && lhsCompleted == rhsCompleted
     default:
       return false

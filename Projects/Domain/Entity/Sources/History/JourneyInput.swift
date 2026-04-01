@@ -11,14 +11,14 @@ import Foundation
 
 public struct StartJourneyInput: Equatable, Hashable {
   public let stationId: Int
-  public let placeId: Int
+  public let placeId: String
   public let trainDepartureTime: Date
   public let lat: Double
   public let lng: Double
 
   public init(
     stationId: Int,
-    placeId: Int,
+    placeId: String,
     trainDepartureTime: Date,
     lat: Double,
     lng: Double

@@ -214,7 +214,6 @@ extension HomeView {
     DatePicker(
       HomeFeature.Strings.departureTimeSelection,
       selection: $store.departureTime,
-      in: store.currentTime...store.maxDepartureTime,
       displayedComponents: [.hourAndMinute]
     )
     .datePickerStyle(.wheel)

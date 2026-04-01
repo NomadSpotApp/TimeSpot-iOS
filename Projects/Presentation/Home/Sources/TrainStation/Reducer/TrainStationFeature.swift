@@ -167,11 +167,27 @@ extension TrainStationFeature {
       .cancellable(id: CancelID.checkAccessToken)
     case .fetchStations:
       return .run { [stationUseCase] send in
-        let location = await MainActor.run {
+        // 현재 위치를 적극적으로 가져오기
+        var location: CLLocation?
+
+        // 먼저 캐시된 위치 확인
+        location = await MainActor.run {
           LocationPermissionManager.shared.currentLocation
         }
+
+        // 캐시된 위치가 없으면 새로 요청
+        if location == nil {
+          do {
+            location = try await LocationPermissionManager.shared.requestCurrentLocation()
+          } catch {
+            #logDebug("❌ 현재 위치 가져오기 실패: \(error.localizedDescription)")
+          }
+        }
+
         let userLat = location?.coordinate.latitude ?? 37.5666805
         let userLon = location?.coordinate.longitude ?? 126.9784147
+
+        #logDebug("📍 사용 중인 위치: \(userLat), \(userLon)")
 
         do {
           let entity = try await stationUseCase.fetchStations(

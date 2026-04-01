@@ -261,7 +261,34 @@ extension HomeFeature {
 
     case .departureTimeChanged(let date):
       state.currentTime = now
-      state.departureTime = date.normalizedDepartureTime(from: state.currentTime)
+
+      // DatePicker에서 받은 날짜의 시와 분만 추출
+      let calendar = Calendar.current
+      let selectedComponents = calendar.dateComponents([.hour, .minute], from: date)
+
+      guard let selectedHour = selectedComponents.hour,
+            let selectedMinute = selectedComponents.minute else {
+        return .none
+      }
+
+      // 현재 시간을 기준으로 오늘 날짜에 선택된 시간을 설정
+      var targetComponents = calendar.dateComponents([.year, .month, .day], from: state.currentTime)
+      targetComponents.hour = selectedHour
+      targetComponents.minute = selectedMinute
+      targetComponents.second = 0
+
+      guard let targetDate = calendar.date(from: targetComponents) else {
+        return .none
+      }
+
+      // 선택된 시간이 현재 시간보다 이전이면 다음날로 설정
+      let finalDate = if targetDate <= state.currentTime {
+        calendar.date(byAdding: .day, value: 1, to: targetDate) ?? targetDate
+      } else {
+        targetDate
+      }
+
+      state.departureTime = finalDate
       state.departureTimePickerVisible = false
       state.isDepartureTimeSet = true
       state.$userSession.withLock {
@@ -417,7 +444,8 @@ extension HomeFeature {
 extension HomeFeature.State {
   var maxDepartureTime: Date {
     let calendar = Calendar.current
-    let nextDay = calendar.date(byAdding: .day, value: 1, to: currentTime) ?? currentTime
+    let now = Date()
+    let nextDay = calendar.date(byAdding: .day, value: 1, to: now) ?? now
 
     // 다음날 23:59:59까지 선택 가능하도록 설정
     var components = calendar.dateComponents([.year, .month, .day], from: nextDay)
