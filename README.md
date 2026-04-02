@@ -33,10 +33,13 @@
 
 <div align="center">
 
-| 메인 화면 | 역 선택 | 주변 탐색 | 경로 안내 |
-|:---:|:---:|:---:|:---:|
-| <img width="200" src="fastlane/screenshots/ko/0_APP_IPHONE_65_0.png"> | <img width="200" src="fastlane/screenshots/ko/1_APP_IPHONE_65_1.png"> | <img width="200" src="fastlane/screenshots/ko/2_APP_IPHONE_65_2.png"> | <img width="200" src="fastlane/screenshots/ko/3_APP_IPHONE_65_3.png"> |
+| 메인 화면 | 역 선택 | 주변 탐색 |
+|:---:|:---:|:---:|
+| <img width="200" src="fastlane/screenshots/ko/0_APP_IPHONE_65_0.png"> | <img width="200" src="fastlane/screenshots/ko/1_APP_IPHONE_65_1.png"> | <img width="200" src="fastlane/screenshots/ko/2_APP_IPHONE_65_2.png"> |
 
+| 장소 상세 | 복귀 알림 |
+|:---:|:---:|
+| <img width="200" src="fastlane/screenshots/ko/3_APP_IPHONE_65_3.png"> | <img width="200" src="fastlane/screenshots/ko/4_APP_IPHONE_65_4.png"> |
 
 </div>
 
@@ -54,8 +57,10 @@
 
 ### 📍 똑똑한 길찾기
 - **NaverMap 연동**: 정확하고 빠른 경로 안내
-- **외부 앱 지원**: 네이버맵, 구글맵, 애플 지도 등
-- **실시간 소요 시간**: 도보 경로 및 예상 도착 시간
+- **외부 앱 지원**: 네이버맵, 구글맵, 애플 지도 등 선택 가능
+- **실시간 소요 시간**: 도보 경로 및 예상 도착 시간 계산
+- **체류 시간 계산**: 왕복 도보 시간 + 플랫폼 대기 시간을 고려한 안전한 체류 시간 제공
+- **원터치 길찾기**: 장소 선택 후 바로 외부 지도 앱으로 연결
 
 ### ⏰ 알림 시스템
 - **15분 전**: "활동을 차분히 마무리해 주세요"
@@ -140,9 +145,10 @@ graph TD
 <div align="center">
 
 ![Dependency Graph](graph.png)
-*프로젝트 모듈 간 의존성 관계도 (자동 생성)*
 
 </div>
+
+*프로젝트 모듈 간 의존성 관계도 (자동 생성)*
 
 ### 🔄 의존성 방향 원칙
 
@@ -282,9 +288,13 @@ enum APIKeys {
 
 ### 📱 스크린샷 자동 생성 (fastlane)
 ```bash
-fastlane snapshot        # 전체 스크린샷 생성
+fastlane snapshot        # 전체 스크린샷 생성 (메인, 역선택, 탐색, 상세, 알림)
 fastlane snapshot --scheme TimeSpot  # 특정 스킴만
 ```
+
+**스크린샷 구성:**
+- 메인 화면, 역 선택, 주변 탐색
+- 장소 상세, 복귀 알림
 
 ## 📋 사용법
 
@@ -299,9 +309,12 @@ fastlane snapshot --scheme TimeSpot  # 특정 스킴만
 3. **카테고리별 탐색**: 관광지 🏛️, 맛집 🍴, 카페 ☕, 쇼핑 🛍️ 등
 
 ### 3️⃣ 스마트한 경로 안내
-1. **장소 선택**: 방문하고 싶은 장소를 선택
-2. **"길찾기 시작"**: 버튼을 터치하여 여정 시작
-3. **외부 앱 연동**: 선호하는 지도 앱으로 실제 네비게이션
+1. **장소 선택**: 방문하고 싶은 장소 터치
+2. **체류 시간 확인**: 안전한 왕복 시간을 고려한 체류 가능 시간 확인
+3. **"경로 확인하기"** 버튼 터치
+4. **지도 앱 선택**: 네이버맵, 구글맵, 애플 지도 중 선택
+5. **실시간 네비게이션**: 선택한 앱으로 바로 길찾기 시작
+6. **복귀 알림**: 설정한 시간에 맞춰 자동 복귀 알림
 
 ### 4️⃣ 안전한 복귀 가이드
 - **📱 스마트 알림**: 출발 시간에 맞춰 단계별 알림
