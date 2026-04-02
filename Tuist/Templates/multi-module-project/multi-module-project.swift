@@ -25,7 +25,7 @@ let template = Template(
 //  Project+Enviorment.swift
 //  MyPlugin
 //
-//  Created by 서원지 on 1/6/24.
+//  Created by Wonji Suh on 1/6/24.
 //
 
 import Foundation

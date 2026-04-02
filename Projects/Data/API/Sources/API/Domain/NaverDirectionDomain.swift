@@ -2,7 +2,7 @@
 //  NaverDirectionDomain.swift
 //  API
 //
-//  Created by wonji suh on 2026-03-12
+//  Created by Wonji Suh on 2026-03-12
 //  Copyright © 2026 TimeSpot, Ltd., All rights reserved.
 //
 

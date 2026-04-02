@@ -2,7 +2,7 @@
 //  ExploreCategory.swift
 //  Entity
 //
-//  Created by wonji suh on 2026-03-27.
+//  Created by Wonji Suh on 2026-03-27.
 //
 
 import Foundation

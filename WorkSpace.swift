@@ -2,7 +2,7 @@
 //  WorkSpace.swift
 //  Manifests
 //
-//  Created by 서원지 on 6/7/24.
+//  Created by Wonji Suh on 6/7/24.
 //
 
 import Foundation

@@ -2,7 +2,7 @@
 //  RouteModel.swift
 //  Home
 //
-//  Created by wonji suh on 2026-03-12
+//  Created by Wonji Suh on 2026-03-12
 //
 
 import Foundation
