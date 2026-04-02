@@ -2,7 +2,7 @@
 //  PlaceError.swift
 //  Entity
 //
-//  Created by Codex on 3/29/26.
+//  Created by Wonji Suh on 3/29/26.
 //
 
 import Foundation

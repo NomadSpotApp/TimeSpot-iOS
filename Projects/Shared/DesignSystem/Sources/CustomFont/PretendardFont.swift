@@ -2,7 +2,7 @@
 //  PretendardFont.swift
 //  DDDAttendance
 //
-//  Created by 서원지 on 6/9/24.
+//  Created by Wonji Suh on 6/9/24.
 //
 
 import SwiftUI
