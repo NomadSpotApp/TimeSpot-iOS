@@ -47,87 +47,66 @@ public struct ExploreDetailView: View {
           }
 
           // 스크롤 가능한 컨텐츠
-          if store.isVisitUnavailable && store.placeDetail == nil {
-            // placeDetail이 nil인 경우: 중앙 배치
-            noDetailSpotView()
-              .padding(.top, 80)
-          } else {
-            // placeDetail이 있거나 로딩 중인 경우: 기존 스크롤뷰 방식
-            ScrollViewReader { scrollProxy in
-              ScrollView(.vertical) {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                  Group {
-                    if store.isLoading {
-                      ExploreDetailSkeletonView()
-                    } else if store.isVisitUnavailable {
-                      // placeDetail이 있지만 방문 불가인 경우: 기존 방식
-                      VStack(spacing: 24) {
-                        Spacer()
+          ScrollViewReader { scrollProxy in
+            ScrollView(.vertical) {
+              LazyVStack(alignment: .leading, spacing: 0) {
+                Group {
+                  if store.isLoading {
+                    ExploreDetailSkeletonView()
+                  } else if (store.placeDetail == nil && store.errorMessage != nil) || store.isVisitUnavailable {
+                    // 404 에러 또는 방문 불가인 경우
+                    noDetailContentView()
+                  } else {
+                    VStack(alignment: .leading, spacing: 0) {
+                      exploreSpotNameTitle()
+                        .padding(.top, 18) // 6 + 18 = 24 (네비게이션에서 총 24만큼 떨어짐)
+                        .id("title")
 
-                        Image(asset: .noDetailSpot)
-                          .resizable()
-                          .scaledToFit()
-                          .frame(width: 100, height: 100)
+                      imageSection()
+                        .padding(.top, 24)
+                        .id("images")
+                        .background(
+                          GeometryReader { imageGeo in
+                            Color.clear
+                              .onAppear {
+                                // 이미지 섹션 위치 감지
+                                let imageFrame = imageGeo.frame(in: .global)
+                                store.send(.view(.titlePositionChanged(imageFrame.minY)))
+                              }
+                              .onChange(of: imageGeo.frame(in: .global).minY) { _, newY in
+                                store.send(.view(.titlePositionChanged(newY)))
+                              }
+                          }
+                        )
 
-                        Text("시간 부족으로 체류가\n 어려운 장소입니다.")
-                          .pretendardCustomFont(textStyle: .bodyMedium)
-                          .foregroundStyle(.gray550)
-                          .multilineTextAlignment(.center)
+                      stayInfoSection()
+                        .padding(.top, 24)
 
-                        Spacer()
-                      }
-                    } else {
-                      VStack(alignment: .leading, spacing: 0) {
-                        exploreSpotNameTitle()
-                          .padding(.top, 18) // 6 + 18 = 24 (네비게이션에서 총 24만큼 떨어짐)
-                          .id("title")
+                      returnDeadlineSection()
+                        .padding(.top, 24)
 
-                        imageSection()
-                          .padding(.top, 24)
-                          .id("images")
-                          .background(
-                            GeometryReader { imageGeo in
-                              Color.clear
-                                .onAppear {
-                                  // 이미지 섹션 위치 감지
-                                  let imageFrame = imageGeo.frame(in: .global)
-                                  store.send(.view(.titlePositionChanged(imageFrame.minY)))
-                                }
-                                .onChange(of: imageGeo.frame(in: .global).minY) { _, newY in
-                                  store.send(.view(.titlePositionChanged(newY)))
-                                }
-                            }
-                          )
+                      placeInfoSection()
+                        .padding(.top, 29)
 
-                        stayInfoSection()
-                          .padding(.top, 24)
+                      locationMapSection()
+                        .padding(.top, 24)
+                        .id("map")
 
-                        returnDeadlineSection()
-                          .padding(.top, 24)
+                      // 고정 버튼 영역만큼 하단 공간 확보
+                      Color.clear
+                        .frame(height: 131) // 간격 41 + 버튼 높이 56 + 하단 패딩 34
+                        .id("bottom")
 
-                        placeInfoSection()
-                          .padding(.top, 29)
-
-                        locationMapSection()
-                          .padding(.top, 24)
-                          .id("map")
-
-                        // 고정 버튼 영역만큼 하단 공간 확보
-                        Color.clear
-                          .frame(height: 131) // 간격 41 + 버튼 높이 56 + 하단 패딩 34
-                          .id("bottom")
-
-                      }
                     }
                   }
-                  .padding(.horizontal, 16)
                 }
+                .padding(.horizontal, 16)
               }
-              .scrollIndicators(.hidden)
-              .padding(.top, store.placeDetail != nil ? 6 : 20) // placeDetail 있으면 6, 없으면 20
             }
-            .offset(y: -10)
+            .scrollIndicators(.hidden)
+            .padding(.top, store.placeDetail != nil ? 6 : 20) // placeDetail 있으면 6, 없으면 20
           }
+          .offset(y: -10)
         }
 
         // 하단 고정 버튼
@@ -541,5 +520,24 @@ private extension ExploreDetailView {
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background(.gray100)
     }
+
+  @ViewBuilder
+  func noDetailContentView() -> some View {
+    VStack(spacing: 24) {
+      Spacer()
+
+      Image(asset: .noDetailSpot)
+        .resizable()
+        .scaledToFit()
+        .frame(width: 100, height: 100)
+
+      Text("시간 부족으로 체류가\n 어려운 장소입니다.")
+        .pretendardCustomFont(textStyle: .bodyMedium)
+        .foregroundStyle(.gray550)
+        .multilineTextAlignment(.center)
+
+      Spacer()
+    }
+  }
 }
 

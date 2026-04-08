@@ -42,7 +42,6 @@ public struct ExploreListView: View {
             )
             .padding(.top, 8)
             .padding(.horizontal, 16)
-            .background(.staticWhite)
 
             emptyExploreListView()
           }

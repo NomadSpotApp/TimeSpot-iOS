@@ -162,7 +162,6 @@ struct ExploreSearchHeaderView: View {
         .padding(.vertical, 8)
         .background(.staticWhite)
       }
-      .background(.staticWhite)
       .onAppear {
         scrollToCategory(selectedCategory, with: proxy, animated: false)
       }
