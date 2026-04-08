@@ -233,6 +233,29 @@ public extension String {
     isEmpty ? nil : self
   }
 
+  /// 10자 이상인 텍스트에 중간 스페이스 추가
+  var formatLongText: String {
+    guard self.count > 10 else { return self }
+
+    let characters = Array(self)
+    let midPoint = characters.count / 2
+
+    // 중간점 근처에서 적절한 위치 찾기 (±2 범위 내)
+    let searchRange = max(0, midPoint - 2)...min(characters.count - 1, midPoint + 2)
+
+    // 이미 스페이스가 있는 위치 찾기
+    if searchRange.first(where: { characters[$0] == " " }) != nil {
+      return self
+    }
+
+    // 스페이스가 없으면 중간에 스페이스 추가
+    let insertIndex = midPoint
+    var result = characters
+    result.insert(" ", at: insertIndex)
+
+    return String(result)
+  }
+
   // MARK: - Station Utils
   var normalizedStationName: String {
     self

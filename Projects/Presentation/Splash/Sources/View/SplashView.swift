@@ -44,6 +44,20 @@ public struct SplashView: View {
       store.send(.view(.onAppear))
       runAnimation()
     }
+    .alert("앱 업데이트", isPresented: $store.showUpdateAlert) {
+      Button("나중에") {
+        store.send(.view(.updateAlertCancelled))
+      }
+      Button("업데이트") {
+        store.send(.view(.updateAlertConfirmed))
+      }
+    } message: {
+      if let updateInfo = store.updateInfo {
+        Text("새 버전 \(updateInfo.latestVersion)이 출시되었습니다.\n\n\(updateInfo.releaseNotes ?? "앱의 최신 기능을 사용하려면 업데이트해주세요.")")
+      } else {
+        Text("앱의 최신 기능을 사용하려면 업데이트해주세요.")
+      }
+    }
   }
 }
 

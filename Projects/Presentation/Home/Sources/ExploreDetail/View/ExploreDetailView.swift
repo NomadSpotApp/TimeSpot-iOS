@@ -53,6 +53,8 @@ public struct ExploreDetailView: View {
                 Group {
                   if store.isLoading && store.placeDetail == nil {
                     ExploreDetailSkeletonView()
+                  } else if store.isVisitUnavailable {
+                    noDetailSpotView()
                   } else {
                     VStack(alignment: .leading, spacing: 0) {
                       exploreSpotNameTitle()
@@ -110,7 +112,7 @@ public struct ExploreDetailView: View {
         VStack {
           Spacer()
 
-          if !(store.isLoading && store.placeDetail == nil) {
+          if !(store.isLoading && store.placeDetail == nil) && !store.isVisitUnavailable {
             VStack(spacing: 0) {
               // 투명한 상단 간격 (콘텐츠가 보이도록)
               Spacer()
@@ -145,38 +147,16 @@ public struct ExploreDetailView: View {
 
 private extension ExploreDetailView {
 
-  /// 10자 이상인 텍스트에 중간 스페이스 추가
-  private func formatLongText(_ text: String) -> String {
-    guard text.count > 10 else { return text }
-
-    let characters = Array(text)
-    let midPoint = characters.count / 2
-
-    // 중간점 근처에서 적절한 위치 찾기 (±2 범위 내)
-    let searchRange = max(0, midPoint - 2)...min(characters.count - 1, midPoint + 2)
-
-    // 이미 스페이스가 있는 위치 찾기
-    if searchRange.first(where: { characters[$0] == " " }) != nil {
-      return text
-    }
-
-    // 스페이스가 없으면 중간에 스페이스 추가
-    let insertIndex = midPoint
-    var result = characters
-    result.insert(" ", at: insertIndex)
-
-    return String(result)
-  }
 
   @ViewBuilder
   func exploreSpotNameTitle() -> some View {
     HStack(spacing: 8) {
-      Text(formatLongText(store.placeNameText.formattedPlaceNameForDisplay))
+      Text(store.placeNameText.formattedPlaceNameForDisplay.formatLongText)
         .pretendardCustomFont(textStyle: .heading1)
         .foregroundStyle(.staticBlack)
         .lineLimit(2)
 
-      Text(formatLongText(store.categoryText))
+      Text(store.categoryText.formatLongText)
         .pretendardCustomFont(textStyle: .body2Regular)
         .foregroundStyle(.gray700)
 
@@ -199,7 +179,7 @@ private extension ExploreDetailView {
   func stayInfoSection() -> some View {
     HStack(spacing: 0) {
       metricColumn(
-        value: formatLongText(store.stayableMinutesText),
+        value: store.stayableMinutesText.formatLongText,
         title: "체류시간",
         valueColor: .orange800
       )
@@ -207,7 +187,7 @@ private extension ExploreDetailView {
       divider
 
       metricColumn(
-        value: formatLongText(store.walkMinutesText),
+        value: store.walkMinutesText.formatLongText,
         title: "도보",
         valueColor: .gray830
       )
@@ -215,7 +195,7 @@ private extension ExploreDetailView {
       divider
 
       metricColumn(
-        value: formatLongText(store.distanceText),
+        value: store.distanceText.formatLongText,
         title: "거리",
         valueColor: .gray830
       )
@@ -250,10 +230,10 @@ private extension ExploreDetailView {
           }
 
           (
-            Text(formatLongText(store.returnDeadlineText))
+            Text(store.returnDeadlineText.formatLongText)
               .foregroundStyle(store.isVisitUnavailable ? .gray700 : .orange800)
             +
-            Text(formatLongText(store.returnDeadlineSuffixText)).foregroundStyle(.gray800)
+            Text(store.returnDeadlineSuffixText.formatLongText).foregroundStyle(.gray800)
           )
           .pretendardCustomFont(textStyle: .body2Medium)
           .lineSpacing(2)
@@ -287,19 +267,19 @@ private extension ExploreDetailView {
         infoRow(
           icon: "clock.fill",
           title: "영업 시간",
-          content: formatLongText(store.openingHoursText)
+          content: store.openingHoursText.formatLongText
         )
 
         infoRow(
           icon: "phone.fill",
           title: "전화번호",
-          content: formatLongText(store.phoneNumberText)
+          content: store.phoneNumberText.formatLongText
         )
 
         infoRow(
           icon: "location.fill",
           title: "주소",
-          content: formatLongText(store.addressText)
+          content: store.addressText.formatLongText
         )
       }
     }
@@ -317,7 +297,7 @@ private extension ExploreDetailView {
 
         if coordinate.latitude != 0 && coordinate.longitude != 0 {
           Map(initialPosition: .region(store.mapRegion), interactionModes: .all) {
-            Annotation(formatLongText(store.placeNameText), coordinate: coordinate) {
+            Annotation(store.placeNameText.formatLongText, coordinate: coordinate) {
               Image(asset: .spotPin)
                 .resizable()
                 .scaledToFit()
@@ -429,9 +409,6 @@ private extension ExploreDetailView {
       .frame(width: 1, height: 34)
   }
 
-  // All computed properties moved to ExploreDetailFeature.State extension
-
-  // Helper function moved to ExploreDetailFeature.State extension
 
   @ViewBuilder
   func spotImageCard(for url: URL?, index: Int) -> some View {
@@ -523,5 +500,25 @@ private extension ExploreDetailView {
         .foregroundStyle(.gray500)
     }
   }
+
+
+  @ViewBuilder
+    func noDetailSpotView() -> some View {
+      VStack(spacing: 24) {
+        Spacer()
+
+        Image(asset: .noDetailSpot)
+          .resizable()
+          .scaledToFit()
+          .frame(width: 100, height: 100)
+
+        Text("시간 부족으로 체류가\n 어려운 장소입니다.")
+          .pretendardCustomFont(textStyle: .bodyMedium)
+          .foregroundStyle(.gray550)
+          .multilineTextAlignment(.center)
+
+        Spacer()
+      }
+    }
 }
 

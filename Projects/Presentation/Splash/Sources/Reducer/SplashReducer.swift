@@ -25,6 +25,9 @@ public struct SplashReducer {
   public struct State: Equatable {
     public var isCheckingToken = false
     public var hasValidToken = false
+    public var isCheckingUpdate = false
+    public var showUpdateAlert = false
+    public var updateInfo: AppUpdateInfo?
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
     @Shared(.appStorage("selectedMapType")) var selectedMapTypeStorage: ExternalMapType = .naverMap
 
@@ -44,17 +47,21 @@ public struct SplashReducer {
   @CasePathable
   public enum View {
     case onAppear
+    case updateAlertConfirmed
+    case updateAlertCancelled
   }
 
   //MARK: - AsyncAction 비동기 처리 액션
   public enum AsyncAction: Equatable {
     case checkToken
     case syncMapType
+    case checkAppUpdate
   }
 
   //MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
     case tokenCheckResult(Bool)
+    case appUpdateCheckResult(AppUpdateInfo?)
   }
 
   //MARK: - NavigationAction
@@ -64,6 +71,7 @@ public struct SplashReducer {
   }
 
   @Dependency(\.keychainManager) var keychainManager
+  @Dependency(\.appUpdateUseCase) var appUpdateUseCase
 
   public var body: some Reducer<State, Action> {
     BindingReducer()
@@ -96,10 +104,26 @@ extension SplashReducer {
     switch action {
       case .onAppear:
         state.isCheckingToken = true
+        state.isCheckingUpdate = true
         return .merge(
           .send(.async(.syncMapType)),
-          .send(.async(.checkToken))
+          .send(.async(.checkToken)),
+          .send(.async(.checkAppUpdate))
         )
+
+      case .updateAlertConfirmed:
+        if let updateInfo = state.updateInfo {
+          // 앱스토어로 이동
+          if let url = URL(string: updateInfo.appStoreUrl) {
+            UIApplication.shared.open(url)
+          }
+        }
+        return .none
+
+      case .updateAlertCancelled:
+        // 업데이트를 취소하면 앱을 종료하거나 다시 확인
+        state.showUpdateAlert = false
+        return .none
     }
   }
 
@@ -128,6 +152,17 @@ extension SplashReducer {
           } catch {
             // Task 취소 또는 기타 에러 처리
             await send(.inner(.tokenCheckResult(hasToken)))
+          }
+        }
+
+      case .checkAppUpdate:
+        return .run { send in
+          do {
+            let updateInfo = try await appUpdateUseCase.checkForUpdate()
+            await send(.inner(.appUpdateCheckResult(updateInfo)))
+          } catch {
+            #logError("앱 업데이트 확인 실패", error.localizedDescription)
+            await send(.inner(.appUpdateCheckResult(nil)))
           }
         }
     }
@@ -160,14 +195,38 @@ extension SplashReducer {
           $0.isGuest = !hasToken
         }
 
+        return handleNavigationAfterChecks(state: &state)
 
-        if hasToken {
-          // 토큰이 있으면 메인 화면으로
-          return .send(.navigation(.presentHome))
+      case .appUpdateCheckResult(let updateInfo):
+        state.isCheckingUpdate = false
+        state.updateInfo = updateInfo
+
+        if updateInfo != nil {
+          // 업데이트가 필요한 경우 팝업 표시
+          state.showUpdateAlert = true
+          return .none
         } else {
-          // 토큰이 없으면 로그인 화면으로
-          return .send(.navigation(.presentAuth))
+          // 업데이트가 필요 없는 경우
+          return handleNavigationAfterChecks(state: &state)
         }
+    }
+  }
+
+  // MARK: - Helper Methods
+  private func handleNavigationAfterChecks(
+    state: inout State
+  ) -> Effect<Action> {
+    // 토큰 체크와 업데이트 체크가 모두 완료되고, 업데이트 팝업이 필요 없을 때만 네비게이션
+    guard !state.isCheckingToken && !state.isCheckingUpdate && !state.showUpdateAlert else {
+      return .none
+    }
+
+    if state.hasValidToken {
+      // 토큰이 있으면 메인 화면으로
+      return .send(.navigation(.presentHome))
+    } else {
+      // 토큰이 없으면 로그인 화면으로
+      return .send(.navigation(.presentAuth))
     }
   }
 }

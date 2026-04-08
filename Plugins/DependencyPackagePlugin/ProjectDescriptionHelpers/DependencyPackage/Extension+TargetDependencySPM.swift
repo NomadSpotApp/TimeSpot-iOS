@@ -18,4 +18,5 @@ public extension TargetDependency.SPM {
   static let appAuth: TargetDependency = .external(name: "AppAuth")
   static let FirebaseCrashlytics = TargetDependency.external(name: "FirebaseCrashlytics", condition: .none)
   static let sdWebImage = TargetDependency.external(name: "SDWebImageSwiftUI", condition: .none)
+  static let mixpanel = TargetDependency.external(name: "Mixpanel", condition: .none)
 }

@@ -12,11 +12,13 @@ import Home
 import Kingfisher
 import LogMacro
 import Firebase
+import Mixpanel
 
 
 final class AppDelegate: UIResponder, UIApplicationDelegate, @MainActor UNUserNotificationCenterDelegate {
   @Dependency(\.deeplinkRouter) var deeplinkRouter
   @Dependency(\.authUseCase) var authUseCase
+  let mixPanelKey = Bundle.main.object(forInfoDictionaryKey: "MIXPANEL_TOKEN") as? String
 
   func application(
     _ application: UIApplication,
@@ -29,6 +31,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, @MainActor UNUserNo
 
     // Kingfisher 캐시 최적화 설정
     configureImageCaching()
+    Mixpanel.initialize(token: mixPanelKey ?? "", trackAutomaticEvents: true)
     FirebaseApp.configure()
     // 네이버맵 초기화 (Home 모듈의 NaverMapInitializer 사용)
     NaverMapInitializer.initialize()
