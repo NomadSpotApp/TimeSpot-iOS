@@ -86,9 +86,7 @@ private extension ExploreView {
       onMapTapped: {
         store.send(.view(.spotCardChanged(nil)))
       },
-      onCameraIdle: { coordinate in
-        store.send(.view(.mapCenterChanged(coordinate)))
-      }
+      onCameraIdle: nil
     )
     .ignoresSafeArea(.all)
   }
