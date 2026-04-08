@@ -97,7 +97,7 @@ public enum Station: String, CaseIterable, Equatable, Hashable, Identifiable, Se
   public var homeTitle: String {
     switch self {
     case .seoul:
-      return "SEOUL"
+      return "서울"
     case .yongsan:
       return "YONGSAN"
     case .gwangmyeong:

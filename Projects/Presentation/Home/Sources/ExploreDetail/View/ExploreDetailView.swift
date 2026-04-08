@@ -504,20 +504,24 @@ private extension ExploreDetailView {
 
   @ViewBuilder
     func noDetailSpotView() -> some View {
-      VStack(spacing: 24) {
-        Spacer()
+      GeometryReader { geometry in
+        VStack(alignment: .center, spacing: 24) {
+          Spacer()
 
-        Image(asset: .noDetailSpot)
-          .resizable()
-          .scaledToFit()
-          .frame(width: 100, height: 100)
+          Image(asset: .noDetailSpot)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 100, height: 100)
 
-        Text("시간 부족으로 체류가\n 어려운 장소입니다.")
-          .pretendardCustomFont(textStyle: .bodyMedium)
-          .foregroundStyle(.gray550)
-          .multilineTextAlignment(.center)
+          Text("시간 부족으로 체류가\n 어려운 장소입니다.")
+            .pretendardCustomFont(textStyle: .bodyMedium)
+            .foregroundStyle(.gray550)
+            .multilineTextAlignment(.center)
 
-        Spacer()
+          Spacer()
+        }
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: geometry.size.height)
       }
     }
 }

@@ -74,7 +74,7 @@ public struct HomeView: View {
     .toastOverlay(
       position: .bottom,
       horizontalPadding: 20,
-      bottomPadding: 140
+      bottomPadding: 100
     )
     .onAppear {
       store.send(.view(.onAppear))

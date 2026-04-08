@@ -60,11 +60,13 @@ public extension PlaceResponseDTOModel {
     case "액티비티", "activity":
       category = .activity
     case "관광지", "tour", "tourism":
-      category = .etc  // 관광지를 etc로 매핑
+      category = .activity  // 관광지를 액티비티로 매핑
     case "문화시설", "culture", "cultural":
-      category = .etc  // 문화시설도 etc로 매핑
+      category = .activity  // 문화시설을 액티비티로 매핑
     case "쇼핑", "shopping":
       category = .shopping
+    case "레포츠", "sports":
+      category = .activity  // 레포츠를 액티비티로 매핑
     case "기타":
       category = .etc
     default:

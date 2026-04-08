@@ -143,20 +143,12 @@ struct ExploreSelectedSpotCardView: View {
           .frame(minHeight: titleMinHeight(for: spot), alignment: .topLeading)
           .padding(.bottom, 4)
 
-          if !spot.statusText.isEmpty || !spot.closingText.isEmpty {
+          if !spot.closingText.isEmpty {
             HStack(spacing: 12) {
-              if !spot.statusText.isEmpty {
-                Text(formatLongText(spot.statusText))
-                  .pretendardCustomFont(textStyle: .body2Medium)
-                  .foregroundStyle(.gray850)
-              }
-
-              if !spot.closingText.isEmpty {
-                Text(formatLongText(spot.closingText))
-                  .pretendardCustomFont(textStyle: .body2Regular)
-                  .foregroundStyle(.gray750)
-                  .lineLimit(1)
-              }
+              Text(formatLongText(spot.closingText))
+                .pretendardCustomFont(textStyle: .body2Regular)
+                .foregroundStyle(.gray750)
+                .lineLimit(1)
             }
             .padding(.bottom, 10)
           }

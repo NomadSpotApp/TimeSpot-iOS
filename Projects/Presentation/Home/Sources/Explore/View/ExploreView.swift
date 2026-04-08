@@ -74,7 +74,7 @@ private extension ExploreView {
       routeInfo: nil,
       destination: store.selectedDestination,
       travelStation: nil,
-      spots: store.spots,
+      spots: store.filteredMapSpots,
       selectedSpotID: store.userSession.selectedExploreSpotID.isEmpty
         ? nil
         : store.userSession.selectedExploreSpotID,
