@@ -234,7 +234,10 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  fastlane
+  abbrev
+  fastlane (~> 2.232.1)
+  logger
+  mutex_m
 
 BUNDLED WITH
    2.7.2
