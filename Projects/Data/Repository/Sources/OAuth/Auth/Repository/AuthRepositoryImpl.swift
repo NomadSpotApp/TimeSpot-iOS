@@ -47,7 +47,11 @@ final public class AuthRepositoryImpl: AuthInterface, @unchecked Sendable {
 
 //  // MARK: - 토큰 재발급
   public func refresh() async throws -> AuthTokens {
-    let refreshToken  = await keychainManager.refreshToken() ?? ""
+    guard let refreshToken = await keychainManager.refreshToken(),
+          !refreshToken.isEmpty else {
+      #logDebug(" [AuthRepositoryImpl] Refresh token is nil or empty - cannot refresh")
+      throw AuthError.refreshTokenExpired
+    }
 
     do {
       // Use non-authorized provider to avoid interceptor recursion on refresh.

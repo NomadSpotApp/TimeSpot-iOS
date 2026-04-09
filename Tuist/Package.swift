@@ -7,6 +7,7 @@ import struct ProjectDescription.PackageSettings
 let packageSettings = PackageSettings(
   productTypes: [
     "ComposableArchitecture": .staticFramework,
+    "Dependencies": .staticFramework,
     "TCACoordinators": .staticFramework,
     "Moya": .staticFramework,
     "LogMacro": .staticFramework,
@@ -32,6 +33,7 @@ let package = Package(
   name: "TimeSpot",
   dependencies: [
     .package(url: "https://github.com/pointfreeco/swift-composable-architecture", exact: "1.23.0"),
+    .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.6.0"),
     .package(url: "https://github.com/johnpatrickmorgan/TCACoordinators.git", exact: "0.13.0"),
     .package(url: "https://github.com/Roy-wonji/WeaveDI.git", from: "3.4.0"),
     .package(url: "https://github.com/google/GoogleSignIn-iOS", from: "9.0.0"),

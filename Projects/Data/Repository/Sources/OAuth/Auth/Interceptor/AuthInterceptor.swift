@@ -205,6 +205,13 @@ final class AuthInterceptor: RequestInterceptor, @unchecked Sendable {
             return
         }
 
+        // Credential이 없으면 이미 로그아웃된 상태이므로 재시도하지 않음
+        guard AuthSessionManager.shared.credential != nil else {
+            #logDebug(" No credential available for retry - user already logged out")
+            completion(.doNotRetryWithError(AuthError.refreshTokenExpired))
+            return
+        }
+
       #logDebug(" 401 Unauthorized detected, attempting token refresh for retry")
 
       _Concurrency.Task {
