@@ -190,8 +190,9 @@ extension HomeCoordinator {
         return .none
 
       case .routeAction(id: _, action: .exploreDetail(.delegate(.presentExploreMapAtCurrentLocation))):
-        state.routes.goBackTo(\.explore)
-        return .none
+        return .routeWithDelaysIfUnsupported(state.routes, action: \.router) {
+          $0.goBackTo(\.explore)
+        }
 
       case .routeAction(id: _, action: .routeNotification(.delegate(.presentRoute))):
         state.routes.push(.route(.init()))
