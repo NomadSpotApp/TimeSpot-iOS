@@ -12,8 +12,7 @@ let project = Project.makeModule(
   dependencies: [
     .Data(implements: .Service),
     .Domain(implements: .DomainInterface),
-
-      .SPM.googleSignIn
+    .SPM.googleSignIn
   ],
   sources: ["Sources/**"],
   hasTests: true

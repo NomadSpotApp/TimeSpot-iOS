@@ -209,6 +209,10 @@ extension InfoPlistDictionary {
     return self.merging(["GOOGLE_IOS_CLIENT_ID": .string(value)]) { (_, new) in new }
   }
 
+  func setMixpanelToken(_ value: String) -> InfoPlistDictionary {
+    return self.merging(["MIXPANEL_TOKEN": .string(value)]) { (_, new) in new }
+  }
+
   func setBaseURL(_ value: String) -> InfoPlistDictionary {
     return self.merging(["BASE_URL": .string(value)]) { (_, new) in new }
   }

@@ -74,6 +74,7 @@ public struct ExploreDetailFeature {
   }
 
   @Dependency(\.placeUseCase) var placeUseCase
+  @Dependency(\.analyticsUseCase) var analyticsUseCase
 
   public var body: some Reducer<State, Action> {
     BindingReducer()
@@ -111,6 +112,17 @@ extension ExploreDetailFeature {
     case .routeButtonTapped:
       // UserSession에 목적지 정보 저장
       if let placeDetail = state.placeDetail {
+        analyticsUseCase.track(
+          .place(
+            .routeStarted,
+            PlaceEventData(
+              placeID: placeDetail.placeId,
+              placeName: placeDetail.name,
+              category: placeDetail.category,
+              placeType: placeDetail.placeType
+            )
+          )
+        )
         state.$userSession.withLock { userSession in
           userSession.routeDestinationLat = placeDetail.latitude
           userSession.routeDestinationLng = placeDetail.longitude
@@ -217,6 +229,20 @@ extension ExploreDetailFeature {
       case .success(let detail):
         state.placeDetail = detail
         state.errorMessage = nil
+        analyticsUseCase.track(
+          .place(
+            .detailViewed,
+            PlaceEventData(
+              placeID: detail.placeId,
+              placeName: detail.name,
+              category: detail.category,
+              placeType: detail.placeType,
+              stayableMinutes: detail.stayableMinutes,
+              walkTimeFromStation: detail.walkTimeFromStation,
+              visitable: detail.visitable
+            )
+          )
+        )
 
         let remainingMinutes = calculateRemainingStayableMinutes(detail: detail, fetchedAt: state.userSession.explorePlacesFetchedAt)
 

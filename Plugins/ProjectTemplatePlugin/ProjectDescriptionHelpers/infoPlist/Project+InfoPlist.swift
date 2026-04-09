@@ -47,6 +47,7 @@ public extension InfoPlist {
       .setGoogleReversedClientID("${REVERSED_CLIENT_ID}")
       .setGoogleClientID("${GOOGLE_CLIENT_ID}")
       .setGoogleClientiOSID("${GOOGLE_IOS_CLIENT_ID}")
+      .setMixpanelToken("$(MIXPANEL_TOKEN)")
       .setGIDClientID("${GOOGLE_CLIENT_ID}")
       .setUILaunchScreens()
       .setLocationPermissions()

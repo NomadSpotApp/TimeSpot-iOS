@@ -10,6 +10,7 @@ import AuthenticationServices
 
 import Entity
 import DesignSystem
+import UseCase
 import Utill
 
 import ComposableArchitecture
@@ -86,6 +87,7 @@ public struct LoginFeature {
 
   @Dependency(\.appleManger) var appleLoginManger
   @Dependency(\.unifiedOAuthUseCase) var unifiedOAuthUseCase
+  @Dependency(\.analyticsUseCase) var analyticsUseCase
 
   public var body: some Reducer<State, Action> {
     BindingReducer()
@@ -244,6 +246,16 @@ extension LoginFeature {
         switch result {
           case .success(let loginEntity):
             state.loginEntity = loginEntity
+            analyticsUseCase.track(
+              .auth(
+                .loginSucceeded,
+                AuthEventData(
+                  socialType: loginEntity.provider.rawValue,
+                  isNewUser: loginEntity.isNewUser,
+                  mapType: loginEntity.mapType?.rawValue
+                )
+              )
+            )
             state.$selectedMapTypeStorage.withLock {
               $0 = loginEntity.mapType ?? .appleMap
             }
@@ -262,6 +274,15 @@ extension LoginFeature {
           case .failure(let error):
             #logNetwork("로그인 실패", error.localizedDescription)
             let socialType = state.currentSocialType
+            analyticsUseCase.track(
+              .auth(
+                .loginFailed,
+                AuthEventData(
+                  socialType: socialType?.rawValue,
+                  errorDescription: error.errorDescription ?? error.localizedDescription
+                )
+              )
+            )
             return .run { send in
               await MainActor.run {
                 let errorMessage: String

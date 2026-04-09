@@ -13,7 +13,8 @@ let project = Project.makeModule(
     .Data(implements: .Model),
     .Domain(implements: .Entity),
     .SPM.composableArchitecture,
-    .SPM.weaveDI
+    .SPM.weaveDI,
+    .SPM.mixpanel
   ],
   sources: ["Sources/**"],
   hasTests: false

@@ -141,6 +141,7 @@ public struct ExploreFeature: Sendable {
   @Dependency(\.placeUseCase) var placeUseCase
   @Dependency(\.locationUseCase) var locationUseCase
   @Dependency(\.cameraUseCase) var cameraUseCase
+  @Dependency(\.analyticsUseCase) var analyticsUseCase
 
   public var body: some ReducerOf<Self> {
     Reduce { state, action in
@@ -253,6 +254,24 @@ extension ExploreFeature {
           $0.selectedExplorePlaceID = spotID
         }
         state.isSpotCardVisible = state.spots.contains(where: { $0.id == spotID && $0.hasDetail })
+        if let selectedSpot = state.spots.first(where: { $0.id == spotID }) {
+          analyticsUseCase.track(
+            .place(
+              .selected,
+              PlaceEventData(
+                placeID: selectedSpot.id,
+                placeName: selectedSpot.name,
+                category: selectedSpot.subtitle,
+                placeType: selectedSpot.category.rawValue,
+                stayableMinutes: selectedSpot.originalStayableMinutes,
+                visitable: selectedSpot.visitable,
+                source: "explore_map",
+                stationID: state.userSession.travelID.nilIfEmpty,
+                stationName: state.userSession.travelStationName.nilIfEmpty
+              )
+            )
+          )
+        }
 
         guard !state.spots.contains(where: { $0.id == spotID && $0.hasDetail }),
               let markerSpot = state.spots.first(where: { $0.id == spotID }) else {
@@ -280,6 +299,24 @@ extension ExploreFeature {
             TextState("남은 체류 시간이 없어서 상세 보기를 열 수 없어요.")
           }
           return .none
+        }
+        if let selectedSpot = state.selectedSpot {
+          analyticsUseCase.track(
+            .place(
+              .detailOpened,
+              PlaceEventData(
+                placeID: selectedSpot.id,
+                placeName: selectedSpot.name,
+                category: selectedSpot.subtitle,
+                placeType: selectedSpot.category.rawValue,
+                stayableMinutes: state.remainingSelectedSpotMinutes,
+                visitable: selectedSpot.visitable,
+                source: "explore_card",
+                stationID: state.userSession.travelID.nilIfEmpty,
+                stationName: state.userSession.travelStationName.nilIfEmpty
+              )
+            )
+          )
         }
         return .send(.delegate(.presentExplorerDetail))
 
@@ -447,6 +484,17 @@ extension ExploreFeature {
         state.$userSession.withLock {
           $0.explorePlacesFetchedAt = Date()
         }
+        analyticsUseCase.track(
+          .place(
+            .listViewed,
+            PlaceEventData(
+              source: "explore_initial",
+              resultCount: pageEntity.spots.count,
+              stationID: state.userSession.travelID.nilIfEmpty,
+              stationName: state.userSession.travelStationName.nilIfEmpty
+            )
+          )
+        )
         return .none
 
       case .fetchPlacesPageResponse(let pageEntity, let request):

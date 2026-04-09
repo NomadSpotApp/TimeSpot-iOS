@@ -12,6 +12,7 @@ import ComposableArchitecture
 import DesignSystem
 import DomainInterface
 import Entity
+import UseCase
 import Utill
 
 
@@ -19,6 +20,7 @@ import Utill
 public struct HomeFeature {
   @Dependency(\.date.now) var now
   @Dependency(\.keychainManager) var keychainManager
+  @Dependency(\.analyticsUseCase) var analyticsUseCase
 
   public init() {}
 
@@ -304,6 +306,17 @@ extension HomeFeature {
       guard state.isExploreNearbyEnabled else {
         return .none
       }
+      analyticsUseCase.track(
+        .place(
+          .exploreStarted,
+          PlaceEventData(
+            stayableMinutes: state.userSession.remainingMinutes,
+            source: "home_cta",
+            stationID: state.userSession.travelID.nilIfEmpty,
+            stationName: state.userSession.travelStationName.nilIfEmpty
+          )
+        )
+      )
       return .send(.async(.requestExploreLocationPermission))
     }
   }

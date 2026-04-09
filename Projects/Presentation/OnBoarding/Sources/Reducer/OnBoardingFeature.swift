@@ -78,6 +78,7 @@ public struct OnBoardingFeature {
 
   @Dependency(\.signUpUseCase) var signUpUseCase
   @Dependency(\.keychainManager) var keychainManager
+  @Dependency(\.analyticsUseCase) var analyticsUseCase
 
   public var body: some Reducer<State, Action> {
     BindingReducer()
@@ -200,10 +201,31 @@ extension OnBoardingFeature {
         switch result {
           case .success(let data):
             state.loginEntity = data
+            analyticsUseCase.track(
+              .auth(
+                .signupSucceeded,
+                AuthEventData(
+                  socialType: data.provider.rawValue,
+                  isNewUser: data.isNewUser,
+                  mapType: data.mapType?.rawValue ?? state.selectedMapTypeStorage.rawValue,
+                  completedStepCount: state.activeStep
+                )
+              )
+            )
             return .send(.navigation(.onBoardingCompleted))
 
           case .failure(let error):
             #logDebug("회원가입 실패", error.localizedDescription)
+            analyticsUseCase.track(
+              .auth(
+                .signupFailed,
+                AuthEventData(
+                  mapType: state.selectedMapTypeStorage.rawValue,
+                  completedStepCount: state.activeStep,
+                  errorDescription: error.errorDescription ?? error.localizedDescription
+                )
+              )
+            )
             state.customAlert = .alert(
               title: "회원가입 실패",
               message: error.errorDescription ?? "회원가입 중 문제가 발생했어요.",

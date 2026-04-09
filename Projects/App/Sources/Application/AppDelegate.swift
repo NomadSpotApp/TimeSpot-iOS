@@ -31,6 +31,13 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, @MainActor UNUserNo
 
     // Kingfisher 캐시 최적화 설정
     configureImageCaching()
+    #logDebug(
+      "Mixpanel initialize",
+      [
+        "token_exists": !(mixPanelKey?.isEmpty ?? true),
+        "token_prefix": String((mixPanelKey ?? "").prefix(6))
+      ]
+    )
     Mixpanel.initialize(token: mixPanelKey ?? "", trackAutomaticEvents: true)
     FirebaseApp.configure()
     // 네이버맵 초기화 (Home 모듈의 NaverMapInitializer 사용)

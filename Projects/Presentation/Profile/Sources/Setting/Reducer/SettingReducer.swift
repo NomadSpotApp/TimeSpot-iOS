@@ -99,6 +99,7 @@ public struct SettingFeature {
 
   @Dependency(\.authUseCase) var authUseCase
   @Dependency(\.profileUseCase) var profileUseCase
+  @Dependency(\.analyticsUseCase) var analyticsUseCase
 
 
   public var body: some Reducer<State, Action> {
@@ -260,6 +261,15 @@ extension SettingFeature {
       case .logoutResponse(let result):
         switch result {
           case .success(let data):
+            analyticsUseCase.track(
+              .session(
+                .logoutSucceeded,
+                SessionEventData(
+                  provider: state.userSession.provider.rawValue,
+                  wasGuest: state.userSession.isGuest
+                )
+              )
+            )
             state.logoutEntity = data
             state.errorMessage = nil
             state.customAlert = nil
