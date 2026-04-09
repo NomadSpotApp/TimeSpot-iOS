@@ -140,7 +140,6 @@ struct ExploreSearchHeaderView: View {
       .frame(height: 48)
       .background(.staticWhite)
       .clipShape(RoundedRectangle(cornerRadius: 28))
-      .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
     }
   }
 

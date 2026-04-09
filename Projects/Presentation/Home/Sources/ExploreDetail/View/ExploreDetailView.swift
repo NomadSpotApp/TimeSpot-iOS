@@ -113,17 +113,30 @@ public struct ExploreDetailView: View {
         VStack {
           Spacer()
 
-          if !store.isLoading && !store.isVisitUnavailable {
+          if !store.isLoading {
             VStack(spacing: 0) {
               // 투명한 상단 간격 (콘텐츠가 보이도록)
               Spacer()
                 .frame(height: 41)
 
               // 버튼 영역만 배경 적용
-              routeButtonSection()
+              if store.placeDetail == nil && store.errorMessage != nil {
+                // 404 에러인 경우 지도보기 버튼
+                HStack {
+                  Spacer()
+                  mapButtonSection()
+                  Spacer()
+                }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
                 .background(.gray100)
+              } else if !store.isVisitUnavailable {
+                // 방문 가능한 경우 경로 확인하기 버튼
+                routeButtonSection()
+                  .padding(.horizontal, 16)
+                  .padding(.bottom, 24)
+                  .background(.gray100)
+              }
             }
           }
         }
@@ -140,7 +153,7 @@ public struct ExploreDetailView: View {
     .toastOverlay(
       position: .top,
       horizontalPadding: 20,
-      topPadding: 30 // 상단 네비게이션 바 아래에 토스트 표시
+      topPadding: 80 // 상단 네비게이션 바 아래에 토스트 표시
     )
   }
 }
@@ -360,6 +373,69 @@ private extension ExploreDetailView {
   }
 
   @ViewBuilder
+  func mapButtonSection() -> some View {
+    Button {
+      store.send(.delegate(.presentExploreMapAtCurrentLocation))
+    } label: {
+      HStack(alignment: .center, spacing: 4) {
+        Image(asset: .locationBadge)
+          .resizable()
+          .scaledToFit()
+          .frame(width: 16, height: 16)
+
+        Text("지도보기")
+          .pretendardCustomFont(textStyle: .body2Bold)
+          .foregroundStyle(.staticWhite)
+      }
+      .padding(.horizontal, 15)
+      .padding(.vertical, 10)
+      .background(.orange800)
+      .clipShape(RoundedRectangle(cornerRadius: 22))
+      .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 4)
+      .shadow(color: .black.opacity(0.1), radius: 24, x: 0, y: 8)
+    }
+    .buttonStyle(.plain)
+  }
+
+  @ViewBuilder
+  func buttonsSection() -> some View {
+    HStack(spacing: 12) {
+      // 지도보기 버튼
+      Button {
+        store.send(.delegate(.presentExploreMapAtCurrentLocation))
+      } label: {
+        HStack(alignment: .center, spacing: 4) {
+          Image(asset: .locationBadge)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 16, height: 16)
+
+          Text("지도보기")
+            .pretendardCustomFont(textStyle: .body2Bold)
+            .foregroundStyle(.staticWhite)
+        }
+        .frame(height: 55)
+        .padding(.horizontal, 15)
+        .background(.orange800)
+        .clipShape(RoundedRectangle(cornerRadius: 25))
+        .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 4)
+        .shadow(color: .black.opacity(0.1), radius: 24, x: 0, y: 8)
+      }
+      .buttonStyle(.plain)
+
+      // 경로 확인하기 버튼
+      CustomButton(
+        action: {
+          store.send(.view(.routeButtonTapped))
+        },
+        title: "경로 확인하기",
+        config: CustomButtonConfig.create(),
+        isEnable: true
+      )
+    }
+  }
+
+  @ViewBuilder
   func infoRow(
     icon: String,
     title: String,
@@ -505,38 +581,24 @@ private extension ExploreDetailView {
 
 
   @ViewBuilder
-    func noDetailSpotView() -> some View {
-      VStack(alignment: .center, spacing: 24) {
+  func noDetailContentView() -> some View {
+    GeometryReader { geometry in
+      VStack(spacing: 24) {
+        Spacer()
+
         Image(asset: .noDetailSpot)
           .resizable()
           .scaledToFit()
           .frame(width: 100, height: 100)
 
-        Text("시간 부족으로 체류가\n 어려운 장소입니다.")
+        Text("시간 부족으로\n장소 방문이 불가해요")
           .pretendardCustomFont(textStyle: .bodyMedium)
           .foregroundStyle(.gray550)
           .multilineTextAlignment(.center)
+
+        Spacer()
       }
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .background(.gray100)
-    }
-
-  @ViewBuilder
-  func noDetailContentView() -> some View {
-    VStack(spacing: 24) {
-      Spacer()
-
-      Image(asset: .noDetailSpot)
-        .resizable()
-        .scaledToFit()
-        .frame(width: 100, height: 100)
-
-      Text("시간 부족으로 체류가\n 어려운 장소입니다.")
-        .pretendardCustomFont(textStyle: .bodyMedium)
-        .foregroundStyle(.gray550)
-        .multilineTextAlignment(.center)
-
-      Spacer()
+      .frame(width: geometry.size.width, height: max(geometry.size.height, UIScreen.main.bounds.height - 200))
     }
   }
 }

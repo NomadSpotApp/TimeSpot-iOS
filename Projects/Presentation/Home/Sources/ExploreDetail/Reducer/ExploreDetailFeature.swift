@@ -70,6 +70,7 @@ public struct ExploreDetailFeature {
 
   public enum DelegateAction: Equatable {
     case presentRoute
+    case presentExploreMapAtCurrentLocation
   }
 
   @Dependency(\.placeUseCase) var placeUseCase
@@ -172,6 +173,8 @@ extension ExploreDetailFeature {
         }
       }
       return .none
+    case .presentExploreMapAtCurrentLocation:
+      return .none
     }
   }
 
@@ -221,13 +224,13 @@ extension ExploreDetailFeature {
         if remainingMinutes <= 0 {
           return .run { _ in
             await MainActor.run {
-              ToastManager.shared.showWarning("남은 체류 시간이 없어서 방문이 어려워요")
+              ToastManager.shared.showWarning("시간 부족으로 장소 방문이 불가해요")
             }
           }
         } else if remainingMinutes < 10 {
           return .run { _ in
             await MainActor.run {
-              ToastManager.shared.showWarning("남은 체류 시간이 \(remainingMinutes)분 밖에 없어요")
+              ToastManager.shared.showWarning("시간 부족으로 장소 방문이 불가해요")
             }
           }
         }
@@ -235,14 +238,11 @@ extension ExploreDetailFeature {
 
       case .failure(let error):
         state.errorMessage = error.errorDescription
-        state.customAlertMode = .networkError
-        state.customAlert = .alert(
-          title: "오류가 발생했어요",
-          message: error.errorDescription ?? "장소 정보를 불러오지 못했어요.",
-          confirmTitle: "확인",
-          cancelTitle: "취소"
-        )
-        return .none
+        return .run { _ in
+          await MainActor.run {
+            ToastManager.shared.showWarning("시간 부족으로 장소 방문이 불가해요")
+          }
+        }
       }
     }
   }
