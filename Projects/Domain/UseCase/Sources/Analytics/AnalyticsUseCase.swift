@@ -26,6 +26,8 @@ public enum AuthEventType: String, Sendable {
 }
 
 public struct AuthEventData: Sendable {
+  public let username: String?
+  public let email: String?
   public let socialType: String?
   public let isNewUser: Bool?
   public let mapType: String?
@@ -33,12 +35,16 @@ public struct AuthEventData: Sendable {
   public let errorDescription: String?
 
   public init(
+    username: String? = nil,
+    email: String? = nil,
     socialType: String? = nil,
     isNewUser: Bool? = nil,
     mapType: String? = nil,
     completedStepCount: Int? = nil,
     errorDescription: String? = nil
   ) {
+    self.username = username
+    self.email = email
     self.socialType = socialType
     self.isNewUser = isNewUser
     self.mapType = mapType
@@ -121,23 +127,31 @@ public struct AnalyticsUseCase: Sendable {
 extension AnalyticsUseCase: DependencyKey {
   public static let liveValue = AnalyticsUseCase { event in
     let mixpanel = Mixpanel.mainInstance()
+    let userSession = currentUserSession()
 
     switch event {
     case let .auth(type, data):
+      let enrichedData = enrichedAuthEventData(data, userSession: userSession)
       if type == .loginSucceeded || type == .signupSucceeded {
-        identifyIfPossible(mixpanel: mixpanel, socialType: data.socialType, isNewUser: data.isNewUser)
+        identifyIfPossible(
+          mixpanel: mixpanel,
+          socialType: enrichedData.socialType,
+          isNewUser: enrichedData.isNewUser,
+          username: enrichedData.username,
+          email: enrichedData.email
+        )
       }
-      let properties = authProperties(data)
+      let properties = authProperties(enrichedData, userSession: userSession)
       #logDebug("Mixpanel track", ["event": type.rawValue, "properties": String(describing: properties)])
       mixpanel.track(event: type.rawValue, properties: properties)
 
     case let .place(type, data):
-      let properties = placeProperties(data)
+      let properties = placeProperties(data, userSession: userSession)
       #logDebug("Mixpanel track", ["event": type.rawValue, "properties": String(describing: properties)])
       mixpanel.track(event: type.rawValue, properties: properties)
 
     case let .session(type, data):
-      let properties = sessionProperties(data)
+      let properties = sessionProperties(data, userSession: userSession)
       #logDebug("Mixpanel track", ["event": type.rawValue, "properties": String(describing: properties)])
       mixpanel.track(event: type.rawValue, properties: properties)
       if type == .logoutSucceeded {
@@ -152,9 +166,11 @@ extension AnalyticsUseCase: DependencyKey {
   private static func identifyIfPossible(
     mixpanel: MixpanelInstance,
     socialType: String?,
-    isNewUser: Bool?
+    isNewUser: Bool?,
+    username: String?,
+    email: String?
   ) {
-    let distinctID = "\(socialType ?? "unknown")-\(UUID().uuidString)"
+    let distinctID = email?.nilIfEmpty ?? "\(socialType ?? "unknown")-\(UUID().uuidString)"
     mixpanel.identify(distinctId: distinctID)
 
     var properties: Properties = [:]
@@ -164,13 +180,27 @@ extension AnalyticsUseCase: DependencyKey {
     if let isNewUser {
       properties["is_new_user"] = isNewUser
     }
+    if let username, !username.isEmpty {
+      properties["$name"] = username
+      properties["username"] = username
+    }
+    if let email, !email.isEmpty {
+      properties["$email"] = email
+      properties["email"] = email
+    }
 
     guard !properties.isEmpty else { return }
     mixpanel.people.set(properties: properties)
   }
 
-  private static func authProperties(_ data: AuthEventData) -> Properties {
-    var properties: Properties = [:]
+  private static func authProperties(_ data: AuthEventData, userSession: UserSession) -> Properties {
+    var properties = commonUserProperties(userSession: userSession)
+    if let username = data.username {
+      properties["username"] = username
+    }
+    if let email = data.email {
+      properties["email"] = email
+    }
     if let socialType = data.socialType {
       properties["social_type"] = socialType
     }
@@ -189,8 +219,8 @@ extension AnalyticsUseCase: DependencyKey {
     return properties
   }
 
-  private static func placeProperties(_ data: PlaceEventData) -> Properties {
-    var properties: Properties = [:]
+  private static func placeProperties(_ data: PlaceEventData, userSession: UserSession) -> Properties {
+    var properties = commonUserProperties(userSession: userSession)
     if let placeID = data.placeID {
       properties["place_id"] = placeID
     }
@@ -227,11 +257,42 @@ extension AnalyticsUseCase: DependencyKey {
     return properties
   }
 
-  private static func sessionProperties(_ data: SessionEventData) -> Properties {
-    [
-      "provider": data.provider,
-      "was_guest": data.wasGuest
-    ]
+  private static func sessionProperties(_ data: SessionEventData, userSession: UserSession) -> Properties {
+    var properties = commonUserProperties(userSession: userSession)
+    properties["provider"] = data.provider
+    properties["was_guest"] = data.wasGuest
+    return properties
+  }
+
+  private static func currentUserSession() -> UserSession {
+    @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
+    return userSession
+  }
+
+  private static func enrichedAuthEventData(_ data: AuthEventData, userSession: UserSession) -> AuthEventData {
+    AuthEventData(
+      username: data.username ?? userSession.name.nilIfEmpty,
+      email: data.email ?? userSession.email.nilIfEmpty,
+      socialType: data.socialType ?? userSession.provider.rawValue,
+      isNewUser: data.isNewUser,
+      mapType: data.mapType ?? userSession.mapType.rawValue,
+      completedStepCount: data.completedStepCount,
+      errorDescription: data.errorDescription
+    )
+  }
+
+  private static func commonUserProperties(userSession: UserSession) -> Properties {
+    var properties: Properties = [:]
+    if !userSession.name.isEmpty {
+      properties["username"] = userSession.name
+    }
+    if !userSession.email.isEmpty {
+      properties["email"] = userSession.email
+    }
+    properties["provider"] = userSession.provider.rawValue
+    properties["map_type"] = userSession.mapType.rawValue
+    properties["is_guest"] = userSession.isGuest
+    return properties
   }
 }
 

@@ -205,6 +205,8 @@ extension OnBoardingFeature {
               .auth(
                 .signupSucceeded,
                 AuthEventData(
+                  username: data.name,
+                  email: data.email,
                   socialType: data.provider.rawValue,
                   isNewUser: data.isNewUser,
                   mapType: data.mapType?.rawValue ?? state.selectedMapTypeStorage.rawValue,

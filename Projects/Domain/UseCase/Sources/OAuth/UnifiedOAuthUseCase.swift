@@ -89,7 +89,7 @@ public extension UnifiedOAuthUseCase {
     #logDebug("애플 코드", "\(payload.authorizationCode ?? "")")
 
     self.$userSession.withLock {
-      $0.name = savedAppleUserName ?? ""
+      $0.name = loginEntity.name.nilIfEmpty ?? savedAppleUserName ?? ""
       $0.provider = .apple
       $0.email = loginEntity.email
       $0.authCode = payload.authorizationCode ?? ""
@@ -126,6 +126,7 @@ public extension UnifiedOAuthUseCase {
     )
 
     self.$userSession.withLock {
+      $0.name = loginEntity.name.nilIfEmpty ?? $0.name
       $0.email = loginEntity.email
     }
     self.$mapURLScheme.withLock {

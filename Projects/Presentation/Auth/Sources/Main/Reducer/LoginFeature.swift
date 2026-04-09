@@ -250,6 +250,8 @@ extension LoginFeature {
               .auth(
                 .loginSucceeded,
                 AuthEventData(
+                  username: loginEntity.name,
+                  email: loginEntity.email,
                   socialType: loginEntity.provider.rawValue,
                   isNewUser: loginEntity.isNewUser,
                   mapType: loginEntity.mapType?.rawValue
