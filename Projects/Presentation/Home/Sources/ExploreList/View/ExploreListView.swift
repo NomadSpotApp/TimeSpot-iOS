@@ -24,6 +24,9 @@ public struct ExploreListView: View {
 
   public var body: some View {
     ZStack {
+      Color.staticWhite
+        .ignoresSafeArea(.all)
+
       VStack(spacing: 0) {
         if store.shouldShowInitialSkeleton {
           ExploreListSkeletonView()

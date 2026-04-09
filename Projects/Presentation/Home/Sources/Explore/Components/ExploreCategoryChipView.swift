@@ -53,7 +53,6 @@ struct ExploreCategoryChipView: View {
           .stroke(isSelected ? .orange800 : .gray300, lineWidth: 1)
       }
       .clipShape(Capsule())
-      .shadow(color: .black.opacity(isSelected ? 0.04 : 0.08), radius: 8, y: 2)
     }
     .buttonStyle(.plain)
   }
