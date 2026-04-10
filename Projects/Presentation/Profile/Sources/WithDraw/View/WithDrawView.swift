@@ -8,6 +8,7 @@
 import SwiftUI
 
 import DesignSystem
+import MixpanelSessionReplay
 
 import ComposableArchitecture
 
@@ -47,6 +48,7 @@ public struct WithDrawView: View {
         Spacer()
       }
       .padding(.horizontal, 16)
+      .mpReplaySensitive(true)
     }
     .customAlert($store.scope(state: \.customAlert, action: \.scope.customAlert))
   }

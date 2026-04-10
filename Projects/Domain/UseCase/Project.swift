@@ -14,7 +14,8 @@ let project = Project.makeModule(
     .Shared(implements: .Utill),
     .SPM.composableArchitecture,
     .SPM.weaveDI,
-    .SPM.mixpanel
+    .SPM.mixpanel,
+    .SPM.mixpanelSessionReplay
   ],
   sources: ["Sources/**"],
   hasTests: true

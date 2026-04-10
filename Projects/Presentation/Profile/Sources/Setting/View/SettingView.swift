@@ -10,6 +10,7 @@ import UIKit
 
 import DesignSystem
 import Entity
+import MixpanelSessionReplay
 
 import ComposableArchitecture
 
@@ -209,6 +210,7 @@ extension SettingView {
         }
       )
     }
+    .mpReplaySensitive(true)
   }
 
   @ViewBuilder

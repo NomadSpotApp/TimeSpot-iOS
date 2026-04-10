@@ -12,7 +12,9 @@ let project = Project.makeAppModule(
   dependencies: [
     .Presentation(implements: .Presentation),
     .Data(implements: .Repository),
-    .SPM.FirebaseCrashlytics
+    .SPM.FirebaseCrashlytics,
+    .SPM.mixpanel,
+    .SPM.mixpanelSessionReplay
   ],
   sources: ["Sources/**"],
   resources: ["Resources/**", "FontAsset/**"],
@@ -26,4 +28,3 @@ let project = Project.makeAppModule(
   hasTests: true,
 
 )
-

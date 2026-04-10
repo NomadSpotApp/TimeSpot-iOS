@@ -602,4 +602,3 @@ private extension ExploreDetailView {
     }
   }
 }
-

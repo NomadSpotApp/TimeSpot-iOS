@@ -13,6 +13,7 @@ import Kingfisher
 import LogMacro
 import Firebase
 import Mixpanel
+import MixpanelSessionReplay
 
 
 final class AppDelegate: UIResponder, UIApplicationDelegate, @MainActor UNUserNotificationCenterDelegate {
@@ -39,6 +40,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, @MainActor UNUserNo
       ]
     )
     Mixpanel.initialize(token: mixPanelKey ?? "", trackAutomaticEvents: true)
+    initializeMixpanelSessionReplay()
     FirebaseApp.configure()
     // 네이버맵 초기화 (Home 모듈의 NaverMapInitializer 사용)
     NaverMapInitializer.initialize()
@@ -93,6 +95,19 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, @MainActor UNUserNo
   }
 
   // MARK: - Image Caching Configuration
+  private func initializeMixpanelSessionReplay() {
+    guard !(mixPanelKey?.isEmpty ?? true) else { return }
+
+    var config = MPSessionReplayConfig(wifiOnly: false)
+    config.enableSessionReplayOniOS26AndLater = true
+
+    MPSessionReplay.initialize(
+      token: Mixpanel.mainInstance().apiToken,
+      distinctId: Mixpanel.mainInstance().distinctId,
+      config: config
+    )
+  }
+
   private func configureImageCaching() {
     let cache = ImageCache.default
 

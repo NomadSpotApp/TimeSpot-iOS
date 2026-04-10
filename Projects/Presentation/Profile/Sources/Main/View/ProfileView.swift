@@ -9,6 +9,7 @@ import SwiftUI
 
 import DesignSystem
 import Entity
+import MixpanelSessionReplay
 
 import ComposableArchitecture
 
@@ -177,6 +178,7 @@ extension ProfileView {
         )
       }
       .padding(12)
+      .mpReplaySensitive(true)
       .background(
         RoundedRectangle(cornerRadius: 24)
           .fill(.navy900)

@@ -24,7 +24,8 @@ let packageSettings = PackageSettings(
     "WeaveDI": .staticFramework,
     "ReactiveSwift": .staticFramework,
     "SDWebImageSwiftUI": .staticFramework,
-    "Mixpanel": .staticFramework
+    "Mixpanel": .staticFramework,
+    "MixpanelSessionReplay": .staticFramework
   ]
 )
 #endif
@@ -43,6 +44,7 @@ let package = Package(
     .package(url: "https://github.com/onevcat/Kingfisher.git", from: "8.2.0"),
     .package(url: "https://github.com/firebase/firebase-ios-sdk.git", exact: "12.7.0"),
     .package(url: "https://github.com/SDWebImage/SDWebImageSwiftUI.git", from: "2.0.0"),
-    .package(url: "https://github.com/mixpanel/mixpanel-swift.git", from: "5.1.3")
+    .package(url: "https://github.com/mixpanel/mixpanel-swift.git", from: "5.1.3"),
+    .package(url: "https://github.com/mixpanel/mixpanel-ios-session-replay-package", exact: "1.2.1")
   ]
 )

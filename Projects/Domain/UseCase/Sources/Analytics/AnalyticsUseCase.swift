@@ -11,6 +11,7 @@ import ComposableArchitecture
 import Entity
 import LogMacro
 import Mixpanel
+import MixpanelSessionReplay
 
 public enum AnalyticsEvent: Sendable {
   case auth(AuthEventType, AuthEventData)
@@ -156,6 +157,7 @@ extension AnalyticsUseCase: DependencyKey {
       mixpanel.track(event: type.rawValue, properties: properties)
       if type == .logoutSucceeded {
         mixpanel.reset()
+        MPSessionReplay.getInstance()?.identify(distinctId: mixpanel.distinctId)
       }
     }
   }
@@ -172,6 +174,7 @@ extension AnalyticsUseCase: DependencyKey {
   ) {
     let distinctID = email?.nilIfEmpty ?? "\(socialType ?? "unknown")-\(UUID().uuidString)"
     mixpanel.identify(distinctId: distinctID)
+    MPSessionReplay.getInstance()?.identify(distinctId: distinctID)
 
     var properties: Properties = [:]
     if let socialType {
