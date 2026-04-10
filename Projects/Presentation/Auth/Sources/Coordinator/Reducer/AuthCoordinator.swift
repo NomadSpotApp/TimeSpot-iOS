@@ -141,8 +141,8 @@ extension AuthCoordinator {
     action: AsyncAction
   ) -> Effect<Action> {
     switch action {
-    default:
-      return .none
+      default:
+        return .none
     }
   }
 
