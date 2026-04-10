@@ -35,7 +35,7 @@ let package = Package(
   dependencies: [
     .package(url: "https://github.com/pointfreeco/swift-composable-architecture", exact: "1.25.5"),
     .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.6.0"),
-    .package(url: "https://github.com/Roy-wonji/TCAFlow.git", branch: "main"),
+    .package(url: "https://github.com/Roy-wonji/TCAFlow.git", exact: "1.0.3"),
     .package(url: "https://github.com/Roy-wonji/WeaveDI.git", from: "3.4.0"),
     .package(url: "https://github.com/google/GoogleSignIn-iOS", from: "9.0.0"),
     .package(url: "https://github.com/Roy-wonji/AsyncMoya",  from: "1.1.8"),

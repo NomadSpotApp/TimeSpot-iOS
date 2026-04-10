@@ -9,7 +9,7 @@ import ComposableArchitecture
 import TCAFlow
 import Web
 
-@Reducer
+@FlowCoordinator(screen: "ProfileScreen", navigation: true)
 public struct ProfileCoordinator {
 
   public init(){}
@@ -57,26 +57,26 @@ public struct ProfileCoordinator {
 
   }
 
-  public var body: some Reducer<State, Action> {
-    Reduce { state, action in
-      switch action {
-        case .router(let routeAction):
-          return routerAction(state: &state, action: routeAction)
+  func handleRoute(
+    state: inout State,
+    action: Action
+  ) -> Effect<Action> {
+    switch action {
+      case .router(let routeAction):
+        return routerAction(state: &state, action: routeAction)
 
-        case .view(let viewAction):
-          return handleViewAction(state: &state, action: viewAction)
+      case .view(let viewAction):
+        return handleViewAction(state: &state, action: viewAction)
 
-        case .async(let asyncAction):
-          return handleAsyncAction(state: &state, action: asyncAction)
+      case .async(let asyncAction):
+        return handleAsyncAction(state: &state, action: asyncAction)
 
-        case .inner(let innerAction):
-          return handleInnerAction(state: &state, action: innerAction)
+      case .inner(let innerAction):
+        return handleInnerAction(state: &state, action: innerAction)
 
-        case .navigation(let navigationAction):
-          return handleNavigationAction(state: &state, action: navigationAction)
-      }
+      case .navigation(let navigationAction):
+        return handleNavigationAction(state: &state, action: navigationAction)
     }
-    .forEachRoute(\.routes, action: \.router)
   }
 
 }

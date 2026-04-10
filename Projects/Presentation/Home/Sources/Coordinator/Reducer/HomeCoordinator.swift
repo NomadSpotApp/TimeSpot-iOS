@@ -13,7 +13,7 @@ import Entity
 import UseCase
 import LogMacro
 
-@Reducer
+@FlowCoordinator(screen: "HomeScreen", navigation: true)
 public struct HomeCoordinator {
 
   public init(){}
@@ -80,26 +80,23 @@ public struct HomeCoordinator {
 
   }
 
-  public var body: some Reducer<State, Action> {
-    Reduce { state, action in
-      switch action {
-        case .router(let routeAction):
-          return routerAction(state: &state, action: routeAction)
+  func handleRoute(state: inout State, action: Action) -> Effect<Action> {
+    switch action {
+      case .router(let routeAction):
+        return routerAction(state: &state, action: routeAction)
 
-        case .view(let viewAction):
-          return handleViewAction(state: &state, action: viewAction)
+      case .view(let viewAction):
+        return handleViewAction(state: &state, action: viewAction)
 
-        case .async(let asyncAction):
-          return handleAsyncAction(state: &state, action: asyncAction)
+      case .async(let asyncAction):
+        return handleAsyncAction(state: &state, action: asyncAction)
 
-        case .inner(let innerAction):
-          return handleInnerAction(state: &state, action: innerAction)
+      case .inner(let innerAction):
+        return handleInnerAction(state: &state, action: innerAction)
 
-        case .navigation(let navigationAction):
-          return handleNavigationAction(state: &state, action: navigationAction)
-      }
+      case .navigation(let navigationAction):
+        return handleNavigationAction(state: &state, action: navigationAction)
     }
-    .forEachRoute(\.routes, action: \.router)
   }
 
 }
@@ -294,13 +291,13 @@ extension HomeCoordinator {
       return .none
 
     case let .presentRouteFromPushNotification(deepLink):
-      #logDebug("🚀 HomeCoordinator: presentRouteFromPushNotification 액션 처리 시작")
+      #logDebug("HomeCoordinator: presentRouteFromPushNotification 액션 처리 시작")
 
       let notificationType = NotificationType.from(deepLink: deepLink)
-      #logDebug("📋 HomeCoordinator: 딥링크 = \(deepLink), 알림 타입 = \(notificationType)")
+      #logDebug("HomeCoordinator: 딥링크 = \(deepLink), 알림 타입 = \(notificationType)")
 
       // 현재 routes 상태 로그
-      #logDebug("📍 현재 routes 개수: \(state.routes.count)")
+      #logDebug("현재 routes 개수: \(state.routes.count)")
       for (index, route) in state.routes.enumerated() {
         switch route.screen {
         case .home:
@@ -330,10 +327,10 @@ extension HomeCoordinator {
           return false
         }
       }
-      #logDebug("🗑️ 기존 route/routeNotification 화면 제거됨. 제거 전: \(removedCount), 제거 후: \(state.routes.count)")
+      #logDebug("기존 route/routeNotification 화면 제거됨. 제거 전: \(removedCount), 제거 후: \(state.routes.count)")
 
       state.routes.push(.routeNotification(.init(notificationType: notificationType)))
-      #logDebug("✅ RouteNotificationView 추가 완료. 현재 routes 개수: \(state.routes.count)")
+      #logDebug("RouteNotificationView 추가 완료. 현재 routes 개수: \(state.routes.count)")
       return .none
     }
   }
