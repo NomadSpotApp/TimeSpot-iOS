@@ -8,6 +8,11 @@
 import ProjectDescription
 import Foundation
 
+// MARK: - Suppress Warnings Setting
+private let suppressWarningsSettings: ProjectDescription.Settings = .settings(
+  base: ["OTHER_SWIFT_FLAGS": "$(inherited) -suppress-warnings"]
+)
+
 // MARK: - Helper Functions
 private func ensureTestsSourcesDirectoryExists(for projectName: String) {
     let fileManager = FileManager.default
@@ -69,7 +74,8 @@ public extension Project {
       resources: resources,
       entitlements: entitlements,
       scripts: scripts,
-      dependencies: dependencies
+      dependencies: dependencies,
+      settings: suppressWarningsSettings
     )
 
     let appProdTarget: Target = .target(
@@ -83,7 +89,8 @@ public extension Project {
       resources: resources,
       entitlements: entitlements,
       scripts: scripts,
-      dependencies: dependencies
+      dependencies: dependencies,
+      settings: suppressWarningsSettings
     )
 
 
@@ -98,7 +105,8 @@ public extension Project {
       resources: resources,
       entitlements: entitlements,
       scripts: scripts,
-      dependencies: dependencies
+      dependencies: dependencies,
+      settings: suppressWarningsSettings
     )
 
 
@@ -113,7 +121,8 @@ public extension Project {
       resources: resources,
       entitlements: entitlements,
       scripts: scripts,
-      dependencies: dependencies
+      dependencies: dependencies,
+      settings: suppressWarningsSettings
     )
 
     var targets: [Target] = [appTarget, appDevTarget, appStageTarget, appProdTarget]
@@ -130,7 +139,8 @@ public extension Project {
           deploymentTargets: deploymentTarget,
         infoPlist: .default,
         sources: ["Tests/Sources/**"],
-        dependencies: [.target(name: name)]
+        dependencies: [.target(name: name)],
+        settings: suppressWarningsSettings
       )
       targets.append(appTestTarget)
     }
@@ -179,7 +189,8 @@ public extension Project {
       resources: resources,
       entitlements: entitlements,
       scripts: scripts,
-      dependencies: dependencies
+      dependencies: dependencies,
+      settings: suppressWarningsSettings
     )
 
     var targets: [Target] = [appTarget]
@@ -196,7 +207,8 @@ public extension Project {
         deploymentTargets: deploymentTarget,
         infoPlist: .default,
         sources: testSources,
-        dependencies: [.target(name: name)]
+        dependencies: [.target(name: name)],
+        settings: suppressWarningsSettings
       )
       targets.append(appTestTarget)
     }

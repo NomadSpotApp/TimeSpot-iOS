@@ -22,7 +22,7 @@ public struct OnBoardingFeature {
   }
 
   @ObservableState
-  public struct State: Hashable {
+  public struct State: Equatable {
     public init() {}
     @Presents public var customAlert: CustomAlertState<CustomAlertAction>?
     var stepRange: ClosedRange<Int> = 1...4
@@ -241,21 +241,13 @@ extension OnBoardingFeature {
   }
 }
 
-// MARK: - State Equatable & Hashable
-extension OnBoardingFeature.State: Equatable {
+// MARK: - State Equatable
+extension OnBoardingFeature.State {
   public static func == (lhs: OnBoardingFeature.State, rhs: OnBoardingFeature.State) -> Bool {
     lhs.stepRange == rhs.stepRange &&
     lhs.activeStep == rhs.activeStep &&
     lhs.selectedMap == rhs.selectedMap &&
     lhs.loginEntity == rhs.loginEntity &&
     lhs.selectedMapTypeStorage == rhs.selectedMapTypeStorage
-  }
-}
-extension OnBoardingFeature.State {
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(customAlert != nil)
-    hasher.combine(activeStep)
-    hasher.combine(selectedMap)
-    hasher.combine(selectedMapTypeStorage)
   }
 }

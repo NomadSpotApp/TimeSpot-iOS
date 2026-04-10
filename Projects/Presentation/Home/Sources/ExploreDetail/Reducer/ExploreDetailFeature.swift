@@ -300,14 +300,6 @@ extension ExploreDetailFeature {
   }
 }
 
-extension ExploreDetailFeature.State: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(placeDetail)
-    hasher.combine(isLoading)
-    hasher.combine(errorMessage)
-    hasher.combine(userSession)
-  }
-}
 
 // MARK: - State Computed Properties
 extension ExploreDetailFeature.State {

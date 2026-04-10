@@ -78,6 +78,7 @@ public extension ModulePath {
     case Shared
     case DesignSystem
     case Utill
+    case ThirdParty
 
     public static let name: String = "Shared"
   }

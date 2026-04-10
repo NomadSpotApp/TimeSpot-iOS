@@ -200,11 +200,3 @@ extension WithDrawFeature {
 
 
 
-extension WithDrawFeature.State: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(customAlertMode)
-    hasher.combine(withdrawButtonTapped )
-    hasher.combine(withDrawEntity)
-    hasher.combine(errorMessage)
-  }
-}

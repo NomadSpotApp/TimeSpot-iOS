@@ -7,7 +7,8 @@
 
 import SwiftUI
 import ComposableArchitecture
-import TCACoordinators
+import DesignSystem
+import TCAFlow
 import Profile
 import UseCase
 import LogMacro
@@ -20,69 +21,55 @@ public struct HomeCoordinatorView: View {
   }
 
   public var body: some View {
-    TCARouter(store.scope(state: \.routes, action: \.router)) { screen in
+    TCAFlowRouter(store.scope(state: \.routes, action: \.router)) { screen in
       switch screen.case {
         case .home(let homeStore):
           HomeView(store: homeStore)
             .navigationBarBackButtonHidden()
+            .enableSwipeBack()
             .transition(.asymmetric(
-              insertion: .move(edge: .leading).combined(with: .opacity),
-              removal: .move(edge: .trailing).combined(with: .opacity)
+              insertion: .move(edge: .leading),
+              removal: .move(edge: .trailing)
             ))
 
         case .explore(let exploreStore):
           ExploreView(store: exploreStore)
             .navigationBarBackButtonHidden()
-            .transition(.asymmetric(
-              insertion: .move(edge: .bottom).combined(with: .opacity),
-              removal: .move(edge: .top).combined(with: .opacity)
-            ))
+            .enableSwipeBack()
+           
 
         case .exploreList(let exploreListStore):
           ExploreListView(store: exploreListStore)
             .navigationBarBackButtonHidden()
-            .transition(.asymmetric(
-              insertion: .move(edge: .trailing).combined(with: .opacity),
-              removal: .move(edge: .leading).combined(with: .opacity)
-            ))
+            .enableSwipeBack()
+
 
         case .exploreDetail(let exploreDetailStore):
           ExploreDetailView(store: exploreDetailStore)
             .navigationBarBackButtonHidden()
-            .transition(.asymmetric(
-              insertion: .move(edge: .trailing).combined(with: .opacity),
-              removal: .move(edge: .leading).combined(with: .opacity)
-            ))
+            .enableSwipeBack()
 
         case .profile(let profileStore):
           ProfileCoordinatorView(store: profileStore)
             .navigationBarBackButtonHidden()
+            .enableSwipeBack()
             .transition(.asymmetric(
-              insertion: .move(edge: .trailing).combined(with: .opacity),
-              removal: .move(edge: .leading).combined(with: .opacity)
+              insertion: .move(edge: .trailing),
+              removal: .move(edge: .leading)
             ))
 
         case .route(let routeStore):
           RouteView(store: routeStore)
             .navigationBarBackButtonHidden()
-            .transition(.asymmetric(
-              insertion: .move(edge: .trailing).combined(with: .opacity),
-              removal: .move(edge: .leading).combined(with: .opacity)
-            ))
+            .enableSwipeBack()
 
         case .routeNotification(let routeNotificationStore):
           RouteNotificationView(store: routeNotificationStore)
             .navigationBarBackButtonHidden()
-            .transition(.opacity)
+            .enableSwipeBack()
 
       }
     }
-    .animation(.easeInOut(duration: 0.1), value: store.routes.count)
-    .transaction { transaction in
-      if store.routes.count > 1 {
-        transaction.animation = .easeInOut(duration: 0.1)
-      }
-    }
+    .animation(.easeInOut(duration: 0.35), value: store.routes)
   }
 }
-

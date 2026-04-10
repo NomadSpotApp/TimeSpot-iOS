@@ -8,7 +8,7 @@
 import SwiftUI
 
 import ComposableArchitecture
-import TCACoordinators
+import TCAFlow
 import OnBoarding
 import Web
 
@@ -20,7 +20,7 @@ public struct AuthCoordinatorView: View {
   }
 
   public var body: some View {
-    TCARouter(store.scope(state: \.routes, action: \.router)) { screens in
+    TCAFlowRouter(store.scope(state: \.routes, action: \.router)) { screens in
       switch screens.case {
         case .login(let loginStore):
           LoginView(store: loginStore)
@@ -29,7 +29,6 @@ public struct AuthCoordinatorView: View {
         case .onBoarding(let onBoardingStore):
           OnBoardingView(store: onBoardingStore)
             .navigationBarBackButtonHidden()
-            .transition(.opacity.combined(with: .scale(scale: 0.98)))
 
         case .web(let webStore):
           WebView(store: webStore)

@@ -408,19 +408,6 @@ extension RouteFeature {
   }
 }
 
-extension RouteFeature.State: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(locationPermissionStatus)
-    hasher.combine(currentLocation?.coordinate.latitude)
-    hasher.combine(currentLocation?.coordinate.longitude)
-    hasher.combine(routeInfo?.distance)
-    hasher.combine(routeInfo?.duration)
-    hasher.combine(isLoadingRoute)
-    hasher.combine(routeError)
-    hasher.combine(userSession)
-    hasher.combine(visitingHistoryId)
-  }
-}
 
 // MARK: - Equatable Extensions
 

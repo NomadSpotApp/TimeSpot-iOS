@@ -265,15 +265,3 @@ extension ProfileFeature {
 }
 
 
-extension ProfileFeature.State: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(travelHistorySort)
-    hasher.combine(profileEntity)
-    hasher.combine(historyEntity)
-    hasher.combine(errorMessage)
-    hasher.combine(isLoading)
-    hasher.combine(isHistoryLoading)
-    hasher.combine(isHistoryLoadingMore)
-    hasher.combine(userSession)
-  }
-}

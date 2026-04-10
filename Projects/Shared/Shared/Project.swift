@@ -10,8 +10,10 @@ let project = Project.makeModule(
   product: .framework,
   settings:  .settings(),
   dependencies: [
+    .Domain(implements: .Entity),
     .Shared(implements: .DesignSystem),
     .Shared(implements: .Utill),
+    .Shared(implements: .ThirdParty)
   ],
   sources: ["Sources/**"],
   hasTests: false

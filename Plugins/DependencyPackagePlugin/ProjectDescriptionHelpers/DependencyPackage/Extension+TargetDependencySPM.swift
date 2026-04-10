@@ -11,7 +11,7 @@ public extension TargetDependency.SPM {
   static let asyncMoya = TargetDependency.external(name: "AsyncMoya", condition: .none)
   static let composableArchitecture = TargetDependency.external(name: "ComposableArchitecture", condition: .none)
   static let kingfisher = TargetDependency.external(name: "Kingfisher", condition: .none)
-  static let tcaCoordinator = TargetDependency.external(name: "TCACoordinators", condition: .none)
+  static let tcaFlow = TargetDependency.external(name: "TCAFlow", condition: .none)
   static let weaveDI = TargetDependency.external(name: "WeaveDI", condition: .none)
 
   static let googleSignIn = TargetDependency.external(name: "GoogleSignIn", condition: .none)

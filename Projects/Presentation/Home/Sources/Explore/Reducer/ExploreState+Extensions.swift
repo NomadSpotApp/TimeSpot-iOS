@@ -108,24 +108,6 @@ extension ExploreFeature.State {
   }
 }
 
-// MARK: - ExploreReducer.State + Hashable
-
-extension ExploreFeature.State: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(locationPermissionStatus)
-    hasher.combine(currentLocation?.coordinate.latitude)
-    hasher.combine(currentLocation?.coordinate.longitude)
-    hasher.combine(isLocationPermissionDenied)
-    hasher.combine(locationError)
-    hasher.combine(mapCenterLat)
-    hasher.combine(mapCenterLon)
-    hasher.combine(spots)
-    hasher.combine(isLoadingRoute)
-    hasher.combine(routeError)
-    hasher.combine(shouldReturnToCurrentLocation)
-    hasher.combine(userSession)
-  }
-}
 
 // MARK: - ExploreReducer.AsyncAction + Equatable
 

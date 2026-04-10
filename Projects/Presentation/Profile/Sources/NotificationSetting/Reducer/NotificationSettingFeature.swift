@@ -211,9 +211,3 @@ private extension NotificationSettingFeature {
 }
 
 
-extension NotificationSettingFeature.State: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(selectedOptions)
-    hasher.combine(isLoading)
-  }
-}

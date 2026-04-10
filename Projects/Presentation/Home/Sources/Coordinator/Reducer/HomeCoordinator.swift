@@ -6,7 +6,7 @@
 //
 
 import ComposableArchitecture
-import TCACoordinators
+import TCAFlow
 import Profile
 import CoreLocation
 import Entity
@@ -43,6 +43,7 @@ public struct HomeCoordinator {
     }
   }
 
+  @CasePathable
   public enum Action {
     case router(IndexedRouterActionOf<HomeScreen>)
     case view(View)
@@ -67,7 +68,6 @@ public struct HomeCoordinator {
   // MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
     case presentProfile
-    case presentProfileWithAnimation
     case presentExplore
     case presentExploreList(ExploreFeature.State)
     case presentExploreDetail
@@ -111,9 +111,8 @@ extension HomeCoordinator {
   ) -> Effect<Action> {
     switch action {
       case .routeAction(id: _, action: .home(.delegate(.presentProfile))):
-        return .run { send in
-          await send(.inner(.presentProfileWithAnimation))
-        }
+        state.routes.push(.profile(.init()))
+        return .none
 
       case .routeAction(id: _, action: .home(.delegate(.presentExplore))):
         return .send(.inner(.presentExplore))
@@ -190,7 +189,7 @@ extension HomeCoordinator {
         return .none
 
       case .routeAction(id: _, action: .exploreDetail(.delegate(.presentExploreMapAtCurrentLocation))):
-        return .routeWithDelaysIfUnsupported(state.routes, action: \.router) {
+        return routeWithDelaysIfUnsupported(state.routes, action: \.router) {
           $0.goBackTo(\.explore)
         }
 
@@ -250,10 +249,6 @@ extension HomeCoordinator {
   ) -> Effect<Action> {
     switch action {
     case .presentProfile:
-      state.routes.push(.profile(.init()))
-      return .none
-
-    case .presentProfileWithAnimation:
       state.routes.push(.profile(.init()))
       return .none
 
@@ -358,6 +353,5 @@ extension HomeCoordinator {
   }
 }
 
-// MARK: - HomeScreen State Equatable & Hashable
+// MARK: - HomeScreen State Equatable
 extension HomeCoordinator.HomeScreen.State: Equatable {}
-extension HomeCoordinator.HomeScreen.State: Hashable {}

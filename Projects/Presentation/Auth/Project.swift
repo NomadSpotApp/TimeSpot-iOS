@@ -12,8 +12,6 @@ let project = Project.makeModule(
   product: .staticFramework,
   settings:  .settings(),
   dependencies: [
-    .SPM.composableArchitecture,
-    .SPM.tcaCoordinator,
     .Domain(implements: .UseCase),
     .Shared(implements: .Shared),
     .Presentation(implements: .OnBoarding),

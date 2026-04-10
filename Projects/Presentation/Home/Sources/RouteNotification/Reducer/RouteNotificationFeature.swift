@@ -228,15 +228,6 @@ extension RouteNotificationFeature {
   }
 }
 
-extension RouteNotificationFeature.State: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(notificationType)
-    hasher.combine(userSession)
-    hasher.combine(persistedStationLat)
-    hasher.combine(persistedStationLng)
-    hasher.combine(visitingHistoryId)
-  }
-}
 
 extension RouteNotificationFeature.State {
   public var formattedDepartureTime: String {

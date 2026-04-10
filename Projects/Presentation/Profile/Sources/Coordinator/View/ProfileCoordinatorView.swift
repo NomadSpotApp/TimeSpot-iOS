@@ -8,7 +8,8 @@
 import  SwiftUI
 
 import ComposableArchitecture
-import TCACoordinators
+import DesignSystem
+import TCAFlow
 import Web
 
 public struct ProfileCoordinatorView: View {
@@ -19,44 +20,33 @@ public struct ProfileCoordinatorView: View {
   }
 
   public var body: some View {
-    TCARouter(store.scope(state: \.routes, action: \.router)) { (screen: StoreOf<ProfileCoordinator.ProfileScreen>) in
+    TCAFlowRouter(store.scope(state: \.routes, action: \.router)) { screen in
       switch screen.case {
         case .profile(let profileStore):
           ProfileView(store: profileStore)
             .navigationBarBackButtonHidden()
+            .enableSwipeBack()
 
 
         case .setting(let settingStore):
           SettingView(store: settingStore)
             .navigationBarBackButtonHidden()
-            .transition(.asymmetric(
-              insertion: .move(edge: .trailing),
-              removal: .move(edge: .leading)
-            ))
+            .enableSwipeBack()
 
         case .withDraw(let withDrawStore):
           WithDrawView(store: withDrawStore)
             .navigationBarBackButtonHidden()
-            .transition(.asymmetric(
-              insertion: .move(edge: .trailing),
-              removal: .move(edge: .leading)
-            ))
+            .enableSwipeBack()
 
         case .notification(let notificationStore):
           NotificationSettingView(store: notificationStore)
             .navigationBarBackButtonHidden()
-            .transition(.asymmetric(
-              insertion: .move(edge: .trailing),
-              removal: .move(edge: .leading)
-            ))
+            .enableSwipeBack()
 
         case .web(let webStore):
           WebView(store: webStore)
             .navigationBarBackButtonHidden()
-            .transition(.asymmetric(
-              insertion: .move(edge: .trailing),
-              removal: .move(edge: .leading)
-            ))
+            .enableSwipeBack()
       }
     }
   }

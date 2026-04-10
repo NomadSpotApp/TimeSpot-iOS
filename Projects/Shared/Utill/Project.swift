@@ -10,6 +10,7 @@ let project = Project.makeModule(
   product: .staticFramework,
   settings:  .settings(),
   dependencies: [
+    .Domain(implements: .Entity),
     .SPM.composableArchitecture
   ],
   sources: ["Sources/**"],

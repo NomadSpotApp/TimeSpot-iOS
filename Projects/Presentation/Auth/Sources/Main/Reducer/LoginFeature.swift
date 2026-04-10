@@ -21,7 +21,7 @@ public struct LoginFeature {
   public init() {}
 
   @ObservableState
-  public struct State: Equatable, Hashable {
+  public struct State: Equatable {
     @Presents var destination: Destination.State?
     var nonce: String = ""
     var appleAccessToken: String = ""
@@ -316,14 +316,7 @@ extension LoginFeature.State {
     lhs.destination == rhs.destination
   }
 
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(nonce)
-    hasher.combine(appleAccessToken)
-    hasher.combine(currentSocialType)
-    hasher.combine(selectedMapTypeStorage)
-  }
 }
 
-// MARK: - Destination State Equatable & Hashable
+// MARK: - Destination State Equatable
 extension LoginFeature.Destination.State: Equatable {}
-extension LoginFeature.Destination.State: Hashable {}

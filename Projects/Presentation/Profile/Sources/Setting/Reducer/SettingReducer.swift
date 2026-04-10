@@ -315,12 +315,3 @@ extension SettingFeature {
   }
 }
 
-extension SettingFeature.State: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(customAlertMode)
-    hasher.combine(logoutEntity)
-    hasher.combine(errorMessage)
-    hasher.combine(userSession)
-    hasher.combine(showMapDropdown)
-  }
-}

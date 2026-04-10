@@ -6,7 +6,7 @@
 //
 
 import ComposableArchitecture
-import TCACoordinators
+import TCAFlow
 import OnBoarding
 import Web
 
@@ -24,6 +24,7 @@ public struct AuthCoordinator {
     }
   }
 
+  @CasePathable
   public enum Action {
     case router(IndexedRouterActionOf<AuthScreen>)
     case view(View)
@@ -87,7 +88,7 @@ extension AuthCoordinator {
   ) -> Effect<Action> {
     switch action {
       case .routeAction(id: _, action: .login(.delegate(.presentGuestLookAround))):
-        return .routeWithDelaysIfUnsupported(state.routes, action: \.router) {
+        return routeWithDelaysIfUnsupported(state.routes, action: \.router) {
           $0.push(.onBoarding(.init()))
         }
 
@@ -176,8 +177,7 @@ extension AuthCoordinator {
   }
 }
 
-// MARK: - AuthScreen State Equatable & Hashable
+// MARK: - AuthScreen State Equatable
 extension AuthCoordinator.AuthScreen.State: Equatable {}
-extension AuthCoordinator.AuthScreen.State: Hashable {}
 
 

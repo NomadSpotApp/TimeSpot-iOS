@@ -6,7 +6,7 @@
 //
 
 import ComposableArchitecture
-import TCACoordinators
+import TCAFlow
 import Web
 
 @Reducer
@@ -23,6 +23,7 @@ public struct ProfileCoordinator {
     }
   }
 
+  @CasePathable
   public enum Action {
     case router(IndexedRouterActionOf<ProfileScreen>)
     case view(View)
@@ -194,12 +195,5 @@ extension ProfileCoordinator {
   }
 }
 
-// MARK: - ProfileScreen State Equatable & Hashable
+// MARK: - ProfileScreen State Equatable
 extension ProfileCoordinator.ProfileScreen.State: Equatable {}
-extension ProfileCoordinator.ProfileScreen.State: Hashable {}
-
-extension ProfileCoordinator.State: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(routes)
-  }
-}

@@ -243,7 +243,18 @@ extension HomeFeature {
       )
 
     case .profileButtonTapped:
-      return .send(.async(.checkProfileAccessToken))
+      guard !state.userSession.isGuest else {
+        state.customAlertMode = .loginRequired
+        state.customAlert = .alert(
+          title: "로그인 해주세요",
+          message: "로그인 후 프로필을 확인할 수 있어요.",
+          confirmTitle: "확인",
+          cancelTitle: "취소",
+          isDestructive: false
+        )
+        return .none
+      }
+      return .send(.delegate(.presentProfile))
 
     case .selectStationButtonTapped:
       state.isSelected = true
@@ -510,22 +521,3 @@ extension HomeFeature.State {
   }
 }
 
-
-// MARK: - HomeReducer.State + Hashable
-extension HomeFeature.State: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(trainStation)
-    hasher.combine(departureTimePickerVisible)
-    hasher.combine(todayDate)
-    hasher.combine(isSelected)
-    hasher.combine(hasSelectedStation)
-    hasher.combine(currentTime)
-    hasher.combine(departureTime)
-    hasher.combine(isDepartureTimeSet)
-    hasher.combine(selectedStation)
-    hasher.combine(customAlertMode)
-    hasher.combine(hasAppearedOnce)
-    hasher.combine(shouldResetAfterExplore)
-    hasher.combine(userSession)
-  }
-}

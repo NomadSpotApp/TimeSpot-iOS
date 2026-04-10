@@ -482,7 +482,7 @@ extension ExploreListFeature.State {
   }
 }
 
-extension ExploreListFeature.State: Hashable {
+extension ExploreListFeature.State {
   public static func == (lhs: Self, rhs: Self) -> Bool {
     lhs.searchText == rhs.searchText
     && lhs.selectedCategory == rhs.selectedCategory
@@ -492,16 +492,5 @@ extension ExploreListFeature.State: Hashable {
     && lhs.currentLocation?.latitude == rhs.currentLocation?.latitude
     && lhs.currentLocation?.longitude == rhs.currentLocation?.longitude
     && lhs.userSession == rhs.userSession
-  }
-
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(searchText)
-    hasher.combine(selectedCategory)
-    hasher.combine(selectedSort)
-    hasher.combine(spots)
-    hasher.combine(placeError)
-    hasher.combine(currentLocation?.latitude)
-    hasher.combine(currentLocation?.longitude)
-    hasher.combine(userSession)
   }
 }
