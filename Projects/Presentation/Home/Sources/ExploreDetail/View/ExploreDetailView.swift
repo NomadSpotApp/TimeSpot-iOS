@@ -106,7 +106,6 @@ public struct ExploreDetailView: View {
             .scrollIndicators(.hidden)
             .padding(.top, store.placeDetail != nil ? 6 : 20) // placeDetail 있으면 6, 없으면 20
           }
-          .offset(y: -10)
         }
 
         // 하단 고정 버튼
