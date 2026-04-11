@@ -89,6 +89,9 @@ extension LoginView {
         .onTapGesture {
           store.send(.delegate(.presentGuestLookAround))
         }
+        .accessibilityLabel("비회원으로 시작하기")
+        .accessibilityHint("탭하면 로그인 없이 앱을 체험할 수 있습니다")
+        .accessibilityAddTraits(.isButton)
 
 
       Spacer()

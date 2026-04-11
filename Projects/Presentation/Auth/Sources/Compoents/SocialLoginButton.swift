@@ -81,6 +81,9 @@ extension SocialLoginButton {
     }
     .scaleEffect(isPressed ? 0.95 : 1.0)
     .animation(.spring(response: 0.52, dampingFraction: 0.94, blendDuration: 0.14), value: isPressed)
+    .accessibilityLabel("\(type.description)로 시작하기")
+    .accessibilityHint("\(type.description) 계정으로 로그인합니다")
+    .accessibilityAddTraits(.isButton)
   }
 
 
@@ -112,9 +115,12 @@ extension SocialLoginButton {
                       Spacer()
                   }
               }
-              .clipShape(Capsule()) 
+              .clipShape(Capsule())
               .contentShape(Capsule())
               .onTapGesture { onTap() }
+              .accessibilityLabel("\(type.description)로 시작하기")
+              .accessibilityHint("\(type.description) 계정으로 로그인합니다")
+              .accessibilityAddTraits(.isButton)
       }
   }
 }

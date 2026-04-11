@@ -25,7 +25,7 @@ public struct ProfileView: View {
       Color.gray100
         .edgesIgnoringSafeArea(.all)
 
-      if store.isLoading || store.profileEntity == nil {
+      if store.loadingState == .loadingProfile || store.profileEntity == nil {
         profileSkeletonView()
       } else {
         VStack {
@@ -241,7 +241,7 @@ extension ProfileView {
       Spacer()
         .frame(height: 20)
 
-      if travelHistoryItems.isEmpty, !store.isHistoryLoading, !store.isHistoryLoadingMore {
+      if travelHistoryItems.isEmpty, store.loadingState == .idle {
         VStack(spacing: 0) {
           Spacer()
 
@@ -270,7 +270,7 @@ extension ProfileView {
                 }
             }
 
-            if store.isHistoryLoadingMore {
+            if store.loadingState == .loadingMore {
               ProgressView()
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)

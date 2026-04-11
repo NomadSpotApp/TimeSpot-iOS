@@ -13,12 +13,30 @@ import Entity
 
 public struct ExploreHelpers {
 
+  // MARK: - 거리 기반 정렬 최적화
+
+  /// 거리 기반으로 스팟들을 정렬 (CLLocation 객체 생성 최소화)
+  private static func sortSpotsByDistance(_ spots: [ExploreMapSpot], from currentLocation: CLLocation) -> [ExploreMapSpot] {
+    let spotsWithDistance = spots.map { spot in
+      let location = CLLocation(
+        latitude: spot.coordinate.latitude,
+        longitude: spot.coordinate.longitude
+      )
+      let distance = currentLocation.distance(from: location)
+      return (spot: spot, distance: distance)
+    }
+
+    return spotsWithDistance
+      .sorted { $0.distance < $1.distance }
+      .map { $0.spot }
+  }
+
   // MARK: - State Management
 
   public static func resetPagination(state: inout ExploreFeature.State) {
-    state.currentPage = 0
-    state.hasNextPage = true
-    state.pendingSelectFirstSpotFromNextPage = false
+    state.place.currentPage = 0
+    state.place.hasNextPage = true
+    state.place.pendingSelectFirstSpot = false
   }
 
   public static func resetSearchContext(
@@ -28,25 +46,25 @@ public struct ExploreHelpers {
     preserveSelectedCategory: Bool = false
   ) {
     if !preserveSearchText {
-      state.searchText = ""
+      state.place.searchText = ""
     }
     if !preserveSelectedCategory {
-      state.selectedCategory = .all
+      state.place.selectedCategory = .all
     }
-    state.isLoadingPlaces = false
-    state.hasRequestedPlaces = false
+    state.place.isLoading = false
+    state.place.hasRequested = false
     resetPagination(state: &state)
     if clearMarker {
-      state.searchMarkerLat = nil
-      state.searchMarkerLon = nil
+      state.mapUI.searchMarkerLat = nil
+      state.mapUI.searchMarkerLon = nil
     }
   }
 
   public static func clearSelectedSpot(state: inout ExploreFeature.State) {
-    state.isSpotCardVisible = false
-    state.cardDragOffset = 0
-    state.cardBaseOffset = 0
-    state.isCardTransitioning = false
+    state.mapUI.isSpotCardVisible = false
+    state.mapUI.cardDragOffset = 0
+    state.mapUI.cardBaseOffset = 0
+    state.mapUI.isCardTransitioning = false
 
     state.$userSession.withLock {
       $0.selectedExploreSpotID = ""
@@ -57,11 +75,11 @@ public struct ExploreHelpers {
   // MARK: - Data Calculations
 
   public static func currentKeyword(state: ExploreFeature.State) -> String {
-    return state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    return state.place.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
   public static func currentCategory(state: ExploreFeature.State) -> ExploreCategory? {
-    return state.selectedCategory == .all ? nil : state.selectedCategory
+    return state.place.selectedCategory == .all ? nil : state.place.selectedCategory
   }
 
 
@@ -69,7 +87,7 @@ public struct ExploreHelpers {
     let selectedSpotID = state.userSession.selectedExploreSpotID
     guard !selectedSpotID.isEmpty else { return false }
 
-    let spot = state.spots.first { $0.id == selectedSpotID }
+    let spot = state.place.spots.first { $0.id == selectedSpotID }
     return spot?.hasDetail == false
   }
 
@@ -78,33 +96,18 @@ public struct ExploreHelpers {
 
   public static func filteredSpots(state: ExploreFeature.State) -> [ExploreMapSpot] {
     let query = currentKeyword(state: state)
-    let filtered = state.spots.filter { spot in
+    let filtered = state.place.spots.filter { spot in
       let hasDetail = spot.hasDetail
-      let matchesCategory = state.selectedCategory == .all || spot.category == state.selectedCategory
+      let matchesCategory = state.place.selectedCategory == .all || spot.category == state.place.selectedCategory
       let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
       return hasDetail && matchesCategory && matchesQuery
     }
 
-    guard let currentLocation = state.currentLocation else {
+    guard let currentLocation = state.location.currentLocation else {
       return filtered
     }
 
-    return filtered.sorted { lhs, rhs in
-      let lhsDistance = currentLocation.distance(
-        from: CLLocation(
-          latitude: lhs.coordinate.latitude,
-          longitude: lhs.coordinate.longitude
-        )
-      )
-      let rhsDistance = currentLocation.distance(
-        from: CLLocation(
-          latitude: rhs.coordinate.latitude,
-          longitude: rhs.coordinate.longitude
-        )
-      )
-
-      return lhsDistance < rhsDistance
-    }
+    return sortSpotsByDistance(filtered, from: currentLocation)
   }
 
   public static func syncSelectedSpot(state: inout ExploreFeature.State) {
@@ -112,7 +115,7 @@ public struct ExploreHelpers {
       return
     }
 
-    guard state.spots.contains(where: { $0.id == selectedSpotID }) else {
+    guard state.place.spots.contains(where: { $0.id == selectedSpotID }) else {
       clearSelectedSpot(state: &state)
       return
     }
@@ -123,12 +126,12 @@ public struct ExploreHelpers {
       return
     }
 
-    guard let selectedSpot = state.spots.first(where: { $0.id == selectedSpotID && $0.hasDetail }) else {
+    guard let selectedSpot = state.place.spots.first(where: { $0.id == selectedSpotID && $0.hasDetail }) else {
       clearSelectedSpot(state: &state)
       return
     }
 
-    let matchesCategory = state.selectedCategory == .all || selectedSpot.category == state.selectedCategory
+    let matchesCategory = state.place.selectedCategory == .all || selectedSpot.category == state.place.selectedCategory
     let query = currentKeyword(state: state)
     let matchesQuery = query.isEmpty || selectedSpot.name.localizedCaseInsensitiveContains(query)
 
@@ -139,33 +142,18 @@ public struct ExploreHelpers {
 
   public static func filteredCardSpots(state: ExploreFeature.State) -> [ExploreMapSpot] {
     let query = currentKeyword(state: state)
-    let filtered = state.spots.filter { spot in
+    let filtered = state.place.spots.filter { spot in
       let hasDetail = spot.hasDetail
-      let matchesCategory = state.selectedCategory == .all || spot.category == state.selectedCategory
+      let matchesCategory = state.place.selectedCategory == .all || spot.category == state.place.selectedCategory
       let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
       return hasDetail && matchesCategory && matchesQuery
     }
 
-    guard let currentLocation = state.currentLocation else {
+    guard let currentLocation = state.location.currentLocation else {
       return filtered
     }
 
-    return filtered.sorted { lhs, rhs in
-      let lhsDistance = currentLocation.distance(
-        from: CLLocation(
-          latitude: lhs.coordinate.latitude,
-          longitude: lhs.coordinate.longitude
-        )
-      )
-      let rhsDistance = currentLocation.distance(
-        from: CLLocation(
-          latitude: rhs.coordinate.latitude,
-          longitude: rhs.coordinate.longitude
-        )
-      )
-
-      return lhsDistance < rhsDistance
-    }
+    return sortSpotsByDistance(filtered, from: currentLocation)
   }
 
   public static func currentCardSpots(state: ExploreFeature.State) -> [ExploreMapSpot] {

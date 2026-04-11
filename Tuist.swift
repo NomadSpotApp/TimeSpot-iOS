@@ -10,29 +10,17 @@ let tuist = Tuist(
       .local(path: .relativeToRoot("Plugins/DependencyPlugin")),
     ],
     generationOptions: .options(
-      // 🔒 패키지 버전 잠금 비활성화 여부 (기본 false)
-      //   true  = Package.resolved 고정 무시(최신으로 다시 풀기)
-      //   false = 기존 잠금 유지(권장)
+      // 🔒 패키지 버전 잠금 활성화 (빌드 속도 향상)
       disablePackageVersionLocking: false,
 
-      // ⚠️ 사이드 이펙트(스크립트 등) 경고를 어떤 타겟에 표시할지
-      //   .all / .selected([...]) / .none
-      staticSideEffectsWarningTargets: .all
+      // ⚠️ 사이드 이펙트 경고 최소화 (빌드 로그 단순화)
+      staticSideEffectsWarningTargets: .none,
 
-      // 🧰 Xcode 기본 빌드 구성(스킴 선택 기본값)
-      // defaultConfiguration: .debug,   // 또는 .release
+      // 📊 빌드 인사이트 활성화 (성능 모니터링)
+      buildInsightsDisabled: false,
 
-      // 🔐 인증이 없더라도 명령이 실패하지 않도록 허용(Cloud 기능은 건너뜀)
-      // optionalAuthentication: .none,
-
-      // 📊 빌드 인사이트(메트릭 전송) 비활성화
-      // buildInsightsDisabled: false,
-
-      // 🧪 SwiftPM 샌드박스 비활성화(특수 환경 외에는 권장하지 않음)
-      // disableSandbox: false,
-
-      // 🧯 워크스페이스에 "tuist generate" 스킴 포함(Xcode 내에서 재생성 버튼처럼 사용)
-      // includeGenerateScheme: false
+      // 🧯 Xcode 내 재생성 스킴 포함 (개발 편의성)
+      includeGenerateScheme: true
     ),
     installOptions: .options()
   )

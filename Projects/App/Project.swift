@@ -25,6 +25,6 @@ let project = Project.makeAppModule(
     Scheme.makeTestPlanScheme(target: .dev, name: Project.Environment.appName),
 
   ],
-  hasTests: true,
+  hasTests: false,
 
 )

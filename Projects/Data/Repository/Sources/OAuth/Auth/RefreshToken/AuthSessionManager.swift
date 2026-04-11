@@ -24,9 +24,10 @@ final class AuthSessionManager {
     private init() {
         // AuthInterceptor를 세션의 인터셉터로 직접 사용합니다.
         self.session = Session(interceptor: AuthInterceptor())
-        Task { [weak self] in
-            await self?.setupInitialCredential()
-        }
+    }
+
+    func initializeCredential() async {
+        await setupInitialCredential()
     }
 
     func updateCredential(with tokens: AuthTokens) {
@@ -52,12 +53,13 @@ private extension AuthSessionManager {
     }
 
   func loadCredentialFromKeychain() async -> AccessTokenCredential? {
-    let accessToken = await keychainManager.accessToken()
-    let refreshToken = await keychainManager.refreshToken()
+        // keychain 접근을 한 번에 처리
+        async let accessToken = keychainManager.accessToken()
+        async let refreshToken = keychainManager.refreshToken()
 
         guard
-            let accessToken = accessToken,
-            let refreshToken = refreshToken,
+            let accessToken = await accessToken,
+            let refreshToken = await refreshToken,
             !accessToken.isEmpty,
             !refreshToken.isEmpty
         else {

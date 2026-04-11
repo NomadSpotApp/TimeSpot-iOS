@@ -119,6 +119,7 @@ extension TrainStationView {
   private func searchFieldView() -> some View {
     HStack(spacing: 8) {
       Image(systemName: "magnifyingglass")
+        .renderingMode(.template)
         .font(.system(size: 14, weight: .medium))
         .foregroundStyle(.gray500)
 
@@ -255,6 +256,7 @@ extension TrainStationView {
           store.send(.view(.favoriteButtonTapped(row)))
         } label: {
           Image(systemName: row.isFavorite ? "star.fill" : "star")
+            .renderingMode(.template)
             .font(.system(size: 18, weight: .semibold))
             .foregroundStyle(row.isFavorite ? .orange800 : .gray550)
             .frame(width: 20, height: 20)

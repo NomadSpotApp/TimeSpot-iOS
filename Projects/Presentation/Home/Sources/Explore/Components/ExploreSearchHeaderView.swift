@@ -7,6 +7,7 @@ import SwiftUI
 
 import DesignSystem
 import Entity
+import Utill
 
 struct ExploreSearchHeaderView: View {
   let stationName: String
@@ -41,28 +42,6 @@ struct ExploreSearchHeaderView: View {
     self.onSearchBarTap = onSearchBarTap
   }
 
-  /// 10자 이상인 텍스트에 중간 스페이스 추가
-  private func formatLongText(_ text: String) -> String {
-    guard text.count > 10 else { return text }
-
-    let characters = Array(text)
-    let midPoint = characters.count / 2
-
-    // 중간점 근처에서 적절한 위치 찾기 (±2 범위 내)
-    let searchRange = max(0, midPoint - 2)...min(characters.count - 1, midPoint + 2)
-
-    // 이미 스페이스가 있는 위치 찾기
-    if searchRange.first(where: { characters[$0] == " " }) != nil {
-      return text
-    }
-
-    // 스페이스가 없으면 중간에 스페이스 추가
-    let insertIndex = midPoint
-    var result = characters
-    result.insert(" ", at: insertIndex)
-
-    return String(result)
-  }
 
   var body: some View {
     VStack(spacing: 0) {
@@ -103,7 +82,7 @@ struct ExploreSearchHeaderView: View {
 
         ZStack(alignment: .leading) {
           if searchText.isEmpty {
-            Text("\(formatLongText(stationName))")
+            Text("\(stationName.formatLongText)")
               .pretendardCustomFont(textStyle: .titleRegular)
               .foregroundStyle(.gray600)
           }
@@ -130,7 +109,7 @@ struct ExploreSearchHeaderView: View {
       .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
     } else {
       HStack {
-        Text("\(formatLongText(stationName))")
+        Text("\(stationName.formatLongText)")
           .pretendardFont(family: .Medium, size: 18)
           .foregroundStyle(.staticBlack)
 

@@ -12,7 +12,7 @@ import Entity
 
 extension ExploreFeature.State {
   var trimmedSearchText: String {
-    searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    place.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
   func hasVisibleMarkerContent(_ spot: ExploreMapSpot) -> Bool {
@@ -26,25 +26,25 @@ extension ExploreFeature.State {
   }
 
   func matchesCurrentFilters(_ spot: ExploreMapSpot) -> Bool {
-    let matchesCategory = selectedCategory == .all || spot.category == selectedCategory
+    let matchesCategory = place.selectedCategory == .all || spot.category == place.selectedCategory
     let matchesQuery = trimmedSearchText.isEmpty || spot.name.localizedCaseInsensitiveContains(trimmedSearchText)
     return matchesCategory && matchesQuery
   }
 
-  var filteredMapSpots: [ExploreMapSpot] {
-    spots.filter { spot in
+  // 필터링된 스팟들 (중복 로직 제거)
+  var filteredSpots: [ExploreMapSpot] {
+    place.spots.filter { spot in
       spot.hasDetail && matchesCurrentFilters(spot)
     }
   }
 
-  var filteredSpots: [ExploreMapSpot] {
-    spots.filter { spot in
-      spot.hasDetail && matchesCurrentFilters(spot)
-    }
+  // 호환성을 위한 별칭 (기존 코드 유지)
+  var filteredMapSpots: [ExploreMapSpot] {
+    filteredSpots
   }
 
   func mergedSpot(for spotID: String) -> ExploreMapSpot? {
-    spots.first(where: { $0.id == spotID && $0.hasDetail })
+    place.spots.first(where: { $0.id == spotID && $0.hasDetail })
   }
 
   var cardSpots: [ExploreMapSpot] {
@@ -66,7 +66,7 @@ extension ExploreFeature.State {
   }
 
   var selectedSpot: ExploreMapSpot? {
-    guard isSpotCardVisible else { return nil }
+    guard mapUI.isSpotCardVisible else { return nil }
 
     let selectedSpotID = userSession.selectedExploreSpotID
 
@@ -83,12 +83,12 @@ extension ExploreFeature.State {
     guard let currentIndex = cardSpots.firstIndex(where: { $0.id == currentSelectedID }) else {
       return nil
     }
-    guard abs(cardDragOffset) > 0 else {
+    guard abs(mapUI.cardDragOffset) > 0 else {
       return nil
     }
 
     let adjacentIndex: Int
-    if cardDragOffset < 0 {
+    if mapUI.cardDragOffset < 0 {
       adjacentIndex = (currentIndex + 1) % cardSpots.count
     } else {
       adjacentIndex = (currentIndex - 1 + cardSpots.count) % cardSpots.count
@@ -98,12 +98,12 @@ extension ExploreFeature.State {
 
   func adjacentCardOffset(cardTravelDistance: CGFloat) -> CGFloat? {
     guard adjacentSpot(cardTravelDistance: cardTravelDistance) != nil else { return nil }
-    let baseOffset = cardDragOffset >= 0 ? -cardTravelDistance : cardTravelDistance
-    return baseOffset + cardDragOffset
+    let baseOffset = mapUI.cardDragOffset >= 0 ? -cardTravelDistance : cardTravelDistance
+    return baseOffset + mapUI.cardDragOffset
   }
 
   func cardOpacity(cardTravelDistance: CGFloat) -> Double {
-    let progress = min(abs(cardBaseOffset + cardDragOffset) / cardTravelDistance, 1)
+    let progress = min(abs(mapUI.cardBaseOffset + mapUI.cardDragOffset) / cardTravelDistance, 1)
     return 1 - (progress * 0.02)
   }
 }

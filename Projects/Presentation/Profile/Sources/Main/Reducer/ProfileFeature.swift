@@ -26,13 +26,22 @@ public struct ProfileFeature {
     var profileEntity: ProfileEntity?  = nil
     var historyEntity: HistoryEntity? = nil
     var errorMessage: String? = nil
-    var isLoading: Bool = false
-    var isHistoryLoading: Bool = false
-    var isHistoryLoadingMore: Bool = false
+
+    // 로딩 상태 그룹화
+    var loadingState: LoadingState = .idle
+
     @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
     @Shared(.appStorage("selectedMapType")) var selectedMapTypeStorage: ExternalMapType = .naverMap
 
     public init() {}
+  }
+
+  enum LoadingState: Equatable {
+    case idle
+    case loadingProfile
+    case loadingHistory
+    case loadingMore
+    case refreshing
   }
 
   public enum Action: ViewAction, BindableAction {
@@ -121,8 +130,7 @@ extension ProfileFeature {
         let historyEntity = state.historyEntity,
         historyEntity.items.last?.id == id,
         let nextPage = historyEntity.nextPage,
-        !state.isHistoryLoading,
-        !state.isHistoryLoadingMore
+        state.loadingState == .idle
       else {
         return .none
       }
@@ -144,24 +152,22 @@ extension ProfileFeature {
     switch action {
 
       case .fetchUser:
-        state.isLoading = true
+        state.loadingState = .loadingProfile
         return .run { send in
           let result = await Result {
             try await profileUseCase.fetchUser()
-
           }
             .mapError(ProfileError.from)
           return await send(.inner(.fetchUserResponse(result)))
-
         }
         .cancellable(id: CancelID.fetchUser, cancelInFlight: true)
 
       case .fetchMyHistory(let page, let reset):
         if reset {
-          state.isHistoryLoading = true
+          state.loadingState = .loadingHistory
           state.historyEntity = nil
         } else {
-          state.isHistoryLoadingMore = true
+          state.loadingState = .loadingMore
         }
         return .run { [travelHistorySort = state.travelHistorySort] send in
           let result = await Result {
@@ -200,17 +206,19 @@ extension ProfileFeature {
   ) -> Effect<Action> {
     switch action {
       case .fetchUserResponse(let result):
-        state.isLoading = false
+        state.loadingState = .idle
         switch result {
           case .success(let data):
             state.profileEntity = data
             state.errorMessage = nil
-            state.$userSession.withLock {
-              $0.name = state.profileEntity?.nickname ?? ""
-              $0.mapType = state.profileEntity?.mapType ?? .appleMap
+            // 상태 업데이트를 한 번에 처리
+            let mapType = data.mapType ?? .appleMap
+            state.$userSession.withLock { userSession in
+              userSession.name = data.nickname ?? ""
+              userSession.mapType = mapType
             }
             state.$selectedMapTypeStorage.withLock {
-              $0 = state.profileEntity?.mapType ?? .appleMap
+              $0 = mapType
             }
             return .none
 
@@ -228,16 +236,19 @@ extension ProfileFeature {
         }
 
       case .fetchMyHistoryResponse(let result, let reset):
-        state.isHistoryLoading = false
-        state.isHistoryLoadingMore = false
+        state.loadingState = .idle
         switch result {
         case .success(let data):
           state.errorMessage = nil
           if reset || state.historyEntity == nil {
             state.historyEntity = data
           } else {
+            // 배열 concatenation 최적화: 새 배열을 만들어서 append 사용
+            var updatedItems = state.historyEntity?.items ?? []
+            updatedItems.append(contentsOf: data.items)
+
             state.historyEntity = HistoryEntity(
-              items: (state.historyEntity?.items ?? []) + data.items,
+              items: updatedItems,
               totalElements: data.totalElements,
               totalPages: data.totalPages,
               size: data.size,

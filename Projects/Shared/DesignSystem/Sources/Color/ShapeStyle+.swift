@@ -6,15 +6,46 @@
 //
 
 import SwiftUI
+import UIKit
 
 public extension ShapeStyle where Self == Color {
 
-  // Gray
-  static var gray100: Color {  .init(hex: "FFFFFF") }
-  static var gray200: Color {  .init(hex: "F5F5F5") }
-  static var gray300: Color {  .init(hex: "EDEDED") }
-  static var gray400: Color {  .init(hex: "D4D4D4") }
-  static var gray500: Color {  .init(hex: "BABABA") }
+  // Gray - Dark Mode 지원
+  static var gray100: Color {
+    Color(uiColor: UIColor { traitCollection in
+      traitCollection.userInterfaceStyle == .dark
+        ? UIColor(hex: "1A1A1A")
+        : UIColor(hex: "FFFFFF")
+    })
+  }
+  static var gray200: Color {
+    Color(uiColor: UIColor { traitCollection in
+      traitCollection.userInterfaceStyle == .dark
+        ? UIColor(hex: "2A2A2A")
+        : UIColor(hex: "F5F5F5")
+    })
+  }
+  static var gray300: Color {
+    Color(uiColor: UIColor { traitCollection in
+      traitCollection.userInterfaceStyle == .dark
+        ? UIColor(hex: "3A3A3A")
+        : UIColor(hex: "EDEDED")
+    })
+  }
+  static var gray400: Color {
+    Color(uiColor: UIColor { traitCollection in
+      traitCollection.userInterfaceStyle == .dark
+        ? UIColor(hex: "4A4A4A")
+        : UIColor(hex: "D4D4D4")
+    })
+  }
+  static var gray500: Color {
+    Color(uiColor: UIColor { traitCollection in
+      traitCollection.userInterfaceStyle == .dark
+        ? UIColor(hex: "6A6A6A")
+        : UIColor(hex: "BABABA")
+    })
+  }
   static var gray550: Color {  .init(hex: "B0B0B0") }
   static var gray600: Color {  .init(hex: "A1A1A1") }
   static var gray650: Color {  .init(hex: "9F9F9F") }

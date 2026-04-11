@@ -130,7 +130,7 @@ struct ExploreSelectedSpotCardView: View {
               .layoutPriority(1)
 
             if !spot.subtitle.isEmpty {
-              Text(formatLongText(spot.subtitle))
+              Text(spot.subtitle.formatLongText)
                 .pretendardCustomFont(textStyle: .caption)
                 .foregroundStyle(.gray650)
                 .lineLimit(1)
@@ -145,7 +145,7 @@ struct ExploreSelectedSpotCardView: View {
 
           if !spot.closingText.isEmpty {
             HStack(spacing: 12) {
-              Text(formatLongText(spot.closingText))
+              Text(spot.closingText.formatLongText)
                 .pretendardCustomFont(textStyle: .body2Regular)
                 .foregroundStyle(.gray750)
                 .lineLimit(1)
@@ -156,13 +156,13 @@ struct ExploreSelectedSpotCardView: View {
           if !spot.distanceText.isEmpty || !spot.walkTimeText.isEmpty {
             HStack(spacing: 8) {
               if !spot.distanceText.isEmpty {
-                Text(formatLongText(formattedDistanceText(for: spot)))
+                Text(formattedDistanceText(for: spot).formatLongText)
                   .pretendardCustomFont(textStyle: .bodyBold)
                   .foregroundStyle(.gray830)
               }
 
               if !spot.walkTimeText.isEmpty {
-                Text(formatLongText(spot.walkTimeText))
+                Text(spot.walkTimeText.formatLongText)
                   .pretendardCustomFont(textStyle: .bodyRegular)
                   .foregroundStyle(.gray830)
                   .lineLimit(1)
@@ -216,8 +216,7 @@ struct ExploreSelectedSpotCardView: View {
           }
           .cacheMemoryOnly(false)
           .diskCacheExpiration(.days(7))
-          .memoryCacheExpiration(.seconds(300))
-          .loadDiskFileSynchronously()
+          .memoryCacheExpiration(.seconds(1800))
           .cancelOnDisappear(true)
           .fade(duration: 0.2)
           .resizable()
@@ -238,31 +237,8 @@ struct ExploreSelectedSpotCardView: View {
     return 24 // 고정 높이
   }
 
-  /// 10자 이상인 텍스트에 중간 스페이스 추가
-  private func formatLongText(_ text: String) -> String {
-    guard text.count > 10 else { return text }
-
-    let characters = Array(text)
-    let midPoint = characters.count / 2
-
-    // 중간점 근처에서 적절한 위치 찾기 (±2 범위 내)
-    let searchRange = max(0, midPoint - 2)...min(characters.count - 1, midPoint + 2)
-
-    // 이미 스페이스가 있는 위치 찾기
-    if searchRange.first(where: { characters[$0] == " " }) != nil {
-      return text
-    }
-
-    // 스페이스가 없으면 중간에 스페이스 추가
-    let insertIndex = midPoint
-    var result = characters
-    result.insert(" ", at: insertIndex)
-
-    return String(result)
-  }
-
   private func formattedDisplayName(for spot: ExploreMapSpot) -> String {
-    return formatLongText(spot.name.formattedPlaceNameForDisplay)
+    return spot.name.formattedPlaceNameForDisplay.formatLongText
   }
 
   private func imageURL(for spot: ExploreMapSpot) -> URL? {

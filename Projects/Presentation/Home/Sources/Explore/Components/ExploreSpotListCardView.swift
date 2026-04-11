@@ -41,14 +41,14 @@ struct ExploreSpotListCardView: View {
 
         HStack(spacing: 10) {
           if !spot.statusText.isEmpty {
-            Text(formatLongText(spot.statusText))
+            Text(spot.statusText.formatLongText)
               .pretendardCustomFont(textStyle: .body2Medium)
               .foregroundStyle(.gray700)
               .fixedSize()
           }
 
           if !spot.closingText.isEmpty {
-            Text(formatLongText(spot.closingText))
+            Text(spot.closingText.formatLongText)
               .pretendardCustomFont(textStyle: .body2Regular)
               .foregroundStyle(.gray750)
               .lineLimit(1)
@@ -61,14 +61,14 @@ struct ExploreSpotListCardView: View {
 
         HStack(spacing: 8) {
           if !spot.distanceText.isEmpty {
-            Text(formatLongText(formattedDistanceText))
+            Text(formattedDistanceText.formatLongText)
               .pretendardFont(family: .SemiBold, size: 16)
               .foregroundStyle(.staticBlack)
               .fixedSize()
           }
 
           if !spot.walkTimeText.isEmpty {
-            Text(formatLongText(spot.walkTimeText))
+            Text(spot.walkTimeText.formatLongText)
               .pretendardCustomFont(textStyle: .body2Regular)
               .foregroundStyle(.gray830)
               .lineLimit(1)
@@ -107,7 +107,7 @@ struct ExploreSpotListCardView: View {
         .layoutPriority(1)
 
       if !spot.subtitle.isEmpty {
-        Text(formatLongText(spot.subtitle))
+        Text(spot.subtitle.formatLongText)
           .font(.pretendardFontFamily(family: .Medium, size: 14))
           .foregroundStyle(.gray700)
           .lineLimit(1)
@@ -127,31 +127,8 @@ struct ExploreSpotListCardView: View {
     return 24 // 고정 높이
   }
 
-  /// 10자 이상인 텍스트에 중간 스페이스 추가
-  private func formatLongText(_ text: String) -> String {
-    guard text.count > 10 else { return text }
-
-    let characters = Array(text)
-    let midPoint = characters.count / 2
-
-    // 중간점 근처에서 적절한 위치 찾기 (±2 범위 내)
-    let searchRange = max(0, midPoint - 2)...min(characters.count - 1, midPoint + 2)
-
-    // 이미 스페이스가 있는 위치 찾기
-    if searchRange.first(where: { characters[$0] == " " }) != nil {
-      return text
-    }
-
-    // 스페이스가 없으면 중간에 스페이스 추가
-    let insertIndex = midPoint
-    var result = characters
-    result.insert(" ", at: insertIndex)
-
-    return String(result)
-  }
-
   private var formattedDisplayName: String {
-    return formatLongText(spot.name.formattedPlaceNameForDisplay)
+    return spot.name.formattedPlaceNameForDisplay.formatLongText
   }
 
   @ViewBuilder
@@ -163,8 +140,7 @@ struct ExploreSpotListCardView: View {
         }
         .cacheMemoryOnly(false)
         .diskCacheExpiration(.days(7))
-        .memoryCacheExpiration(.seconds(300))
-        .loadDiskFileSynchronously()
+        .memoryCacheExpiration(.seconds(1800))
         .cancelOnDisappear(true)
         .fade(duration: 0.2)
         .resizable()

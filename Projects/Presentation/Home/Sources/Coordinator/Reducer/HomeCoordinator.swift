@@ -253,7 +253,7 @@ extension HomeCoordinator {
       var exploreState = ExploreFeature.State()
       if let lat = exploreState.userSession.travelStationLat,
          let lng = exploreState.userSession.travelStationLng {
-        exploreState.selectedDestination = Destination(
+        exploreState.route.selectedDestination = Destination(
           name: exploreState.userSession.travelStationName,
           coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng)
         )
@@ -263,23 +263,23 @@ extension HomeCoordinator {
 
     case let .presentExploreList(exploreState):
       var exploreListState = ExploreListFeature.State()
-      exploreListState.searchText = exploreState.searchText
-      exploreListState.selectedCategory = exploreState.selectedCategory
-      exploreListState.currentLocation = exploreState.currentLocation?.coordinate
-      exploreListState.markerLat = exploreState.mapCenterLat ?? exploreState.searchMarkerLat
-      exploreListState.markerLon = exploreState.mapCenterLon ?? exploreState.searchMarkerLon
+      exploreListState.searchText = exploreState.place.searchText
+      exploreListState.selectedCategory = exploreState.place.selectedCategory
+      exploreListState.currentLocation = exploreState.location.currentLocation?.coordinate
+      exploreListState.markerLat = exploreState.mapUI.mapCenterLat ?? exploreState.mapUI.searchMarkerLat
+      exploreListState.markerLon = exploreState.mapUI.mapCenterLon ?? exploreState.mapUI.searchMarkerLon
 
       let hasFullyLoadedMarkerData =
-        !exploreState.spots.isEmpty
-        && exploreState.spots.allSatisfy(\.hasDetail)
+        !exploreState.place.spots.isEmpty
+        && exploreState.place.spots.allSatisfy(\.hasDetail)
 
       if hasFullyLoadedMarkerData {
-        exploreListState.bufferedSpots = exploreState.spots
+        exploreListState.bufferedSpots = exploreState.place.spots
         exploreListState.spots = Array(
-          exploreState.spots.prefix(ExploreListFeature.State.pageChunkSize)
+          exploreState.place.spots.prefix(ExploreListFeature.State.pageChunkSize)
         )
-        exploreListState.currentPage = exploreState.currentPage
-        exploreListState.hasNextPage = exploreState.hasNextPage
+        exploreListState.currentPage = exploreState.place.currentPage
+        exploreListState.hasNextPage = exploreState.place.hasNextPage
         exploreListState.hasLoadedInitialPage = true
       }
 

@@ -369,14 +369,29 @@ private extension ExploreListFeature {
     let currentVisibleCount = filteredSpots(from: state.spots, state: state).count
     var nextCount = state.spots.count
 
+    // 최적화: 필터링 조건을 미리 계산
+    let query = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    let selectedCategory = state.selectedCategory
+
+    var visibleCount = currentVisibleCount
+
     while nextCount < state.bufferedSpots.count {
+      let prevNextCount = nextCount
       nextCount = min(nextCount + State.pageChunkSize, state.bufferedSpots.count)
-      let nextSpots = Array(state.bufferedSpots.prefix(nextCount))
-      let nextVisibleCount = filteredSpots(from: nextSpots, state: state).count
 
-      state.spots = nextSpots
+      // 새로 추가되는 스팟들만 필터링 (증분 계산)
+      let newSpots = Array(state.bufferedSpots[prevNextCount..<nextCount])
+      let newVisibleSpots = newSpots.filter { spot in
+        let hasDetail = spot.hasDetail
+        let matchesCategory = selectedCategory == .all || spot.category == selectedCategory
+        let matchesQuery = query.isEmpty || spot.name.localizedCaseInsensitiveContains(query)
+        return hasDetail && matchesCategory && matchesQuery
+      }
 
-      if nextVisibleCount > currentVisibleCount || nextCount == state.bufferedSpots.count {
+      visibleCount += newVisibleSpots.count
+      state.spots = Array(state.bufferedSpots.prefix(nextCount))
+
+      if visibleCount > currentVisibleCount || nextCount == state.bufferedSpots.count {
         return
       }
     }

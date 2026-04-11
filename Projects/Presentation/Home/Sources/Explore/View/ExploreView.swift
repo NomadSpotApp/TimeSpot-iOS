@@ -36,10 +36,10 @@ public struct ExploreView: View {
       mapView()
 
       // 🦴 마커 로딩 중일 때는 스켈레톤 전체 화면으로 표시
-      if store.isLoadingPlaces && store.spots.isEmpty {
+      if store.place.isLoading && store.place.spots.isEmpty {
         ExploreSkeletonView()
           .transition(.opacity)
-          .animation(.easeInOut(duration: 0.3), value: store.isLoadingPlaces && store.spots.isEmpty)
+          .animation(.easeInOut(duration: 0.3), value: store.place.isLoading && store.place.spots.isEmpty)
       } else {
         // ✅ 마커 로딩 완료 후 실제 UI 표시
         VStack(spacing: 0) {
@@ -52,7 +52,7 @@ public struct ExploreView: View {
           bottomSection()
         }
         .transition(.scale.combined(with: .opacity))
-        .animation(.easeInOut(duration: 0.3), value: !(store.isLoadingPlaces && store.spots.isEmpty))
+        .animation(.easeInOut(duration: 0.3), value: !(store.place.isLoading && store.place.spots.isEmpty))
       }
     }
     .onAppear {
@@ -69,16 +69,16 @@ private extension ExploreView {
   @ViewBuilder
   func mapView() -> some View {
     NaverMapComponent(
-      locationPermissionStatus: store.locationPermissionStatus,
-      currentLocation: store.currentLocation,
+      locationPermissionStatus: store.location.permissionStatus,
+      currentLocation: store.location.currentLocation,
       routeInfo: nil,
-      destination: store.selectedDestination,
+      destination: store.route.selectedDestination,
       travelStation: nil,
       spots: store.filteredMapSpots,
       selectedSpotID: store.userSession.selectedExploreSpotID.isEmpty
         ? nil
         : store.userSession.selectedExploreSpotID,
-      returnToLocationTrigger: store.returnToCurrentLocationTrigger,
+      returnToLocationTrigger: store.mapUI.returnToCurrentLocationTrigger,
       autoFitTrigger: 0, // ExploreView에서는 자동 피팅 사용하지 않음
       onSpotTapped: { spotID in
         store.send(.view(.spotTapped(spotID)))
@@ -95,8 +95,8 @@ private extension ExploreView {
   func headerSection() -> some View {
     ExploreSearchHeaderView(
       stationName: "\(store.userSession.travelStationName)역",
-      searchText: store.searchText,
-      selectedCategory: store.selectedCategory,
+      searchText: store.place.searchText,
+      selectedCategory: store.place.selectedCategory,
       showCategories: true,   // 카테고리 표시
       isSearchable: false,    // 검색창 아닌 텍스트로 표시
       onBackTap: { dismiss() },
@@ -128,7 +128,7 @@ private extension ExploreView {
           currentSpot: selectedSpot,
           adjacentSpot: store.state.adjacentSpot(cardTravelDistance: cardTravelDistance),
           store: store,
-          currentOffset: store.cardBaseOffset + store.cardDragOffset,
+          currentOffset: store.mapUI.cardBaseOffset + store.mapUI.cardDragOffset,
           adjacentOffset: store.state.adjacentCardOffset(cardTravelDistance: cardTravelDistance),
           cardOpacity: store.state.cardOpacity(cardTravelDistance: cardTravelDistance),
           onCardTap: {

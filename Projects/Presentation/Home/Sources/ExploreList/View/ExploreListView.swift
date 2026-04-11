@@ -73,8 +73,9 @@ public struct ExploreListView: View {
             LazyVStack(spacing: 12) {
               let displaySpots = store.filteredMapSpots
 
-              ForEach(displaySpots) { spot in
+              ForEach(displaySpots, id: \.id) { spot in
                 ExploreSpotListCardView(spot: spot, store: store)
+                  .id(spot.id)
                   .onAppear {
                     guard store.shouldShowLoadMore else { return }
 

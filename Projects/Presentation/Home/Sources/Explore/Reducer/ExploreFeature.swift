@@ -27,43 +27,70 @@ public struct ExploreFeature: Sendable {
     case searchRoute
   }
 
+  // MARK: - 분리된 상태 구조체들
   @ObservableState
-  public struct State: Equatable {
-    public var locationPermissionStatus: CLAuthorizationStatus = .notDetermined
+  public struct LocationState: Equatable {
+    public var permissionStatus: CLAuthorizationStatus = .notDetermined
     public var currentLocation: CLLocation?
-    public var isLocationPermissionDenied: Bool = false
-    public var locationError: String?
-    public var placeError: PlaceError?
+    public var isPermissionDenied: Bool = false
+    public var error: String?
+
+    public init() {}
+  }
+
+  @ObservableState
+  public struct PlaceState: Equatable {
+    public var spots: [ExploreMapSpot] = []
     public var searchText: String = ""
-    public var isLoadingPlaces: Bool = false
-    public var hasRequestedPlaces: Bool = false
-    public var hasFetchedPlacesWithCurrentLocation: Bool = false
+    public var selectedCategory: ExploreCategory = .all
+    public var isLoading: Bool = false
+    public var hasRequested: Bool = false
+    public var hasFetchedWithCurrentLocation: Bool = false
     public var currentPage: Int = 1
     public var hasNextPage: Bool = true
-    public var pendingSelectFirstSpotFromNextPage: Bool = false
+    public var pendingSelectFirstSpot: Bool = false
+    public var error: PlaceError?
+
+    public init() {}
+  }
+
+  @ObservableState
+  public struct RouteState: Equatable {
+    public var selectedDestination: Destination?
+    public var routeInfo: RouteInfo?
+    public var isLoading: Bool = false
+    public var error: String?
+
+    public init() {}
+  }
+
+  @ObservableState
+  public struct MapUIState: Equatable {
     public var searchMarkerLat: Double?
     public var searchMarkerLon: Double?
     public var mapCenterLat: Double?
     public var mapCenterLon: Double?
-    @Presents public var alert: AlertState<Alert>?
-    @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
-    public var spots: [ExploreMapSpot] = []
-
-    // 길찾기 관련 상태
-    public var selectedDestination: Destination?
-    public var routeInfo: RouteInfo?
-    public var isLoadingRoute: Bool = false
-    public var routeError: String?
-
-    // 지도 카메라 제어
     public var shouldReturnToCurrentLocation: Bool = false
     public var returnToCurrentLocationTrigger: Int = 0
-    public var selectedCategory: ExploreCategory = .all
     public var isSpotCardVisible: Bool = false
     public var cardDragOffset: CGFloat = 0
     public var cardBaseOffset: CGFloat = 0
     public var isCardTransitioning: Bool = false
 
+    public init() {}
+  }
+
+  @ObservableState
+  public struct State: Equatable {
+    // 분해된 상태들
+    public var location = LocationState()
+    public var place = PlaceState()
+    public var route = RouteState()
+    public var mapUI = MapUIState()
+
+    // 공통 상태
+    @Presents public var alert: AlertState<Alert>?
+    @Shared(.inMemory("UserSession")) var userSession: UserSession = .empty
 
     public init() {}
   }
@@ -174,12 +201,12 @@ extension ExploreFeature {
   ) -> Effect<Action> {
     switch action {
       case .onAppear:
-        let shouldBootstrap = state.spots.isEmpty && !state.hasRequestedPlaces
+        let shouldBootstrap = state.place.spots.isEmpty && !state.place.hasRequested
 
 
         if let lat = state.userSession.travelStationLat,
            let lng = state.userSession.travelStationLng {
-          state.selectedDestination = Destination(
+          state.route.selectedDestination = Destination(
             name: state.userSession.travelStationName,
             coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng)
           )
@@ -194,8 +221,8 @@ extension ExploreFeature {
           }
         }
 
-        state.isSpotCardVisible = false
-        state.hasFetchedPlacesWithCurrentLocation = false
+        state.mapUI.isSpotCardVisible = false
+        state.place.hasFetchedWithCurrentLocation = false
         ExploreHelpers.resetSearchContext(state: &state)
         ExploreHelpers.syncSelectedSpot(state: &state)
         return .merge(
@@ -213,7 +240,7 @@ extension ExploreFeature {
         return .none
 
       case .retryLocationPermission:
-        state.isLocationPermissionDenied = false
+        state.location.isPermissionDenied = false
         return .none
 
       case .requestFullAccuracy:
@@ -231,21 +258,21 @@ extension ExploreFeature {
         }
 
       case .searchTextChanged(let text):
-        state.searchText = text
+        state.place.searchText = text
         ExploreHelpers.syncSelectionWithFilters(state: &state)
         return .none
 
       case .categoryTapped(let category):
-        state.selectedCategory = category
+        state.place.selectedCategory = category
         ExploreHelpers.syncSelectionWithFilters(state: &state)
         return .none
 
       case .spotTapped(let spotID):
-        if state.userSession.selectedExploreSpotID == spotID, state.isSpotCardVisible {
+        if state.userSession.selectedExploreSpotID == spotID, state.mapUI.isSpotCardVisible {
           ExploreHelpers.clearSelectedSpot(state: &state)
-          state.searchMarkerLat = nil
-          state.searchMarkerLon = nil
-          state.pendingSelectFirstSpotFromNextPage = false
+          state.mapUI.searchMarkerLat = nil
+          state.mapUI.searchMarkerLon = nil
+          state.place.pendingSelectFirstSpot = false
           return .cancel(id: CancelID.fetchPlaces)
         }
 
@@ -253,8 +280,8 @@ extension ExploreFeature {
           $0.selectedExploreSpotID = spotID
           $0.selectedExplorePlaceID = spotID
         }
-        state.isSpotCardVisible = state.spots.contains(where: { $0.id == spotID && $0.hasDetail })
-        if let selectedSpot = state.spots.first(where: { $0.id == spotID }) {
+        state.mapUI.isSpotCardVisible = state.place.spots.contains(where: { $0.id == spotID && $0.hasDetail })
+        if let selectedSpot = state.place.spots.first(where: { $0.id == spotID }) {
           analyticsUseCase.track(
             .place(
               .selected,
@@ -273,13 +300,13 @@ extension ExploreFeature {
           )
         }
 
-        guard !state.spots.contains(where: { $0.id == spotID && $0.hasDetail }),
-              let markerSpot = state.spots.first(where: { $0.id == spotID }) else {
+        guard !state.place.spots.contains(where: { $0.id == spotID && $0.hasDetail }),
+              let markerSpot = state.place.spots.first(where: { $0.id == spotID }) else {
           return .none
         }
 
-        state.searchMarkerLat = markerSpot.coordinate.latitude
-        state.searchMarkerLon = markerSpot.coordinate.longitude
+        state.mapUI.searchMarkerLat = markerSpot.coordinate.latitude
+        state.mapUI.searchMarkerLon = markerSpot.coordinate.longitude
         ExploreHelpers.resetSearchContext(state: &state, clearMarker: false)
 
         return .merge(
@@ -326,26 +353,26 @@ extension ExploreFeature {
             $0.selectedExploreSpotID = spotID
             $0.selectedExplorePlaceID = spotID
           }
-          state.isSpotCardVisible = true
+          state.mapUI.isSpotCardVisible = true
         } else {
           ExploreHelpers.clearSelectedSpot(state: &state)
-          state.searchMarkerLat = nil
-          state.searchMarkerLon = nil
-          state.pendingSelectFirstSpotFromNextPage = false
+          state.mapUI.searchMarkerLat = nil
+          state.mapUI.searchMarkerLon = nil
+          state.place.pendingSelectFirstSpot = false
           return .cancel(id: CancelID.fetchPlaces)
         }
         return .none
 
       case .cardDragChanged(let offset):
-        guard !state.isCardTransitioning else {
+        guard !state.mapUI.isCardTransitioning else {
           return .none
         }
         let limitedOffset = max(min(offset, UIScreen.cardTravelDistance), -UIScreen.cardTravelDistance)
-        state.cardDragOffset = limitedOffset
+        state.mapUI.cardDragOffset = limitedOffset
         return .none
 
       case .cardDragEnded(let translationWidth):
-        guard !state.isCardTransitioning else {
+        guard !state.mapUI.isCardTransitioning else {
           return .none
         }
 
@@ -357,19 +384,19 @@ extension ExploreFeature {
           return .send(.inner(.completeCardSwipe(next: true)))
         }
 
-        state.cardDragOffset = 0
+        state.mapUI.cardDragOffset = 0
         return .none
 
       case .loadNextSpotPage:
-        guard state.hasNextPage, !state.isLoadingPlaces else {
+        guard state.place.hasNextPage, !state.place.isLoading else {
           return .none
         }
-        state.pendingSelectFirstSpotFromNextPage = true
-        return .send(.async(.fetchPlaces(page: state.currentPage, append: true)))
+        state.place.pendingSelectFirstSpot = true
+        return .send(.async(.fetchPlaces(page: state.place.currentPage, append: true)))
 
       case .mapCenterChanged(let coordinate):
-        state.mapCenterLat = coordinate.latitude
-        state.mapCenterLon = coordinate.longitude
+        state.mapUI.mapCenterLat = coordinate.latitude
+        state.mapUI.mapCenterLon = coordinate.longitude
         return .none
 
 
@@ -379,7 +406,7 @@ extension ExploreFeature {
         // CameraUseCase를 통한 스팟 클리어 처리
         let clearResult = cameraUseCase.clearSelectedSpotForLocationReturn(
           selectedSpotID: state.userSession.selectedExploreSpotID,
-          isCardVisible: state.isSpotCardVisible
+          isCardVisible: state.mapUI.isSpotCardVisible
         )
 
         if clearResult.shouldClearSpot {
@@ -394,20 +421,20 @@ extension ExploreFeature {
         }
 
         // 경로만 제거하고 역 목적지 마커는 유지
-        state.routeInfo = nil
+        state.route.routeInfo = nil
 
         // CameraUseCase를 통한 카메라 트리거 처리
         let cameraResult = cameraUseCase.createReturnToCurrentLocationTrigger(
-          currentTrigger: state.returnToCurrentLocationTrigger,
-          hasCurrentLocation: state.currentLocation != nil
+          currentTrigger: state.mapUI.returnToCurrentLocationTrigger,
+          hasCurrentLocation: state.location.currentLocation != nil
         )
 
         if !cameraResult.shouldUpdateTrigger {
-          state.shouldReturnToCurrentLocation = true
+          state.mapUI.shouldReturnToCurrentLocation = true
           return .send(.async(.requestCurrentLocation))
         }
 
-        state.returnToCurrentLocationTrigger = cameraResult.newTrigger
+        state.mapUI.returnToCurrentLocationTrigger = cameraResult.newTrigger
 
         return .none
 
@@ -420,19 +447,19 @@ extension ExploreFeature {
   ) -> Effect<Action> {
     switch action {
       case .locationPermissionStatusChanged(let status):
-        state.locationPermissionStatus = status
+        state.location.permissionStatus = status
 
         switch status {
           case .authorizedWhenInUse, .authorizedAlways:
-            state.isLocationPermissionDenied = false
+            state.location.isPermissionDenied = false
             state.alert = nil
             return .send(.async(.startLocationUpdates))
           case .denied, .restricted:
-            state.isLocationPermissionDenied = true
+            state.location.isPermissionDenied = true
             state.alert = nil
             return .send(.async(.stopLocationUpdates))
           case .notDetermined:
-            state.isLocationPermissionDenied = false
+            state.location.isPermissionDenied = false
             state.alert = nil
             return .none
           @unknown default:
@@ -440,25 +467,25 @@ extension ExploreFeature {
         }
 
       case .locationUpdated(let location):
-        state.currentLocation = location
+        state.location.currentLocation = location
 
         // CameraUseCase를 통한 위치 업데이트 카메라 처리
         let cameraResult = cameraUseCase.handleLocationUpdateForCamera(
-          shouldReturnToLocation: state.shouldReturnToCurrentLocation,
-          currentTrigger: state.returnToCurrentLocationTrigger
+          shouldReturnToLocation: state.mapUI.shouldReturnToCurrentLocation,
+          currentTrigger: state.mapUI.returnToCurrentLocationTrigger
         )
 
         if cameraResult.shouldUpdateTrigger {
-          state.returnToCurrentLocationTrigger = cameraResult.newTrigger
+          state.mapUI.returnToCurrentLocationTrigger = cameraResult.newTrigger
         }
 
         if cameraResult.shouldResetFlag {
-          state.shouldReturnToCurrentLocation = false
+          state.mapUI.shouldReturnToCurrentLocation = false
           return .none
         }
-        if state.spots.isEmpty,
-           !state.hasFetchedPlacesWithCurrentLocation,
-           !state.isLoadingPlaces {
+        if state.place.spots.isEmpty,
+           !state.place.hasFetchedWithCurrentLocation,
+           !state.place.isLoading {
           ExploreHelpers.resetSearchContext(state: &state, clearMarker: false)
           return .merge(
             .cancel(id: CancelID.fetchPlaces),
@@ -474,13 +501,13 @@ extension ExploreFeature {
 
       case .fetchPlacesInitialResponse(let pageEntity, let usedCurrentLocation):
 
-        state.isLoadingPlaces = false
-        state.hasRequestedPlaces = false
-        state.spots = pageEntity.spots
+        state.place.isLoading = false
+        state.place.hasRequested = false
+        state.place.spots = pageEntity.spots
 
-        state.currentPage = pageEntity.currentPage
-        state.hasNextPage = pageEntity.hasNextPage || pageEntity.spots.contains { !$0.hasDetail }
-        state.hasFetchedPlacesWithCurrentLocation = usedCurrentLocation
+        state.place.currentPage = pageEntity.currentPage
+        state.place.hasNextPage = pageEntity.hasNextPage || pageEntity.spots.contains { !$0.hasDetail }
+        state.place.hasFetchedWithCurrentLocation = usedCurrentLocation
         state.$userSession.withLock {
           $0.explorePlacesFetchedAt = Date()
         }
@@ -498,21 +525,21 @@ extension ExploreFeature {
         return .none
 
       case .fetchPlacesPageResponse(let pageEntity, let request):
-        state.isLoadingPlaces = false
-        state.hasRequestedPlaces = false
+        state.place.isLoading = false
+        state.place.hasRequested = false
 
-        let previousDetailedCount = state.spots.filter(\.hasDetail).count
+        let previousDetailedCount = state.place.spots.filter(\.hasDetail).count
         let currentKeyword = ExploreHelpers.currentKeyword(state: state)
         let currentCategory = ExploreHelpers.currentCategory(state: state)
         let currentMarkerLat: Double?
         let currentMarkerLon: Double?
 
         if ExploreHelpers.isResolvingSelectedMarkerDetail(state: state) {
-          currentMarkerLat = state.searchMarkerLat
-          currentMarkerLon = state.searchMarkerLon
+          currentMarkerLat = state.mapUI.searchMarkerLat
+          currentMarkerLon = state.mapUI.searchMarkerLon
         } else {
-          currentMarkerLat = state.mapCenterLat ?? state.userSession.travelStationLat
-          currentMarkerLon = state.mapCenterLon ?? state.userSession.travelStationLng
+          currentMarkerLat = state.mapUI.mapCenterLat ?? state.userSession.travelStationLat
+          currentMarkerLon = state.mapUI.mapCenterLon ?? state.userSession.travelStationLng
         }
 
         guard request.page == 0 || request.append else {
@@ -533,17 +560,17 @@ extension ExploreFeature {
           }
         }
 
-        state.hasFetchedPlacesWithCurrentLocation = request.usedCurrentLocation
+        state.place.hasFetchedWithCurrentLocation = request.usedCurrentLocation
         let newSpots = pageEntity.spots
         let mergedSpots: [ExploreMapSpot]
         if request.append {
-          let existingSpotIDs = Set(state.spots.map(\.id))
+          let existingSpotIDs = Set(state.place.spots.map(\.id))
           let uniqueNewSpots = newSpots.filter { !existingSpotIDs.contains($0.id) }
-          mergedSpots = state.spots + uniqueNewSpots
+          mergedSpots = state.place.spots + uniqueNewSpots
         } else {
           mergedSpots = newSpots
         }
-        state.currentPage = request.page + 1
+        state.place.currentPage = request.page + 1
         state.$userSession.withLock {
           $0.explorePlacesFetchedAt = Date()
         }
@@ -557,49 +584,49 @@ extension ExploreFeature {
           && newSpots.contains { !$0.hasDetail }
           && (request.page == 0 || gainedMoreDetail)
 
-        state.hasNextPage = pageEntity.hasNextPage || shouldKeepBootstrappingDetails
+        state.place.hasNextPage = pageEntity.hasNextPage || shouldKeepBootstrappingDetails
         let firstNewSpotID = newSpots.first(where: \.hasDetail)?.id
         let selectedSpotID = state.userSession.selectedExploreSpotID.nilIfEmpty
 
-        state.spots = mergedSpots
+        state.place.spots = mergedSpots
         if let selectedSpotID,
            mergedSpots.contains(where: { $0.id == selectedSpotID && $0.hasDetail }) {
-          state.isSpotCardVisible = true
-        } else if state.searchMarkerLat != nil {
-          state.isSpotCardVisible = false
+          state.mapUI.isSpotCardVisible = true
+        } else if state.mapUI.searchMarkerLat != nil {
+          state.mapUI.isSpotCardVisible = false
         } else {
           ExploreHelpers.clearSelectedSpot(state: &state)
         }
 
-        if state.pendingSelectFirstSpotFromNextPage, let firstNewSpotID {
+        if state.place.pendingSelectFirstSpot, let firstNewSpotID {
           state.$userSession.withLock {
             $0.selectedExploreSpotID = firstNewSpotID
             $0.selectedExplorePlaceID = firstNewSpotID
           }
-          state.isSpotCardVisible = true
-          state.pendingSelectFirstSpotFromNextPage = false
-          state.cardBaseOffset = 0
-          state.cardDragOffset = 0
-          state.isCardTransitioning = false
+          state.mapUI.isSpotCardVisible = true
+          state.place.pendingSelectFirstSpot = false
+          state.mapUI.cardBaseOffset = 0
+          state.mapUI.cardDragOffset = 0
+          state.mapUI.isCardTransitioning = false
           ExploreHelpers.syncSelectedSpot(state: &state)
           return .none
         }
 
-        let wasPendingNextPage = state.pendingSelectFirstSpotFromNextPage
-        state.pendingSelectFirstSpotFromNextPage = false
+        let wasPendingNextPage = state.place.pendingSelectFirstSpot
+        state.place.pendingSelectFirstSpot = false
         ExploreHelpers.syncSelectedSpot(state: &state)
 
         if let selectedSpotID,
-           state.searchMarkerLat != nil,
-           !state.spots.contains(where: { $0.id == selectedSpotID && $0.hasDetail }),
-           state.hasNextPage {
-          return .send(.async(.fetchPlaces(page: state.currentPage, append: true)))
+           state.mapUI.searchMarkerLat != nil,
+           !state.place.spots.contains(where: { $0.id == selectedSpotID && $0.hasDetail }),
+           state.place.hasNextPage {
+          return .send(.async(.fetchPlaces(page: state.place.currentPage, append: true)))
         }
 
         if let selectedSpotID,
-           state.searchMarkerLat != nil,
-           !state.spots.contains(where: { $0.id == selectedSpotID && $0.hasDetail }),
-           !state.hasNextPage {
+           state.mapUI.searchMarkerLat != nil,
+           !state.place.spots.contains(where: { $0.id == selectedSpotID && $0.hasDetail }),
+           !state.place.hasNextPage {
           ExploreHelpers.clearSelectedSpot(state: &state)
         }
 
@@ -609,13 +636,13 @@ extension ExploreFeature {
         return .none
 
       case .fetchPlacesFailed(let error, let usedCurrentLocation):
-        state.placeError = error
-        state.hasRequestedPlaces = false
+        state.place.error = error
+        state.place.hasRequested = false
         ExploreHelpers.resetSearchContext(state: &state, clearMarker: false)
         if usedCurrentLocation {
-          state.hasFetchedPlacesWithCurrentLocation = false
+          state.place.hasFetchedWithCurrentLocation = false
         }
-        state.spots = []
+        state.place.spots = []
         ExploreHelpers.clearSelectedSpot(state: &state)
         return .none
 
@@ -623,7 +650,7 @@ extension ExploreFeature {
       case .resetCameraFlag:
         let cameraResult = cameraUseCase.resetCameraFlag()
         if cameraResult.shouldResetFlag {
-          state.shouldReturnToCurrentLocation = false
+          state.mapUI.shouldReturnToCurrentLocation = false
         }
         return .none
 
@@ -639,15 +666,15 @@ extension ExploreFeature {
         let isAtEnd = next && currentIndex == cardSpots.count - 1
         let isAtStart = !next && currentIndex == 0
 
-        state.isCardTransitioning = true
-        state.cardDragOffset = next ? -UIScreen.cardTravelDistance : UIScreen.cardTravelDistance
+        state.mapUI.isCardTransitioning = true
+        state.mapUI.cardDragOffset = next ? -UIScreen.cardTravelDistance : UIScreen.cardTravelDistance
 
         if isAtEnd {
-          if state.hasNextPage {
-            state.isSpotCardVisible = true
-            state.cardDragOffset = 0
-            state.cardBaseOffset = 0
-            state.isCardTransitioning = true
+          if state.place.hasNextPage {
+            state.mapUI.isSpotCardVisible = true
+            state.mapUI.cardDragOffset = 0
+            state.mapUI.cardBaseOffset = 0
+            state.mapUI.isCardTransitioning = true
             return .send(.view(.loadNextSpotPage))
           }
 
@@ -668,9 +695,9 @@ extension ExploreFeature {
           }
         }
 
-        state.isSpotCardVisible = true
-        state.cardBaseOffset = entryOffset
-        state.cardDragOffset = 0
+        state.mapUI.isSpotCardVisible = true
+        state.mapUI.cardBaseOffset = entryOffset
+        state.mapUI.cardDragOffset = 0
 
         return .run { send in
           try await Task.sleep(for: .milliseconds(240))
@@ -678,9 +705,9 @@ extension ExploreFeature {
         }
 
       case .finishCardTransition:
-        state.cardBaseOffset = 0
-        state.cardDragOffset = 0
-        state.isCardTransitioning = false
+        state.mapUI.cardBaseOffset = 0
+        state.mapUI.cardDragOffset = 0
+        state.mapUI.isCardTransitioning = false
         return .none
 
     }
@@ -757,8 +784,8 @@ extension ExploreFeature {
           let travelIDExists = Int(state.userSession.travelID) != nil
           let stationLatExists = state.userSession.travelStationLat != nil
           let stationLngExists = state.userSession.travelStationLng != nil
-          let notLoading = !state.isLoadingPlaces
-          let notRequested = !state.hasRequestedPlaces
+          let notLoading = !state.place.isLoading
+          let notRequested = !state.place.hasRequested
 
 
           guard travelIDExists, stationLatExists, stationLngExists, notLoading, notRequested else {
@@ -768,8 +795,8 @@ extension ExploreFeature {
         } else {
           // 페이지네이션 조건
           let travelIDExists = Int(state.userSession.travelID) != nil
-          let notLoading = !state.isLoadingPlaces
-          let notRequested = !state.hasRequestedPlaces
+          let notLoading = !state.place.isLoading
+          let notRequested = !state.place.hasRequested
 
 
           guard travelIDExists, notLoading, notRequested else {
@@ -777,14 +804,14 @@ extension ExploreFeature {
           }
         }
 
-        state.isLoadingPlaces = true
-        state.hasRequestedPlaces = true
+        state.place.isLoading = true
+        state.place.hasRequested = true
         let userSession = state.userSession
         let fallbackLat = state.userSession.travelStationLat ?? 0
         let fallbackLng = state.userSession.travelStationLng ?? 0
-        let usedCurrentLocation = state.currentLocation != nil
-        let userLat = state.currentLocation?.coordinate.latitude ?? fallbackLat
-        let userLon = state.currentLocation?.coordinate.longitude ?? fallbackLng
+        let usedCurrentLocation = state.location.currentLocation != nil
+        let userLat = state.location.currentLocation?.coordinate.latitude ?? fallbackLat
+        let userLon = state.location.currentLocation?.coordinate.longitude ?? fallbackLng
 
         if isInitialLoad {
           // 초기 로딩: fetchInitialExploreSpots 사용
@@ -807,22 +834,22 @@ extension ExploreFeature {
           .cancellable(id: CancelID.fetchPlaces, cancelInFlight: true)
         } else {
           // 페이지네이션: searchExploreSpots 사용
-          let rawKeyword = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+          let rawKeyword = state.place.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
           let isResolvingSelectedMarkerDetail = ExploreHelpers.isResolvingSelectedMarkerDetail(state: state)
           let mapLat = isResolvingSelectedMarkerDetail
-            ? (state.searchMarkerLat ?? state.userSession.travelStationLat ?? fallbackLat)
-            : (state.mapCenterLat ?? state.userSession.travelStationLat ?? fallbackLat)
+            ? (state.mapUI.searchMarkerLat ?? state.userSession.travelStationLat ?? fallbackLat)
+            : (state.mapUI.mapCenterLat ?? state.userSession.travelStationLat ?? fallbackLat)
           let mapLon = isResolvingSelectedMarkerDetail
-            ? (state.searchMarkerLon ?? state.userSession.travelStationLng ?? fallbackLng)
-            : (state.mapCenterLon ?? state.userSession.travelStationLng ?? fallbackLng)
+            ? (state.mapUI.searchMarkerLon ?? state.userSession.travelStationLng ?? fallbackLng)
+            : (state.mapUI.mapCenterLon ?? state.userSession.travelStationLng ?? fallbackLng)
           let requestedMarkerLat = mapLat
           let requestedMarkerLon = mapLon
           let keyword = isResolvingSelectedMarkerDetail ? nil : rawKeyword.nilIfEmpty
           let category: ExploreCategory? = isResolvingSelectedMarkerDetail
             ? nil
-            : (state.selectedCategory == .all ? nil : state.selectedCategory)
+            : (state.place.selectedCategory == .all ? nil : state.place.selectedCategory)
           let sortBy = "distanceFromStation,ASC"
-          let baseSpots = state.spots
+          let baseSpots = state.place.spots
 
           return .run { send in
             let result = await Result {
@@ -893,7 +920,7 @@ extension ExploreFeature {
             $0.routeDestinationName = selectedSpot.name
 
             // 현재 위치도 함께 저장 (출발지)
-            if let currentLocation = state.currentLocation {
+            if let currentLocation = state.location.currentLocation {
               $0.routeStartLat = currentLocation.coordinate.latitude
               $0.routeStartLng = currentLocation.coordinate.longitude
             }

@@ -144,13 +144,19 @@ public struct NaverMapComponent: UIViewRepresentable {
   public static func dismantleUIView(_ uiView: NMFMapView, coordinator: Coordinator) {
     uiView.removeCameraDelegate(delegate: coordinator)
 
-    // 경로와 destination 마커만 정리
+    // 모든 마커와 경로 정리 (메모리 누수 방지)
     Self.currentMarker?.mapView = nil
     Self.destinationMarker?.mapView = nil
     Self.routePath?.mapView = nil
+
+    // spotMarkers 완전 정리
+    Self.spotMarkers.forEach { $0.value.mapView = nil }
+    Self.spotMarkers.removeAll()
+
     Self.currentMarker = nil
     Self.destinationMarker = nil
     Self.routePath = nil
+    Self.selectedSpotID = nil
 
     Self.lastSyncedSpotID = nil
     Self.lastDestinationKey = nil

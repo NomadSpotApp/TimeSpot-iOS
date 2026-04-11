@@ -135,12 +135,9 @@ extension LoginFeature {
   ) -> Effect<Action> {
     switch action {
       case .presented(.termsService(.scope(.close))):
-        // destination 해제 후 온보딩으로 이동
-        return .run { send in
-          // clearDestination 생략하고 바로 온보딩으로 이동
-          try await Task.sleep(for: .seconds(0.3))
-          await send(.delegate(.presentOnBoarding))
-        }
+        // destination 해제 후 온보딩으로 바로 이동 (불필요한 sleep 제거)
+        state.destination = nil
+        return .send(.delegate(.presentOnBoarding))
 
 
       case .presented(.termsService(.delegate(.presentPrivacyWeb))):
@@ -246,6 +243,16 @@ extension LoginFeature {
         switch result {
           case .success(let loginEntity):
             state.loginEntity = loginEntity
+
+            // 상태 업데이트를 한번에 처리
+            let mapType = loginEntity.mapType ?? .appleMap
+            state.$userSession.withLock { userSession in
+              userSession.isGuest = false
+            }
+            state.$selectedMapTypeStorage.withLock {
+              $0 = mapType
+            }
+
             analyticsUseCase.track(
               .auth(
                 .loginSucceeded,
@@ -258,13 +265,6 @@ extension LoginFeature {
                 )
               )
             )
-            state.$selectedMapTypeStorage.withLock {
-              $0 = loginEntity.mapType ?? .appleMap
-            }
-            
-            state.$userSession.withLock { userSession in
-              userSession.isGuest = false
-            }
 
             if loginEntity.isNewUser {
               return .send(.delegate(.presentTermsAgreement))

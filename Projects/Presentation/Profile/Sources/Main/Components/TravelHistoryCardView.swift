@@ -21,7 +21,7 @@ public struct TravelHistoryCardView: View {
 
   public var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      Text(item.visitedAt.formattedDateToString())
+      Text(DateFormatterCache.koreanDateString.string(from: item.visitedAt))
         .pretendardCustomFont(textStyle: .caption)
         .foregroundStyle(.gray800)
 
@@ -68,18 +68,20 @@ public struct TravelHistoryCardView: View {
       Spacer()
         .frame(height: 20)
 
-      Path { path in
-        path.move(to: CGPoint(x: 0, y: 0.5))
-        path.addLine(to: CGPoint(x: 330, y: 0.5))
-      }
-      .stroke(
-        .gray400,
-        style: StrokeStyle(
-          lineWidth: 1,
-          lineCap: .round,
-          dash: [1, 4]
+      GeometryReader { geometry in
+        Path { path in
+          path.move(to: CGPoint(x: 0, y: 0.5))
+          path.addLine(to: CGPoint(x: geometry.size.width, y: 0.5))
+        }
+        .stroke(
+          .gray400,
+          style: StrokeStyle(
+            lineWidth: 1,
+            lineCap: .round,
+            dash: [1, 4]
+          )
         )
-      )
+      }
       .frame(height: 1)
 
       Spacer()

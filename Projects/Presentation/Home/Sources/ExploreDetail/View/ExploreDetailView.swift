@@ -59,7 +59,7 @@ public struct ExploreDetailView: View {
                   } else {
                     VStack(alignment: .leading, spacing: 0) {
                       exploreSpotNameTitle()
-                        .padding(.top, 18) // 6 + 18 = 24 (네비게이션에서 총 24만큼 떨어짐)
+                        .padding(.top, 24) // 6 + 18 = 24 (네비게이션에서 총 24만큼 떨어짐)
                         .id("title")
 
                       imageSection()
@@ -498,7 +498,6 @@ private extension ExploreDetailView {
             imagePlaceholder()
           }
           .setProcessor(DownsamplingImageProcessor(size: CGSize(width: 280, height: 180)))
-          .loadDiskFileSynchronously()
           .memoryCacheExpiration(.seconds(1800))
           .diskCacheExpiration(.days(7)) // 더 긴 캐시 (할당량 절약)
           .requestModifier(rateLimitedImageModifier)
@@ -568,6 +567,7 @@ private extension ExploreDetailView {
     prefetcher.start()
   }
 
+  @ViewBuilder
   func imagePlaceholder() -> some View {
     ZStack {
       RoundedRectangle(cornerRadius: 20)
