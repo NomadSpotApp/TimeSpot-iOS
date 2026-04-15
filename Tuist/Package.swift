@@ -1,8 +1,8 @@
-// swift-tools-version: 6.0
-import PackageDescription
+// swift-tools-version: 6.2
+@preconcurrency import PackageDescription
 
 #if TUIST
-import struct ProjectDescription.PackageSettings
+@preconcurrency import ProjectDescription
 
 let packageSettings = PackageSettings(
   productTypes: [
@@ -33,9 +33,9 @@ let packageSettings = PackageSettings(
 let package = Package(
   name: "TimeSpot",
   dependencies: [
-    .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.25.5"),
+    .package(url: "https://github.com/pointfreeco/swift-composable-architecture", exact: "1.25.5"),
     .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.6.0"),
-    .package(url: "https://github.com/Roy-wonji/TCAFlow.git", from: "1.1.1"),
+    .package(url: "https://github.com/Roy-wonji/TCAFlow.git", exact: "1.1.2"),
     .package(url: "https://github.com/Roy-wonji/WeaveDI.git", from: "3.4.1"),
     .package(url: "https://github.com/google/GoogleSignIn-iOS", from: "9.1.0"),
     .package(url: "https://github.com/Roy-wonji/AsyncMoya",  from: "1.1.8"),

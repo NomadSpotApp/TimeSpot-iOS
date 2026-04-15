@@ -36,9 +36,7 @@ public struct SplashView: View {
   public var body: some View {
     ZStack {
       AnimatedImage(name: "splash.gif", isAnimating: .constant(true))
-        .resizable()
-        .scaledToFit()
-        .edgesIgnoringSafeArea(.all)
+        .ignoresSafeArea(.all)
     }
     .onAppear {
       store.send(.view(.onAppear))

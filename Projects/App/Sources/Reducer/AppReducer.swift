@@ -83,16 +83,16 @@ public struct AppReducer: Sendable {
   }
 
   @Dependency(\.continuousClock) var clock
+  @Dependency(\.authUseCase) var authUseCase
 
   private enum Constants {
     static let splashTransitionDelay: Duration = .seconds(2)
   }
 
+  // 🎯 PFW 패턴: 단순하고 명확한 CancelID
   private enum CancelID {
     case refreshTokenExpiredListener
     case splashRouting
-    case authEffects
-    case mainEffects
   }
 
   public var body: some ReducerOf<Self> {
@@ -141,6 +141,18 @@ extension AppReducer {
     case .presentRoot:
       #logDebug("🏠 AppReducer: Home 상태로 전환, 대기 중인 딥링크 확인")
 
+      // 🎯 PFW 패턴: 타입 안전한 조건부 Effect 취소
+      let cancelAuthEffects: Effect<Action> = {
+        switch state {
+        case .auth:
+          return .send(.scope(.auth(.inner(.cancelAllEffects))))
+        default:
+          return .none
+        }
+      }()
+
+      let cancelSplashEffects = Effect<Action>.cancel(id: CancelID.splashRouting)
+
       // 대기 중인 딥링크가 있는지 먼저 확인
       if let pendingDeepLink = UserDefaults.standard.string(forKey: "pendingPushDeepLink") {
         #logDebug("📋 AppReducer: 대기 중인 딥링크 발견, 즉시 처리 = \(pendingDeepLink)")
@@ -159,18 +171,28 @@ extension AppReducer {
           UserDefaults.standard.removeObject(forKey: "pendingPushDeepLink")
           state = .home(.init())
         }
-        return .none
+        return .concatenate(cancelAuthEffects, cancelSplashEffects)
       } else {
         #logDebug("🔍 AppReducer: 대기 중인 딥링크 없음, 일반 Home 상태로 전환")
         state = .home(.init())
-        return .none
+        return .concatenate(cancelAuthEffects, cancelSplashEffects)
       }
 
     case .presentAuth:
+      // 🎯 PFW 패턴: 타입 안전한 조건부 Effect 취소
+      let cancelHomeEffects: Effect<Action> = {
+        switch state {
+        case .home:
+          return .send(.scope(.home(.inner(.cancelAllEffects))))
+        default:
+          return .none
+        }
+      }()
+
+      let cancelSplashEffects = Effect<Action>.cancel(id: CancelID.splashRouting)
+
       state = .auth(.init())
-      return .concatenate(
-        .cancel(id: CancelID.mainEffects),
-      )
+      return .concatenate(cancelHomeEffects, cancelSplashEffects)
 
     case .handlePushNotificationDeepLink(let urlString):
       #logDebug("🔗 AppReducer: 푸쉬 딥링크 처리 = \(urlString)")
@@ -189,12 +211,23 @@ extension AppReducer {
         .cancellable(id: CancelID.refreshTokenExpiredListener, cancelInFlight: true)
 
     case .refreshTokenExpired:
+      // 🎯 PFW 패턴: 타입 안전한 조건부 Effect 취소
+      let cancelCurrentEffects: Effect<Action> = {
+        switch state {
+        case .home:
+          return .send(.scope(.home(.inner(.cancelAllEffects))))
+        case .auth:
+          return .send(.scope(.auth(.inner(.cancelAllEffects))))
+        case .splash:
+          return .none
+        }
+      }()
+
+      let cancelSplashEffects = Effect<Action>.cancel(id: CancelID.splashRouting)
+
       // Refresh token이 만료된 경우 로그인 화면으로 이동
       state = .auth(.init())
-      return .concatenate(
-        .cancel(id: CancelID.splashRouting),
-        .cancel(id: CancelID.mainEffects),
-      )
+      return .concatenate(cancelCurrentEffects, cancelSplashEffects)
     }
   }
 
@@ -300,16 +333,11 @@ extension AppReducer {
       case .auth(.navigation(.presentMain)):
         return .send(.view(.presentRoot))
 
-      case .home(.router(.routeAction(id: _, action: .home(.delegate(.presentAuth))))):
-        return .send(.view(.presentAuth))
-
-      case .home(.router(.routeAction(id: _, action: .profile(.navigation(.presentAuth))))):
+      case .home(.navigation(.presentAuth)):
         return .send(.view(.presentAuth))
 
     default:
-      return .none
-    }
-  }
+      // 🎯 PFW 단순성: 하위 Coordinator의 내부 액션은 그대로 전달
       return .none
     }
   }

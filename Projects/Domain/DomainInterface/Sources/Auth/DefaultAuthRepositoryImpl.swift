@@ -54,6 +54,10 @@ final public class DefaultAuthRepositoryImpl: AuthInterface {
     // Mock 구현체에서는 아무것도 하지 않음 (테스트/프리뷰용)
   }
 
+  public func initializeSessionCredential() async {
+    // Mock 구현체에서는 아무것도 하지 않음 (테스트/프리뷰용)
+  }
+
   public func registerNotification(
     with deviceToken: String
   ) async throws -> RegisterNotificationEntity {

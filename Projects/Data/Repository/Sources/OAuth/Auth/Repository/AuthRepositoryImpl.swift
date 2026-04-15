@@ -122,6 +122,11 @@ final public class AuthRepositoryImpl: AuthInterface, @unchecked Sendable {
     AuthSessionManager.shared.updateCredential(with: tokens)
   }
 
+  // MARK: - 세션 Credential 초기화
+  public func initializeSessionCredential() async {
+    await AuthSessionManager.shared.initializeCredential()
+  }
+
   // MARK: -  알림을 위한 token 등록
   public func registerNotification(
     with deviceToken: String

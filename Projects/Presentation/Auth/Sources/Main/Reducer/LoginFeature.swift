@@ -88,6 +88,7 @@ public struct LoginFeature {
   @Dependency(\.appleManger) var appleLoginManger
   @Dependency(\.unifiedOAuthUseCase) var unifiedOAuthUseCase
   @Dependency(\.analyticsUseCase) var analyticsUseCase
+  @Dependency(\.authUseCase) var authUseCase
 
   public var body: some Reducer<State, Action> {
     BindingReducer()
@@ -252,6 +253,10 @@ extension LoginFeature {
             state.$selectedMapTypeStorage.withLock {
               $0 = mapType
             }
+
+            // UseCase를 통한 credential 업데이트 (Clean Architecture)
+            authUseCase.updateSessionCredential(with: loginEntity.token)
+            #logDebug("🔑 LoginFeature: AuthUseCase를 통한 credential 업데이트 완료")
 
             analyticsUseCase.track(
               .auth(

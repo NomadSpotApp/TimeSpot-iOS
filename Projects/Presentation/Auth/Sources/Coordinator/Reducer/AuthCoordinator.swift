@@ -33,6 +33,12 @@ public struct AuthCoordinator {
     case navigation(NavigationAction)
   }
 
+  // 🎯 PFW 패턴: 단순하고 명확한 CancelID
+  private enum CancelID {
+    case authEffects
+    case onBoardingTransition
+  }
+
   // MARK: - ViewAction
   @CasePathable
   public enum View {
@@ -50,6 +56,7 @@ public struct AuthCoordinator {
   public enum InnerAction: Equatable {
     case pushOnBoarding
     case performPushOnBoarding
+    case cancelAllEffects  // 🎯 PFW 패턴: 명시적 Effect 취소
   }
 
   // MARK: - NavigationAction
@@ -85,9 +92,8 @@ extension AuthCoordinator {
   ) -> Effect<Action> {
     switch action {
       case .routeAction(id: _, action: .login(.delegate(.presentGuestLookAround))):
-        return routeWithDelaysIfUnsupported(state.routes, action: \.router) {
-          $0.push(.onBoarding(.init()))
-        }
+        state.routes.push(.onBoarding(.init()))
+        return .none
 
       case .routeAction(id: _, action: .login(.delegate(.presentOnBoarding))):
         return .send(.inner(.pushOnBoarding))
@@ -156,10 +162,18 @@ extension AuthCoordinator {
           await Task.yield()
           await send(.inner(.performPushOnBoarding))
         }
+        .cancellable(id: CancelID.onBoardingTransition, cancelInFlight: true)
 
       case .performPushOnBoarding:
         state.routes.push(.onBoarding(.init()))
         return .none
+
+      case .cancelAllEffects:
+        // 🎯 PFW 패턴: 모든 Auth Effects 취소
+        return .concatenate(
+          .cancel(id: CancelID.authEffects),
+          .cancel(id: CancelID.onBoardingTransition)
+        )
     }
   }
 

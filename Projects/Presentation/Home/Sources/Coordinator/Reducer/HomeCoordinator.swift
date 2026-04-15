@@ -52,6 +52,13 @@ public struct HomeCoordinator {
     case navigation(NavigationAction)
   }
 
+  // 🎯 PFW 패턴: 단순하고 명확한 CancelID
+  private enum CancelID {
+    case mainEffects
+    case routingEffects
+    case exploreTransitions
+  }
+
   // MARK: - ViewAction
   @CasePathable
   public enum View {
@@ -72,6 +79,7 @@ public struct HomeCoordinator {
     case presentExploreList(ExploreFeature.State)
     case presentExploreDetail
     case presentRouteFromPushNotification(String)
+    case cancelAllEffects  // 🎯 PFW 패턴: 명시적 Effect 취소
   }
 
   // MARK: - NavigationAction
@@ -332,6 +340,14 @@ extension HomeCoordinator {
       state.routes.push(.routeNotification(.init(notificationType: notificationType)))
       #logDebug("RouteNotificationView 추가 완료. 현재 routes 개수: \(state.routes.count)")
       return .none
+
+    case .cancelAllEffects:
+      // 🎯 PFW 패턴: 모든 Home Effects 취소
+      return .concatenate(
+        .cancel(id: CancelID.mainEffects),
+        .cancel(id: CancelID.routingEffects),
+        .cancel(id: CancelID.exploreTransitions)
+      )
     }
   }
 

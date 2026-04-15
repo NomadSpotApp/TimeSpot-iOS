@@ -25,7 +25,6 @@ public struct HomeView: View {
     enum TimePicker {
       static let width: CGFloat = 176
       static let height: CGFloat = 180
-      static let offset = UIOffset(horizontal: -184, vertical: 492)
       static let cornerRadius: CGFloat = 28
     }
 
@@ -130,7 +129,10 @@ extension HomeView {
 
         if store.departureTimePickerVisible {
           departureTimePickerView()
-            .offset(x: geometry.size.width + Layout.TimePicker.offset.horizontal, y: Layout.TimePicker.offset.vertical)
+            .offset(
+              x: geometry.size.width - Layout.TimePicker.width - 16,
+              y: Layout.Hero.height - Layout.TimePicker.height - 80
+            )
             .zIndex(2)
         }
       }

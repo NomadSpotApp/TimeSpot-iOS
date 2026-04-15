@@ -73,6 +73,7 @@ public struct SplashReducer {
 
   @Dependency(\.keychainManager) var keychainManager
   @Dependency(\.appUpdateUseCase) var appUpdateUseCase
+  @Dependency(\.authUseCase) var authUseCase
 
   public var body: some Reducer<State, Action> {
     BindingReducer()
@@ -141,7 +142,10 @@ extension SplashReducer {
         return .none
 
       case .checkToken:
-        return .run { send in
+        return .run { [authUseCase] send in
+          // AuthSessionManager credential 초기화 (Clean Architecture)
+          await authUseCase.initializeSessionCredential()
+
           // 키체인에서 액세스 토큰 확인
           let token = await keychainManager.accessToken()
           let hasToken = token != nil && !token!.isEmpty

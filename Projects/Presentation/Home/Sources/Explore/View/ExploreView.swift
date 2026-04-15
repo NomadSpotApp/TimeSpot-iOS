@@ -19,12 +19,13 @@ public struct ExploreView: View {
   @Bindable var store: StoreOf<ExploreFeature>
   @Environment(\.dismiss) private var dismiss
 
-  private var cardTravelDistance: CGFloat {
-    UIScreen.main.bounds.width - 8
+  // ✅ PFW Pattern: GeometryReader 기반 반응형 레이아웃
+  private func cardTravelDistance(geometry: GeometryProxy) -> CGFloat {
+    geometry.size.width - 8
   }
 
-  private var cardSwipeThreshold: CGFloat {
-    (UIScreen.main.bounds.width - 32) / 2
+  private func cardSwipeThreshold(geometry: GeometryProxy) -> CGFloat {
+    (geometry.size.width - 32) / 2
   }
 
   public init(store: StoreOf<ExploreFeature>) {
@@ -32,27 +33,29 @@ public struct ExploreView: View {
   }
 
   public var body: some View {
-    ZStack {
-      mapView()
+    GeometryReader { geometry in
+      ZStack {
+        mapView()
 
-      // 🦴 마커 로딩 중일 때는 스켈레톤 전체 화면으로 표시
-      if store.place.isLoading && store.place.spots.isEmpty {
-        ExploreSkeletonView()
-          .transition(.opacity)
-          .animation(.easeInOut(duration: 0.3), value: store.place.isLoading && store.place.spots.isEmpty)
-      } else {
-        // ✅ 마커 로딩 완료 후 실제 UI 표시
-        VStack(spacing: 0) {
-          headerSection()
-            .padding(.top, 8)
-            .padding(.horizontal, 16)
+        // 🦴 마커 로딩 중일 때는 스켈레톤 전체 화면으로 표시
+        if store.place.isLoading && store.place.spots.isEmpty {
+          ExploreSkeletonView()
+            .transition(.opacity)
+            .animation(.easeInOut(duration: 0.3), value: store.place.isLoading && store.place.spots.isEmpty)
+        } else {
+          // ✅ 마커 로딩 완료 후 실제 UI 표시
+          VStack(spacing: 0) {
+            headerSection()
+              .padding(.top, 8)
+              .padding(.horizontal, 16)
 
-          Spacer()
+            Spacer()
 
-          bottomSection()
+            bottomSection(geometry: geometry)
+          }
+          .transition(.scale.combined(with: .opacity))
+          .animation(.easeInOut(duration: 0.3), value: !(store.place.isLoading && store.place.spots.isEmpty))
         }
-        .transition(.scale.combined(with: .opacity))
-        .animation(.easeInOut(duration: 0.3), value: !(store.place.isLoading && store.place.spots.isEmpty))
       }
     }
     .onAppear {
@@ -107,9 +110,10 @@ private extension ExploreView {
   }
 
   @ViewBuilder
-  func bottomSection() -> some View {
+  func bottomSection(geometry: GeometryProxy) -> some View {
     let selectedSpot = store.state.selectedSpot
     let hasSelectedSpotCard = selectedSpot != nil
+    let travelDistance = cardTravelDistance(geometry: geometry)
 
     VStack(spacing: 16) {
       ExploreFloatingControlsView(
@@ -126,11 +130,11 @@ private extension ExploreView {
       if let selectedSpot {
         ExploreSelectedSpotCardView(
           currentSpot: selectedSpot,
-          adjacentSpot: store.state.adjacentSpot(cardTravelDistance: cardTravelDistance),
+          adjacentSpot: store.state.adjacentSpot(cardTravelDistance: travelDistance),
           store: store,
           currentOffset: store.mapUI.cardBaseOffset + store.mapUI.cardDragOffset,
-          adjacentOffset: store.state.adjacentCardOffset(cardTravelDistance: cardTravelDistance),
-          cardOpacity: store.state.cardOpacity(cardTravelDistance: cardTravelDistance),
+          adjacentOffset: store.state.adjacentCardOffset(cardTravelDistance: travelDistance),
+          cardOpacity: store.state.cardOpacity(cardTravelDistance: travelDistance),
           onCardTap: {
             store.send(.view(.detailTapped))
           },

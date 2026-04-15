@@ -40,6 +40,11 @@ public struct AuthUseCaseImpl: AuthInterface {
     return repository.updateSessionCredential(with: tokens)
   }
 
+  public func initializeSessionCredential() async {
+    // Repository의 AuthSessionManager credential 초기화
+    await repository.initializeSessionCredential()
+  }
+
   public func registerNotification(
     with deviceToken: String
   ) async throws -> RegisterNotificationEntity {
