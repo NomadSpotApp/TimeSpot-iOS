@@ -143,4 +143,5 @@ Derived/
 
 # Claude Code settings
 .claude/settings.local.json
+CLAUDE.md
 

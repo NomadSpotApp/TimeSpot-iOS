@@ -260,10 +260,28 @@ extension AppReducer {
     return .none
   }
 
+  // 🎯 PFW 철학: 타입 안전한 상태 검증
   private func handleScopeAction(
     state: inout State,
     action: ScopeAction
   ) -> Effect<Action> {
+    // 🎯 PFW 패턴: 타입 안전한 상태 매칭
+    switch (action, state) {
+    case (.splash, .splash), (.home, .home), (.auth, .auth):
+      // ✅ 올바른 상태 매칭 - 네비게이션 처리 진행
+      break
+
+    case (.splash, _), (.home, _), (.auth, _):
+      // ✅ 상태 불일치 - PFW 철학: 조용히 무시
+      return .none
+    }
+
+    // 🎯 PFW 패턴: 단순한 네비게이션 처리
+    return handleScopeNavigation(action: action)
+  }
+
+  // 🎯 PFW 패턴: 네비게이션 로직 분리
+  private func handleScopeNavigation(action: ScopeAction) -> Effect<Action> {
     switch action {
       case .splash(.navigation(.presentHome)):
         // 토큰이 있어서 메인 화면으로 이동
@@ -289,6 +307,9 @@ extension AppReducer {
         return .send(.view(.presentAuth))
 
     default:
+      return .none
+    }
+  }
       return .none
     }
   }
