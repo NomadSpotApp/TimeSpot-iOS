@@ -120,7 +120,7 @@ TimeSpot-iOS/
 │   ├── Package.swift
 │   └── ProjectDescriptionHelpers/
 │
-└── 🤖 agent/                   # 커스텀 Claude 에이전트
+└── 🤖 docs/                   # 커스텀 Claude 에이전트
     └── ios-performance-optimizer.md
 ```
 
@@ -219,7 +219,7 @@ Data/Model → Domain (Entity 변환)
   - SwiftUI 렌더링 최적화, TCA Store 성능 개선
   - 메모리 누수 감지, 네트워크 성능 분석
   - 빌드 시간 최적화, 모듈 구조 개선
-  - 📁 **에이전트 파일**: [`agent/ios-performance-optimizer.md`](agent/ios-performance-optimizer.md)
+  - 📁 **에이전트 파일**: [`docs/ios-performance-optimizer.md`](docs/ios-performance-optimizer.md)
 
 ### 🛠 개발 도구 & 유틸리티
 
@@ -669,6 +669,27 @@ Header 종류:
 
 > 📚 **상세한 개발 가이드**: [AGENTS.md](AGENTS.md) 참고  
 > 🤖 **Claude Code 연동**: `ln -s AGENTS.md CLAUDE.md`로 심볼릭 링크 연결됨
+
+## 📚 개발 가이드 문서
+
+프로젝트의 상세한 개발 가이드라인과 성능 최적화 방법은 다음 문서들을 참고하세요:
+
+### 🚀 성능 최적화 전문 가이드
+- **[iOS 성능 최적화 통합 시스템](./docs/ios-performance-optimizer.md)** - 16개 서브에이전트 기반 자동화 최적화
+- **[Point-Free Workshop 패턴 가이드](./docs/ios-performance-pfw.md)** - TCA/SwiftUI/PFW 전문 성능 분석
+- **[성능 통합 가이드](./docs/performance-integration-guide.md)** - 두 성능 스킬의 협업 워크플로우
+
+### 📖 문서 활용법
+```bash
+# Claude Code에서 성능 최적화 스킬 사용법
+@ios-performance-optimizer "TimeSpot 프로젝트 전체 최적화해줘"
+@ios-performance-pfw "HomeFeature TCA 성능 분석해줘"
+
+# 협업 패턴 (분석 → 적용 → 검증)
+1. @ios-performance-pfw "성능 분석 및 개선점 찾아줘"
+2. @ios-performance-optimizer "분석 결과 기반으로 자동 최적화해줘" 
+3. @ios-performance-pfw "자동 최적화 후 TCA 패턴 검증해줘"
+```
 
 ## 📄 라이선스
 

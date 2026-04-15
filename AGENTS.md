@@ -1406,9 +1406,9 @@ func testLogin() async {
 - **Effect 최적화**: `.run` 내에서 Heavy 작업 처리, UI 업데이트는 MainActor
 - **의존성 주입**: 싱글톤 패턴 최소화, Interface 기반 테스트 용이성 확보
 
-## 🚀 iOS 성능 최적화 통합 시스템
+## 🚀 TimeSpot 전문 에이전트 팀
 
-TimeSpot 프로젝트를 위한 **2개의 전문 성능 최적화 스킬** 통합 활용 가이드
+TimeSpot 프로젝트를 위한 **전문 에이전트 팀 기반** 성능 최적화 시스템
 
 ## ⚠️ 필수 서브에이전트 호출 규칙
 
@@ -1525,6 +1525,28 @@ TimeSpot 프로젝트를 위한 **2개의 전문 성능 최적화 스킬** 통�
 @ios-performance-pfw
 ```
 
+#### 3. swiftui-uikit-interop
+**SwiftUI ↔ UIKit 상호 운용성 전문**
+- 🎨 UIHostingController 최적화
+- 🔗 UIViewRepresentable 성능 패턴
+- 📱 SwiftUI에서 UIKit 컴포넌트 활용
+- ⚡ 메모리 효율적인 View 브리징
+
+```bash
+@swiftui-uikit-interop
+```
+
+#### 4. swift-concurrency
+**Swift 6 비동기/동시성 전문**
+- ⚡ async/await 패턴 최적화
+- 🔒 @MainActor + Sendable 호환성
+- 🚨 Data Race 탐지 및 해결
+- 🔄 Task/TaskGroup 생명주기 관리
+
+```bash
+@swift-concurrency
+```
+
 ### 🎛️ 상황별 최적 스킬 선택
 
 #### 🔧 자동 최적화가 필요한 경우
@@ -1571,15 +1593,16 @@ TimeSpot 프로젝트를 위한 **2개의 전문 성능 최적화 스킬** 통�
 
 ### 📊 기능별 비교표
 
-| 기능 | ios-performance-optimizer | ios-performance-pfw |
+| 기능 | ios-performance-optimizer v4.0 | ios-performance-pfw |
 |------|------------------------|-------------------|
-| **자동 코드 수정** | ✅ 완전 자동화 | ❌ 분석만 |
-| **TCA 전문성** | ⚡ TCAFlow 특화 | ⚡ 전통 TCA 패턴 |
-| **빌드 통합** | ✅ Tuist/Xcode 자동 | ❌ 수동 |
-| **Point-Free 라이브러리** | ⚠️ 기본 수준 | ✅ 전문가 수준 |
-| **승인 프로세스** | ✅ 단계별 승인 | ❌ 즉시 제안 |
-| **서브에이전트** | 🚀 12개 전문 | 🏗️ 단일 통합 |
-| **WeaveDI 3.4.0** | 🚀 혁신 패턴 | ✅ 지원 |
+| **자동 코드 수정** | ✅ PFW 철학 기반 자동화 | ❌ 분석만 |
+| **TCA 전문성** | 🚀 **PFW + TCAFlow 통합** | ⚡ **전통 TCA 패턴 + Navigation은 TCAFlow 특화** |
+| **빌드 통합** | ✅ **Tuist/Xcode + PFW 자동** | ❌ 수동 |
+| **Point-Free 라이브러리** | 🚀 **PFW 통합 전문가 수준** | ✅ 전문가 수준 |
+| **승인 프로세스** | ✅ **PFW 기반 단계별 승인** | ❌ 즉시 제안 |
+| **서브에이전트** | 🚀 **PFW 통합 16개 전문** | 🏗️ 단일 통합 |
+| **단순성 원칙** | ✅ **3개 핵심 CancelID** | ✅ PFW 철학 준수 |
+| **WeaveDI 3.4.1** | 🚀 **PFW + WeaveDI 통합** | ✅ 지원 |
 
 ### 🎯 TimeSpot 특화 사용법
 
