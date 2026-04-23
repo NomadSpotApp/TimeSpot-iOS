@@ -11,6 +11,10 @@ import Entity
 final public class DefaultStationRepositoryImpl: StationInterface {
   public init() {}
 
+  public func loadCachedStations() async throws -> StationListEntity? {
+    nil
+  }
+
   public func fetchStations(
     userLat: Double,
     userLon: Double,

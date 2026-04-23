@@ -26,4 +26,12 @@ public final class DefaultPlaceRepositoryImpl: PlaceInterface {
       userInfo: [NSLocalizedDescriptionKey: "PlaceRepository is not configured."]
     )
   }
+
+  public func loadCachedPlaces(_ input: PlaceSearchInput) async throws -> PlaceSearchPageEntity? {
+    nil
+  }
+
+  public func loadCachedDetailPlace(_ input: PlaceDetailInput) async throws -> PlaceDetailEntity? {
+    nil
+  }
 }

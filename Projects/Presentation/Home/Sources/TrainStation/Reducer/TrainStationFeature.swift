@@ -27,6 +27,7 @@ public struct TrainStationFeature {
   public enum CancelID: Hashable {
     case checkAccessToken
     case fetchStations
+    case loadCachedStations
     case favoriteMutation
   }
 
@@ -75,6 +76,7 @@ public struct TrainStationFeature {
   //MARK: - AsyncAction 비동기 처리 액션
   public enum AsyncAction: Equatable {
     case checkAccessToken
+    case loadCachedStations
     case fetchStations
     case addFavoriteStation(Int)
     case deleteFavoriteStation(favoriteID: Int, stationID: Int)
@@ -83,6 +85,7 @@ public struct TrainStationFeature {
   //MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
     case accessTokenChecked(Bool)
+    case cachedStationsLoaded(StationListEntity?)
     case fetchStationsResponse(StationListEntity)
     case fetchStationsFailed(String)
     case addFavoriteStationResponse
@@ -129,9 +132,10 @@ extension TrainStationFeature {
     case .onAppear:
       state.isLoading = true
 
-      // 항상 토큰 재확인 후 즐겨찾기 섹션 표시 여부 결정
+      // 캐시 우선 로드 → 토큰 확인 → 원격 fetch
       return .merge(
         .send(.async(.checkAccessToken)),
+        .send(.async(.loadCachedStations)),
         .send(.async(.fetchStations))
       )
 
@@ -165,6 +169,12 @@ extension TrainStationFeature {
         await send(.inner(.accessTokenChecked(hasAccessToken)))
       }
       .cancellable(id: CancelID.checkAccessToken)
+    case .loadCachedStations:
+      return .run { [stationUseCase] send in
+        let cached = try? await stationUseCase.loadCachedStations()
+        await send(.inner(.cachedStationsLoaded(cached)))
+      }
+      .cancellable(id: CancelID.loadCachedStations)
     case .fetchStations:
       return .run { [stationUseCase] send in
         // 현재 위치를 적극적으로 가져오기
@@ -259,6 +269,32 @@ extension TrainStationFeature {
       }
 
 
+      return .none
+    case .cachedStationsLoaded(let cached):
+      // 캐시 hit 시 즉시 UI에 반영 (네트워크 응답이 오면 덮어씀)
+      // 이미 네트워크 응답이 도착한 경우(rows가 채워짐)에는 캐시 무시
+      guard let cached, state.majorRows.isEmpty, state.nearbyRows.isEmpty else {
+        return .none
+      }
+
+      state.favoriteRows = StationRowModel.makeFavoriteRows(from: cached.favoriteStations)
+      state.nearbyRows = StationRowModel.makeNearbyRows(from: cached.nearbyStations)
+      state.majorRows = StationRowModel.makeMajorRows(from: cached.stations.content)
+
+      let favoriteRows = state.favoriteRows
+      var nearbyRows = state.nearbyRows
+      var majorRows = state.majorRows
+
+      StationRowModel.applyFavoriteState(
+        favoriteRows: favoriteRows,
+        nearbyRows: &nearbyRows,
+        majorRows: &majorRows
+      )
+
+      state.nearbyRows = nearbyRows
+      state.majorRows = majorRows
+      // 캐시는 즉시 표시하되 네트워크 갱신은 계속 진행되도록 isLoading은 유지하지 않고 끔
+      state.isLoading = false
       return .none
     case .fetchStationsResponse(let entity):
       state.favoriteRows = StationRowModel.makeFavoriteRows(from: entity.favoriteStations)

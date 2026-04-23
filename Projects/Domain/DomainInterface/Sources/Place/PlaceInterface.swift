@@ -13,6 +13,9 @@ import ComposableArchitecture
 public protocol PlaceInterface: Sendable {
   func fetchPlaces(_ input: PlaceSearchInput) async throws -> PlaceSearchPageEntity
   func detailPlaces(_ input: PlaceDetailInput) async throws -> PlaceDetailEntity
+
+  func loadCachedPlaces(_ input: PlaceSearchInput) async throws -> PlaceSearchPageEntity?
+  func loadCachedDetailPlace(_ input: PlaceDetailInput) async throws -> PlaceDetailEntity?
 }
 
 

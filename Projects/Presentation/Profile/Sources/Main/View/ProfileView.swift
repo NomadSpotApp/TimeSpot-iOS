@@ -241,25 +241,10 @@ extension ProfileView {
       Spacer()
         .frame(height: 20)
 
-      if travelHistoryItems.isEmpty, store.loadingState == .idle {
-        VStack(spacing: 0) {
-          Spacer()
-
-          Image(asset: .empyTravel)
-            .resizable()
-            .scaledToFit()
-            .frame(width: 100, height: 100)
-
-          Spacer()
-            .frame(height: 24)
-
-          Text("저장된 히스토리가 없습니다.")
-            .pretendardCustomFont(textStyle: .bodyRegular)
-            .foregroundStyle(.gray550)
-
-          Spacer()
-        }
-        .frame(maxWidth: .infinity)
+      if store.loadingState == .loadingHistory {
+        travelHistoryLoadingView()
+      } else if travelHistoryItems.isEmpty {
+        travelHistoryEmptyView()
       } else {
         ScrollView(.vertical) {
           LazyVStack(spacing: 12) {
@@ -280,6 +265,40 @@ extension ProfileView {
         .scrollIndicators(.hidden)
       }
     }
+  }
+
+  @ViewBuilder
+  private func travelHistoryLoadingView() -> some View {
+    ScrollView(.vertical) {
+      VStack(spacing: 12) {
+        ForEach(0..<3, id: \.self) { _ in
+          travelHistoryCardSkeletonView()
+        }
+      }
+    }
+    .scrollIndicators(.hidden)
+  }
+
+  @ViewBuilder
+  private func travelHistoryEmptyView() -> some View {
+    VStack(spacing: 0) {
+      Spacer()
+
+      Image(asset: .empyTravel)
+        .resizable()
+        .scaledToFit()
+        .frame(width: 100, height: 100)
+
+      Spacer()
+        .frame(height: 24)
+
+      Text("저장된 히스토리가 없습니다.")
+        .pretendardCustomFont(textStyle: .bodyRegular)
+        .foregroundStyle(.gray550)
+
+      Spacer()
+    }
+    .frame(maxWidth: .infinity)
   }
 
   @ViewBuilder

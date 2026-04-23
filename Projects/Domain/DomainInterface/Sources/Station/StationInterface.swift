@@ -17,6 +17,8 @@ public protocol StationInterface: Sendable {
     size: Int
   ) async throws -> StationListEntity
 
+  func loadCachedStations() async throws -> StationListEntity?
+
   func addFavoriteStation(
     stationID: Int
   ) async throws -> FavoriteStationMutationEntity

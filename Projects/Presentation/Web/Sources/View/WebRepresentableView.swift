@@ -94,30 +94,27 @@ public struct WebRepresentableView: UIViewRepresentable {
     // 필요 시 업데이트
   }
 
-  // MARK: - AnimatedImage Loading Helper Functions
-
+  // MARK: - Loading Indicator Helper
+  //
+  // 이전에는 UIHostingController(rootView: ProgressView())를 로컬 변수로 만들어
+  // subview만 추가했는데, 컨트롤러가 즉시 dealloc되면서 `.view`(내부 _UIHostingView)가
+  // zombie가 되어 trait 전파 중 `objc_msgSend` 크래시(EXC_BAD_ACCESS)가 발생했다.
+  // UIKit 네이티브 UIActivityIndicatorView를 사용해 호스팅 컨트롤러 수명 관리 이슈를 제거한다.
   private func createAnimatedImageLoader() -> UIView {
     let containerView = UIView()
     containerView.backgroundColor = .clear
 
-    // SwiftUI ProgressView를 UIKit에 임베드
-    let progressView = UIHostingController(rootView:
-      ProgressView()
-        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-        .scaleEffect(1.5)
-        .frame(width: 200, height: 200)
-    )
+    let indicator = UIActivityIndicatorView(style: .large)
+    indicator.color = .white
+    indicator.hidesWhenStopped = false
+    indicator.translatesAutoresizingMaskIntoConstraints = false
+    indicator.startAnimating()
 
-    progressView.view.backgroundColor = .clear
-    progressView.view.translatesAutoresizingMaskIntoConstraints = false
-
-    containerView.addSubview(progressView.view)
+    containerView.addSubview(indicator)
 
     NSLayoutConstraint.activate([
-      progressView.view.topAnchor.constraint(equalTo: containerView.topAnchor),
-      progressView.view.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
-      progressView.view.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-      progressView.view.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+      indicator.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+      indicator.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
     ])
 
     return containerView

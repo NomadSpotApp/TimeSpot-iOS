@@ -24,6 +24,7 @@ public struct ExploreFeature: Sendable {
   enum CancelID: Hashable {
     case startLocationUpdates
     case fetchPlaces
+    case loadCachedSpots
     case searchRoute
   }
 
@@ -139,6 +140,7 @@ public struct ExploreFeature: Sendable {
     case locationPermissionStatusChanged(CLAuthorizationStatus)
     case locationUpdated(CLLocation)
     case locationUpdateFailed(String)
+    case cachedSpotsLoaded(ExploreSpotPageEntity?)
     case fetchPlacesInitialResponse(ExploreSpotPageEntity, usedCurrentLocation: Bool)
     case fetchPlacesPageResponse(ExploreSpotPageEntity, request: FetchPlacesRequest)
     case fetchPlacesFailed(PlaceError, usedCurrentLocation: Bool)
@@ -154,6 +156,7 @@ public struct ExploreFeature: Sendable {
     case startLocationUpdates
     case stopLocationUpdates
     case requestCurrentLocation
+    case loadCachedSpots
     case fetchPlaces(page: Int, append: Bool)
   }
 
@@ -230,6 +233,7 @@ extension ExploreFeature {
           let currentStatus = await locationUseCase.getAuthorizationStatus()
           await send(.inner(.locationPermissionStatusChanged(currentStatus)))
           },
+          .send(.async(.loadCachedSpots)),
           .send(.async(.fetchPlaces(page: 1, append: false)))
         )
 
@@ -497,6 +501,14 @@ extension ExploreFeature {
 
       case .locationUpdateFailed(let error):
         #logDebug(" [ExploreReducer] 위치 업데이트 실패: \(error)")
+        return .none
+
+      case .cachedSpotsLoaded(let cached):
+        // 네트워크 응답이 이미 도착해 spots가 채워진 경우 캐시 무시 (stale 방지)
+        guard let cached, state.place.spots.isEmpty else { return .none }
+        state.place.spots = cached.spots
+        state.place.currentPage = cached.currentPage
+        state.place.hasNextPage = cached.hasNextPage
         return .none
 
       case .fetchPlacesInitialResponse(let pageEntity, let usedCurrentLocation):
@@ -773,6 +785,28 @@ extension ExploreFeature {
             await send(.inner(.locationUpdateFailed(error.localizedDescription)))
           }
         }
+
+      case .loadCachedSpots:
+        let userSession = state.userSession
+        let fallbackLat = state.userSession.travelStationLat ?? 0
+        let fallbackLng = state.userSession.travelStationLng ?? 0
+        let userLat = state.location.currentLocation?.coordinate.latitude ?? fallbackLat
+        let userLon = state.location.currentLocation?.coordinate.longitude ?? fallbackLng
+        return .run { send in
+          let cached = try? await placeUseCase.loadCachedExploreSpots(
+            userSession: userSession,
+            userLat: userLat,
+            userLon: userLon,
+            keyword: nil,
+            category: nil,
+            sort: "distanceFromStation,ASC",
+            mapLat: nil,
+            mapLon: nil,
+            page: 1
+          )
+          await send(.inner(.cachedSpotsLoaded(cached)))
+        }
+        .cancellable(id: CancelID.loadCachedSpots)
 
       case .fetchPlaces(let page, let append):
         // 초기 로딩인 경우와 페이지네이션인 경우를 구분

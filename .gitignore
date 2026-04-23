@@ -145,3 +145,6 @@ Derived/
 .claude/settings.local.json
 CLAUDE.md
 
+# oh-my-claudecode
+.omc/
+

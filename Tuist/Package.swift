@@ -45,6 +45,6 @@ let package = Package(
     .package(url: "https://github.com/firebase/firebase-ios-sdk", from: "12.12.0"),
     .package(url: "https://github.com/SDWebImage/SDWebImageSwiftUI.git", from: "3.1.4"),
     .package(url: "https://github.com/mixpanel/mixpanel-swift.git", from: "5.1.3"),
-    .package(url: "https://github.com/mixpanel/mixpanel-ios-session-replay-package", exact: "1.2.1")
+    .package(url: "https://github.com/mixpanel/mixpanel-ios-session-replay-package", exact: "1.4.0")
   ]
 )

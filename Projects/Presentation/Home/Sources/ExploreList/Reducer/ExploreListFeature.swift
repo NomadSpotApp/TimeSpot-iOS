@@ -22,6 +22,7 @@ public struct ExploreListFeature {
 
   enum CancelID: Hashable {
     case fetchPlaces
+    case loadCachedPlaces
   }
 
   @ObservableState
@@ -75,11 +76,13 @@ public struct ExploreListFeature {
 
   //MARK: - AsyncAction 비동기 처리 액션
   public enum AsyncAction: Equatable {
+    case loadCachedPlaces(ignoreCategory: Bool)
     case fetchPlaces(page: Int, append: Bool, ignoreCategory: Bool = false)
   }
 
   //MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
+    case cachedPlacesLoaded(PlaceSearchPageEntity?)
     case fetchPlacesResponse(PlaceSearchPageEntity, append: Bool, requestedPage: Int)
     case fetchPlacesFailed(PlaceError)
     case forceResetLoading
@@ -130,7 +133,11 @@ extension ExploreListFeature {
           return .none
         }
         state.hasLoadedInitialPage = true
-        return .send(.async(.fetchPlaces(page: 1, append: false, ignoreCategory: true)))
+        // 캐시 즉시 표시 + 네트워크 갱신 병렬
+        return .merge(
+          .send(.async(.loadCachedPlaces(ignoreCategory: true))),
+          .send(.async(.fetchPlaces(page: 1, append: false, ignoreCategory: true)))
+        )
 
       case .searchTextChanged(let text):
         state.searchText = text
@@ -233,6 +240,35 @@ extension ExploreListFeature {
     action: AsyncAction
   ) -> Effect<Action> {
     switch action {
+      case let .loadCachedPlaces(ignoreCategory):
+        let userSession = state.userSession
+        let fallbackLat = userSession.travelStationLat ?? 0
+        let fallbackLon = userSession.travelStationLng ?? 0
+        let userLat = state.currentLocation?.latitude ?? fallbackLat
+        let userLon = state.currentLocation?.longitude ?? fallbackLon
+        let trimmedKeyword = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let keyword = trimmedKeyword.isEmpty ? nil : trimmedKeyword
+        let category: ExploreCategory? = ignoreCategory ? nil : (state.selectedCategory == .all ? nil : state.selectedCategory)
+        let sortBy = state.requestSortBy
+        let mapLat = state.markerLat ?? userSession.travelStationLat
+        let mapLon = state.markerLon ?? userSession.travelStationLng
+
+        return .run { send in
+          let cached = try? await placeUseCase.loadCachedPlaces(
+            userSession: userSession,
+            userLat: userLat,
+            userLon: userLon,
+            keyword: keyword,
+            category: category,
+            sort: sortBy,
+            mapLat: mapLat,
+            mapLon: mapLon,
+            page: 1
+          )
+          await send(.inner(.cachedPlacesLoaded(cached)))
+        }
+        .cancellable(id: CancelID.loadCachedPlaces)
+
       case let .fetchPlaces(page, append, ignoreCategory):
         guard !state.isLoading else {
           return .none
@@ -305,6 +341,18 @@ extension ExploreListFeature {
     action: InnerAction
   ) -> Effect<Action> {
     switch action {
+      case .cachedPlacesLoaded(let cached):
+        // 네트워크 응답이 이미 도착해 spots가 채워진 경우 캐시 무시
+        guard let cached, state.spots.isEmpty, state.bufferedSpots.isEmpty else {
+          return .none
+        }
+        let cachedSpots = makeSpots(from: cached.content, userSession: state.userSession)
+        state.bufferedSpots = cachedSpots
+        state.spots = cachedSpots
+        state.currentPage = max(cached.page, 1)
+        state.hasNextPage = !cached.isLastPage
+        return .none
+
       case let .fetchPlacesResponse(pageEntity, append, _):
         // 무조건 로딩 해제 (중복 데이터여도)
         state.isLoading = false

@@ -49,6 +49,37 @@ public protocol PlaceUseCaseInterface: Sendable {
     mapLon: Double?,
     page: Int
   ) async throws -> ExploreSpotPageEntity
+
+  // MARK: - Cache APIs (cache-then-network)
+
+  func loadCachedPlaces(
+    userSession: UserSession,
+    userLat: Double,
+    userLon: Double,
+    keyword: String?,
+    category: ExploreCategory?,
+    sort: String,
+    mapLat: Double?,
+    mapLon: Double?,
+    page: Int
+  ) async throws -> PlaceSearchPageEntity?
+
+  func loadCachedExploreSpots(
+    userSession: UserSession,
+    userLat: Double,
+    userLon: Double,
+    keyword: String?,
+    category: ExploreCategory?,
+    sort: String,
+    mapLat: Double?,
+    mapLon: Double?,
+    page: Int
+  ) async throws -> ExploreSpotPageEntity?
+
+  func loadCachedDetailPlace(
+    userSession: UserSession,
+    placeId: Int
+  ) async throws -> PlaceDetailEntity?
 }
 
 public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
@@ -229,6 +260,110 @@ public struct PlaceUseCaseImpl: PlaceUseCaseInterface {
       currentPage: pageEntity.page,
       hasNextPage: !pageEntity.isLastPage
     )
+  }
+
+  // MARK: - Cache APIs
+
+  public func loadCachedPlaces(
+    userSession: UserSession,
+    userLat: Double,
+    userLon: Double,
+    keyword: String?,
+    category: ExploreCategory?,
+    sort: String,
+    mapLat: Double?,
+    mapLon: Double?,
+    page: Int
+  ) async throws -> PlaceSearchPageEntity? {
+    let input = PlaceSearchInput(
+      userLat: userLat,
+      userLon: userLon,
+      stationId: Int(userSession.travelID) ?? 0,
+      remainingMinutes: userSession.remainingMinutes,
+      keyword: keyword,
+      category: mapCategory(category),
+      mapLat: mapLat,
+      mapLon: mapLon,
+      page: page,
+      size: 50,
+      sort: sort
+    )
+    return try await repository.loadCachedPlaces(input)
+  }
+
+  public func loadCachedExploreSpots(
+    userSession: UserSession,
+    userLat: Double,
+    userLon: Double,
+    keyword: String?,
+    category: ExploreCategory?,
+    sort: String,
+    mapLat: Double?,
+    mapLon: Double?,
+    page: Int
+  ) async throws -> ExploreSpotPageEntity? {
+    let input = PlaceSearchInput(
+      userLat: userLat,
+      userLon: userLon,
+      stationId: Int(userSession.travelID) ?? 0,
+      remainingMinutes: userSession.remainingMinutes,
+      keyword: keyword,
+      category: mapCategory(category),
+      mapLat: mapLat ?? userSession.travelStationLat,
+      mapLon: mapLon ?? userSession.travelStationLng,
+      page: page,
+      size: page == 1 && keyword == nil && category == nil ? 200 : 50,
+      sort: sort
+    )
+
+    guard let pageEntity = try await repository.loadCachedPlaces(input) else {
+      return nil
+    }
+
+    let spots = pageEntity.content.map { entity in
+      makeDetailSpot(
+        from: entity,
+        coordinate: CLLocationCoordinate2D(latitude: entity.lat, longitude: entity.lon),
+        stationName: userSession.travelStationName,
+        stationLat: userSession.travelStationLat,
+        stationLon: userSession.travelStationLng
+      )
+    }
+
+    return ExploreSpotPageEntity(
+      spots: spots,
+      currentPage: pageEntity.page,
+      hasNextPage: !pageEntity.isLastPage
+    )
+  }
+
+  public func loadCachedDetailPlace(
+    userSession: UserSession,
+    placeId: Int
+  ) async throws -> PlaceDetailEntity? {
+    let resolvedLocation = try? await locationUseCase.requestCurrentLocation()
+    let userLat = resolvedLocation?.coordinate.latitude ?? userSession.travelStationLat ?? 0
+    let userLon = resolvedLocation?.coordinate.longitude ?? userSession.travelStationLng ?? 0
+    let stationLat = userSession.travelStationLat ?? 0
+    let stationLon = userSession.travelStationLng ?? 0
+    let estimatedWalkTime = calculateEstimatedWalkTime(
+      fromLat: stationLat,
+      fromLon: stationLon,
+      toLat: userLat,
+      toLon: userLon
+    )
+    let calculatedStayableMinutes = calculateStayableMinutes(
+      remainingMinutes: userSession.remainingMinutes,
+      walkTimeFromStation: estimatedWalkTime
+    )
+    let input = PlaceDetailInput(
+      placeId: placeId,
+      stationId: Int(userSession.travelID) ?? 0,
+      userLat: userLat,
+      userLon: userLon,
+      remainingMinutes: calculatedStayableMinutes
+    )
+    return try await repository.loadCachedDetailPlace(input)
   }
 
   private func mapCategory(_ category: ExploreCategory?) -> String? {

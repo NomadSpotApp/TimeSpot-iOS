@@ -76,7 +76,11 @@ public struct HomeView: View {
       bottomPadding: 100
     )
     .onAppear {
-      store.send(.view(.onAppear))
+      // TCA reentrant action 방지: 다음 runloop으로 deferred
+      // 네비게이션 pop 직후 onAppear가 router 액션 처리 중 동기 fire되면 reentrant 경고 발생
+      Task { @MainActor in
+        store.send(.view(.onAppear))
+      }
     }
     .onChange(of: store.shouldShowDepartureWarningToast) { _, shouldShow in
       guard shouldShow else { return }
@@ -127,14 +131,18 @@ extension HomeView {
           )
         )
 
-        if store.departureTimePickerVisible {
-          departureTimePickerView()
-            .offset(
-              x: geometry.size.width - Layout.TimePicker.width - 16,
-              y: Layout.Hero.height - Layout.TimePicker.height - 80
-            )
-            .zIndex(2)
-        }
+        // iOS 26 Liquid Glass 크래시 회피:
+        // `if`로 조건부 제거하면 UIDatePicker(.wheel)의 UIKit 서브트리가 CATransaction
+        // commit 중 dealloc되면서 trait propagation이 zombie view를 터치 → objc_msgSend 크래시.
+        // 따라서 view-tree에는 항상 남겨두고 opacity/hit-testing으로만 토글한다.
+        departureTimePickerView()
+          .offset(
+            x: geometry.size.width - Layout.TimePicker.width - 16,
+            y: Layout.Hero.height - Layout.TimePicker.height - 80
+          )
+          .opacity(store.departureTimePickerVisible ? 1 : 0)
+          .allowsHitTesting(store.departureTimePickerVisible)
+          .zIndex(2)
       }
     }
     .frame(height: Layout.Hero.height)
@@ -222,7 +230,13 @@ extension HomeView {
     .labelsHidden()
     .environment(\.locale, Locale(identifier: "ko_KR"))
     .onChange(of: store.departureTime) { _, newValue in
-      store.send(.view(.departureTimeChanged(newValue)))
+      // iOS 26 Liquid Glass 크래시 회피:
+      // wheel DatePicker의 내부 UIKit 트랜잭션이 커밋되는 동안 곧바로
+      // state를 flip하면 trait propagation 사이에 서브트리가 재구성되며 크래시.
+      // 다음 runloop으로 한 틱 미뤄 커밋 사이클 밖에서 액션을 디스패치한다.
+      Task { @MainActor in
+        store.send(.view(.departureTimeChanged(newValue)))
+      }
     }
     .frame(height: Layout.TimePicker.height)
     .clipped()

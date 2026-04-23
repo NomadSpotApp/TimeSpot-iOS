@@ -141,7 +141,8 @@ extension AppReducer {
     case .presentRoot:
       #logDebug("🏠 AppReducer: Home 상태로 전환, 대기 중인 딥링크 확인")
 
-      // 🎯 PFW 패턴: 타입 안전한 조건부 Effect 취소
+      // 🎯 PFW 패턴: cancel 액션을 현재 case(.auth)에서 먼저 처리하도록 순서 보장
+      // state 전환은 이후 .updateToHome 액션에서 수행하여 ifCaseLet 라우팅 실패 방지
       let cancelAuthEffects: Effect<Action> = {
         switch state {
         case .auth:
@@ -153,33 +154,14 @@ extension AppReducer {
 
       let cancelSplashEffects = Effect<Action>.cancel(id: CancelID.splashRouting)
 
-      // 대기 중인 딥링크가 있는지 먼저 확인
-      if let pendingDeepLink = UserDefaults.standard.string(forKey: "pendingPushDeepLink") {
-        #logDebug("📋 AppReducer: 대기 중인 딥링크 발견, 즉시 처리 = \(pendingDeepLink)")
-
-        // visitingHistoryId 확인 - 유효하지 않으면 딥링크 무시
-        let visitingHistoryId = UserDefaults.standard.integer(forKey: "visitingHistoryId")
-        #logDebug("🔍 AppReducer: 현재 visitingHistoryId = \(visitingHistoryId)")
-
-        // 시간 알림 딥링크이면서 유효한 visitingHistoryId가 있을 때만 RouteNotificationView 표시
-        if (pendingDeepLink.contains("min_before") || pendingDeepLink.contains("min_after") || pendingDeepLink.contains("departure_time") || pendingDeepLink.contains("end_journey")) && visitingHistoryId > 0 {
-          #logDebug("✅ AppReducer: 유효한 여정이 있음, RouteNotificationView 포함한 Home 상태 생성")
-          UserDefaults.standard.removeObject(forKey: "pendingPushDeepLink")
-          state = .home(.init(withRouteNotification: true, deepLink: pendingDeepLink))
-        } else {
-          #logDebug("🔍 AppReducer: 여정이 없거나 일반 딥링크, 기본 Home 상태로 전환하고 딥링크 제거")
-          UserDefaults.standard.removeObject(forKey: "pendingPushDeepLink")
-          state = .home(.init())
-        }
-        return .concatenate(cancelAuthEffects, cancelSplashEffects)
-      } else {
-        #logDebug("🔍 AppReducer: 대기 중인 딥링크 없음, 일반 Home 상태로 전환")
-        state = .home(.init())
-        return .concatenate(cancelAuthEffects, cancelSplashEffects)
-      }
+      return .concatenate(
+        cancelAuthEffects,
+        cancelSplashEffects,
+        .send(.inner(.updateToHome))
+      )
 
     case .presentAuth:
-      // 🎯 PFW 패턴: 타입 안전한 조건부 Effect 취소
+      // 🎯 PFW 패턴: cancel 액션을 현재 case(.home)에서 먼저 처리하도록 순서 보장
       let cancelHomeEffects: Effect<Action> = {
         switch state {
         case .home:
@@ -191,8 +173,11 @@ extension AppReducer {
 
       let cancelSplashEffects = Effect<Action>.cancel(id: CancelID.splashRouting)
 
-      state = .auth(.init())
-      return .concatenate(cancelHomeEffects, cancelSplashEffects)
+      return .concatenate(
+        cancelHomeEffects,
+        cancelSplashEffects,
+        .send(.inner(.updateToAuth))
+      )
 
     case .handlePushNotificationDeepLink(let urlString):
       #logDebug("🔗 AppReducer: 푸쉬 딥링크 처리 = \(urlString)")
@@ -211,7 +196,7 @@ extension AppReducer {
         .cancellable(id: CancelID.refreshTokenExpiredListener, cancelInFlight: true)
 
     case .refreshTokenExpired:
-      // 🎯 PFW 패턴: 타입 안전한 조건부 Effect 취소
+      // 🎯 PFW 패턴: cancel 액션을 현재 case에서 먼저 처리하도록 순서 보장
       let cancelCurrentEffects: Effect<Action> = {
         switch state {
         case .home:
@@ -225,9 +210,11 @@ extension AppReducer {
 
       let cancelSplashEffects = Effect<Action>.cancel(id: CancelID.splashRouting)
 
-      // Refresh token이 만료된 경우 로그인 화면으로 이동
-      state = .auth(.init())
-      return .concatenate(cancelCurrentEffects, cancelSplashEffects)
+      return .concatenate(
+        cancelCurrentEffects,
+        cancelSplashEffects,
+        .send(.inner(.updateToAuth))
+      )
     }
   }
 
@@ -237,9 +224,33 @@ extension AppReducer {
   ) -> Effect<Action> {
     switch action {
     case .updateToHome:
+      // cancel 액션이 자식 reducer에서 처리된 이후 안전하게 state 전환
+      if let pendingDeepLink = UserDefaults.standard.string(forKey: "pendingPushDeepLink") {
+        #logDebug("📋 AppReducer: 대기 중인 딥링크 발견, 즉시 처리 = \(pendingDeepLink)")
+        let visitingHistoryId = UserDefaults.standard.integer(forKey: "visitingHistoryId")
+        #logDebug("🔍 AppReducer: 현재 visitingHistoryId = \(visitingHistoryId)")
+
+        if (pendingDeepLink.contains("min_before")
+            || pendingDeepLink.contains("min_after")
+            || pendingDeepLink.contains("departure_time")
+            || pendingDeepLink.contains("end_journey"))
+          && visitingHistoryId > 0 {
+          #logDebug("✅ AppReducer: 유효한 여정, RouteNotificationView 포함 Home 상태 생성")
+          UserDefaults.standard.removeObject(forKey: "pendingPushDeepLink")
+          state = .home(.init(withRouteNotification: true, deepLink: pendingDeepLink))
+        } else {
+          #logDebug("🔍 AppReducer: 여정 없음/일반 딥링크, 기본 Home 상태로 전환")
+          UserDefaults.standard.removeObject(forKey: "pendingPushDeepLink")
+          state = .home(.init())
+        }
+      } else {
+        #logDebug("🔍 AppReducer: 대기 중인 딥링크 없음, 일반 Home 상태로 전환")
+        state = .home(.init())
+      }
       return .none
 
     case .updateToAuth:
+      state = .auth(.init())
       return .none
 
     case .setupPushNotificationObserver:

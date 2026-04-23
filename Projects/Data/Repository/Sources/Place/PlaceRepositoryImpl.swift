@@ -17,14 +17,18 @@ import AsyncMoya
 
 public final class PlaceRepositoryImpl: PlaceInterface, @unchecked Sendable {
   private let provider: MoyaProvider<PlaceService>
+  private let local: PlaceLocalDataSourceProtocol
 
   public init(
     provider: MoyaProvider<PlaceService> = MoyaProvider<PlaceService>.default,
+    local: PlaceLocalDataSourceProtocol = PlaceLocalDataSource()
   ) {
     self.provider = provider
+    self.local = local
   }
 
   // MARK: - 장소 관련 api
+
   public func fetchPlaces(
     _ input: PlaceSearchInput
   ) async throws -> PlaceSearchPageEntity {
@@ -42,7 +46,13 @@ public final class PlaceRepositoryImpl: PlaceInterface, @unchecked Sendable {
       sort: input.sort
     )
     let dto: PlaceSearchDTOModel = try await provider.request(.fetchPlace(body: body))
-    return dto.data.toDomain()
+    let entity = dto.data.toDomain()
+
+    // Cache write (best-effort)
+    let cacheKey = PlaceCacheKey.list(input: input)
+    try? await local.saveList(cacheKey: cacheKey, page: entity)
+
+    return entity
   }
 
   public func detailPlaces(
@@ -56,6 +66,28 @@ public final class PlaceRepositoryImpl: PlaceInterface, @unchecked Sendable {
     )
 
     let dto: PlaceDetailDTOModel = try await provider.request(.detailPlaces(placeId: input.placeId, body: body))
-    return dto.data.toDomain()
+    let entity = dto.data.toDomain()
+
+    // Cache write (best-effort) — 사용자 위치 기반 키 사용
+    let cacheKey = PlaceCacheKey.detail(input: input)
+    try? await local.saveDetail(cacheKey: cacheKey, detail: entity)
+
+    return entity
+  }
+
+  // MARK: - Cache APIs
+
+  public func loadCachedPlaces(
+    _ input: PlaceSearchInput
+  ) async throws -> PlaceSearchPageEntity? {
+    let cacheKey = PlaceCacheKey.list(input: input)
+    return try await local.loadList(cacheKey: cacheKey)
+  }
+
+  public func loadCachedDetailPlace(
+    _ input: PlaceDetailInput
+  ) async throws -> PlaceDetailEntity? {
+    let cacheKey = PlaceCacheKey.detail(input: input)
+    return try await local.loadDetail(cacheKey: cacheKey)
   }
 }

@@ -29,6 +29,10 @@ public struct StationUseCaseImpl: StationInterface {
     )
   }
 
+  public func loadCachedStations() async throws -> StationListEntity? {
+    try await repository.loadCachedStations()
+  }
+
   public func addFavoriteStation(
     stationID: Int
   ) async throws -> FavoriteStationMutationEntity {

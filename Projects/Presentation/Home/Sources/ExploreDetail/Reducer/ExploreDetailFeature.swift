@@ -61,10 +61,12 @@ public struct ExploreDetailFeature {
   }
 
   public enum AsyncAction: Equatable {
+    case loadCachedPlaceDetail
     case fetchPlaceDetail
   }
 
   public enum InnerAction: Equatable {
+    case cachedPlaceDetailLoaded(PlaceDetailEntity?)
     case fetchPlaceDetailResponse(Result<PlaceDetailEntity, PlaceError>)
   }
 
@@ -107,7 +109,11 @@ extension ExploreDetailFeature {
   ) -> Effect<Action> {
     switch action {
     case .onAppear:
-      return .send(.async(.fetchPlaceDetail))
+      // 캐시 우선 표시 + 네트워크 갱신 병렬 (위/경도 변경 시 캐시 자동 miss)
+      return .merge(
+        .send(.async(.loadCachedPlaceDetail)),
+        .send(.async(.fetchPlaceDetail))
+      )
 
     case .routeButtonTapped:
       // UserSession에 목적지 정보 저장
@@ -145,6 +151,19 @@ extension ExploreDetailFeature {
     action: AsyncAction
   ) -> Effect<Action> {
     switch action {
+    case .loadCachedPlaceDetail:
+      guard let placeID = Int(state.userSession.selectedExplorePlaceID) else {
+        return .none
+      }
+      let userSession = state.userSession
+      return .run { send in
+        let cached = try? await placeUseCase.loadCachedDetailPlace(
+          userSession: userSession,
+          placeId: placeID
+        )
+        await send(.inner(.cachedPlaceDetailLoaded(cached)))
+      }
+
     case .fetchPlaceDetail:
       guard let placeID = Int(state.userSession.selectedExplorePlaceID) else {
         state.errorMessage = PlaceError.placeNotFound.errorDescription
@@ -222,6 +241,14 @@ extension ExploreDetailFeature {
     action: InnerAction
   ) -> Effect<Action> {
     switch action {
+    case .cachedPlaceDetailLoaded(let cached):
+      // 네트워크 응답이 이미 도착해 placeDetail이 채워진 경우 캐시 무시 (stale 방지)
+      guard let cached, state.placeDetail == nil else { return .none }
+      state.placeDetail = cached
+      state.errorMessage = nil
+      state.isLoading = false
+      return .none
+
     case .fetchPlaceDetailResponse(let result):
       state.isLoading = false
 

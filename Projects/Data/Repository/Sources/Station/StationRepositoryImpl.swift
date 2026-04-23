@@ -19,13 +19,16 @@ import ComposableArchitecture
 public final class StationRepositoryImpl: StationInterface, @unchecked Sendable {
   private let authorizedProvider: MoyaProvider<StationService>
   private let publicProvider: MoyaProvider<StationService>
+  private let local: StationLocalDataSourceProtocol
 
   public init(
     authorizedProvider: MoyaProvider<StationService> = MoyaProvider<StationService>.authorized,
-    publicProvider: MoyaProvider<StationService> = MoyaProvider<StationService>.default
+    publicProvider: MoyaProvider<StationService> = MoyaProvider<StationService>.default,
+    local: StationLocalDataSourceProtocol = StationLocalDataSource()
   ) {
     self.authorizedProvider = authorizedProvider
     self.publicProvider = publicProvider
+    self.local = local
   }
 
   public func fetchStations(
@@ -42,7 +45,18 @@ public final class StationRepositoryImpl: StationInterface, @unchecked Sendable 
       sort: "stationName,ASC"
     )
     let dto: StationDTOModel = try await publicProvider.request(.allStation(body: body))
-    return dto.data.toDomain()
+    let entity = dto.data.toDomain()
+
+    // 첫 페이지만 캐시에 저장 (페이지네이션은 별도 처리 필요 시 확장)
+    if page == 1 {
+      try? await local.save(stations: entity)
+    }
+
+    return entity
+  }
+
+  public func loadCachedStations() async throws -> StationListEntity? {
+    try await local.load()
   }
 
   public func addFavoriteStation(
@@ -59,6 +73,9 @@ public final class StationRepositoryImpl: StationInterface, @unchecked Sendable 
         userInfo: [NSLocalizedDescriptionKey: dto.message]
       )
     }
+
+    // 즐겨찾기 변경 시 캐시 무효화
+    try? await local.clear()
 
     return dto.toDomain()
   }
@@ -78,6 +95,9 @@ public final class StationRepositoryImpl: StationInterface, @unchecked Sendable 
         userInfo: [NSLocalizedDescriptionKey: dto.message]
       )
     }
+
+    // 즐겨찾기 변경 시 캐시 무효화
+    try? await local.clear()
 
     return dto.toDomain()
   }
