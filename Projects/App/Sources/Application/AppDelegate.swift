@@ -40,7 +40,10 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, @MainActor UNUserNo
       ]
     )
     Mixpanel.initialize(token: mixPanelKey ?? "", trackAutomaticEvents: true)
-    initializeMixpanelSessionReplay()
+    // MixpanelSessionReplay 1.4.0은 UIHostingController.view에 _UIReparentingView를
+    // swizzle로 주입하여 SwiftUI view hierarchy 경고가 발생함.
+    // SDK 측 SwiftUI 호환성 fix 전까지 SessionReplay 자동 초기화는 일시 비활성화.
+    // initializeMixpanelSessionReplay()
     FirebaseApp.configure()
     // 네이버맵 초기화 (Home 모듈의 NaverMapInitializer 사용)
     NaverMapInitializer.initialize()
