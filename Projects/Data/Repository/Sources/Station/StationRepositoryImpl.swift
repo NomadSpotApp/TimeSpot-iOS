@@ -44,7 +44,10 @@ public final class StationRepositoryImpl: StationInterface, @unchecked Sendable 
       size: size,
       sort: "stationName,ASC"
     )
-    let dto: StationDTOModel = try await publicProvider.request(.allStation(body: body))
+    // authorizedProvider 사용 — AuthInterceptor가 401 발생 시
+    // 토큰 자동 refresh 시도 → 실패 시 RefreshTokenExpired 알림으로 자동 로그아웃 처리.
+    // 게스트(credential 없음)는 인터셉터가 토큰 없이 그대로 요청 통과.
+    let dto: StationDTOModel = try await authorizedProvider.request(.allStation(body: body))
     let entity = dto.data.toDomain()
 
     // 첫 페이지만 캐시에 저장 (페이지네이션은 별도 처리 필요 시 확장)
