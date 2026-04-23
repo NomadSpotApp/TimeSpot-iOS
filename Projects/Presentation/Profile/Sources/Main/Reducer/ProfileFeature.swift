@@ -65,12 +65,16 @@ public struct ProfileFeature {
 
   //MARK: - AsyncAction 비동기 처리 액션
   public enum AsyncAction: Equatable {
+    case loadCachedUser
+    case loadCachedHistory
     case fetchUser
     case fetchMyHistory(page: Int, reset: Bool)
   }
 
   //MARK: - 앱내에서 사용하는 액션
   public enum InnerAction: Equatable {
+    case cachedUserLoaded(ProfileEntity?)
+    case cachedHistoryLoaded(HistoryEntity?)
     case fetchUserResponse(Result<ProfileEntity, ProfileError>)
     case fetchMyHistoryResponse(Result<HistoryEntity, ProfileError>, reset: Bool)
   }
@@ -86,6 +90,8 @@ public struct ProfileFeature {
   nonisolated enum CancelID: Hashable {
     case fetchUser
     case fetchMyHistory
+    case loadCachedUser
+    case loadCachedHistory
   }
 
   @Dependency(\.profileUseCase) var profileUseCase
@@ -137,7 +143,10 @@ extension ProfileFeature {
       return .send(.async(.fetchMyHistory(page: nextPage, reset: false)))
 
       case .onAppear:
+        // 캐시 즉시 로드 + 네트워크 갱신 병렬
         return .merge(
+          .send(.async(.loadCachedUser)),
+          .send(.async(.loadCachedHistory)),
           .send(.async(.fetchUser)),
           .send(.async(.fetchMyHistory(page: 1, reset: true)))
         )
@@ -150,6 +159,23 @@ extension ProfileFeature {
     action: AsyncAction
   ) -> Effect<Action> {
     switch action {
+      case .loadCachedUser:
+        return .run { [profileUseCase] send in
+          let cached = try? await profileUseCase.loadCachedUser()
+          await send(.inner(.cachedUserLoaded(cached)))
+        }
+        .cancellable(id: CancelID.loadCachedUser)
+
+      case .loadCachedHistory:
+        let sort = state.travelHistorySort
+        return .run { [historyUseCase] send in
+          let cached = try? await historyUseCase.loadCachedMyHistory(
+            sort: sort,
+            size: Constants.historyPageSize
+          )
+          await send(.inner(.cachedHistoryLoaded(cached)))
+        }
+        .cancellable(id: CancelID.loadCachedHistory)
 
       case .fetchUser:
         state.loadingState = .loadingProfile
@@ -205,6 +231,28 @@ extension ProfileFeature {
     action: InnerAction
   ) -> Effect<Action> {
     switch action {
+      case .cachedUserLoaded(let cached):
+        // 네트워크 응답이 이미 도착해 profileEntity가 채워진 경우 캐시 무시
+        guard let cached, state.profileEntity == nil else { return .none }
+        state.profileEntity = cached
+        let mapType = cached.mapType
+        state.$userSession.withLock { userSession in
+          userSession.name = cached.nickname
+          userSession.mapType = mapType
+        }
+        state.$selectedMapTypeStorage.withLock { $0 = mapType }
+        return .none
+
+      case .cachedHistoryLoaded(let cached):
+        // 네트워크 응답이 이미 도착해 historyEntity가 채워진 경우 캐시 무시
+        guard let cached, state.historyEntity == nil else { return .none }
+        state.historyEntity = cached
+        // 캐시는 즉시 표시되므로 로딩 상태 해제
+        if state.loadingState == .loadingHistory {
+          state.loadingState = .idle
+        }
+        return .none
+
       case .fetchUserResponse(let result):
         state.loadingState = .idle
         switch result {

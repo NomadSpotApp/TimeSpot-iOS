@@ -17,11 +17,14 @@ import AsyncMoya
 
 public class HistoryRepositoryImpl: HistoryInterface , @unchecked Sendable {
   private let provider: MoyaProvider<HistoryService>
+  private let local: HistoryLocalDataSourceProtocol
 
   public init(
     provider: MoyaProvider<HistoryService> = MoyaProvider<HistoryService>.authorized,
+    local: HistoryLocalDataSourceProtocol = HistoryLocalDataSource()
   ) {
     self.provider = provider
+    self.local = local
   }
 
   // MARK: - 내 히스토리 정보
@@ -34,7 +37,20 @@ public class HistoryRepositoryImpl: HistoryInterface , @unchecked Sendable {
     let safePage = max(page, 1)
     let body: MyHistoryRequest = .init(page: safePage, size: size, sort: sort.description)
     let dto: HistoryDTOModel = try await provider.request(.myHistory(body: body))
-    return dto.data.toDomain()
+    let entity = dto.data.toDomain()
+
+    // 첫 페이지만 캐시 저장 (페이지네이션 캐시는 비용 큼)
+    if safePage == 1 {
+      try? await local.saveHistory(sort: sort, size: size, history: entity)
+    }
+    return entity
+  }
+
+  public func loadCachedMyHistory(
+    sort: TravelHistorySort,
+    size: Int
+  ) async throws -> HistoryEntity? {
+    try await local.loadHistory(sort: sort, size: size)
   }
 
   public func startJourney(

@@ -12,6 +12,10 @@ import Entity
 final public class DefaultProfileRepositoryImpl: ProfileInterface {
   public init() {}
 
+  public func loadCachedUser() async throws -> ProfileEntity? {
+    nil
+  }
+
   public func fetchUser() async throws -> Entity.ProfileEntity {
     return ProfileEntity(
       email: "test@example.com",

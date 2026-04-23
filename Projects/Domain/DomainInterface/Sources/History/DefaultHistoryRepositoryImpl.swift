@@ -11,6 +11,13 @@ import Entity
 final public class DefaultHistoryRepositoryImpl: HistoryInterface {
   public init() {}
 
+  public func loadCachedMyHistory(
+    sort: TravelHistorySort,
+    size: Int
+  ) async throws -> HistoryEntity? {
+    nil
+  }
+
   public func myHistory(
     page: Int,
     size: Int,

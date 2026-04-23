@@ -17,11 +17,18 @@ import AsyncMoya
 
 public class ProfileRepositoryImpl: ProfileInterface, @unchecked Sendable {
   private let provider: MoyaProvider<ProfileService>
+  private let local: ProfileLocalDataSourceProtocol
 
   public init(
     provider: MoyaProvider<ProfileService> = MoyaProvider<ProfileService>.authorized,
+    local: ProfileLocalDataSourceProtocol = ProfileLocalDataSource()
   ) {
     self.provider = provider
+    self.local = local
+  }
+
+  public func loadCachedUser() async throws -> ProfileEntity? {
+    try await local.loadUser()
   }
 
   public func fetchUser() async throws -> ProfileEntity {
@@ -30,7 +37,9 @@ public class ProfileRepositoryImpl: ProfileInterface, @unchecked Sendable {
 
       if (200...299).contains(response.statusCode) {
         let dto = try JSONDecoder().decode(ProfileDTOModel.self, from: response.data)
-        return dto.data.toDomain()
+        let entity = dto.data.toDomain()
+        try? await local.saveUser(entity)
+        return entity
       }
 
       if let errorResponse = try? JSONDecoder().decode(ProfileErrorResponseDTO.self, from: response.data) {

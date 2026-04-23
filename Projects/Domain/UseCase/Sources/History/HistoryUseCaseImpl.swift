@@ -25,6 +25,13 @@ public struct HistoryUseCaseImpl: HistoryInterface {
     return try await repository.myHistory(page: page, size: size, sort: sort)
   }
 
+  public func loadCachedMyHistory(
+    sort: TravelHistorySort,
+    size: Int
+  ) async throws -> HistoryEntity? {
+    return try await repository.loadCachedMyHistory(sort: sort, size: size)
+  }
+
   // MARK: - 여정 관리
   public func startJourney(
     input: StartJourneyInput

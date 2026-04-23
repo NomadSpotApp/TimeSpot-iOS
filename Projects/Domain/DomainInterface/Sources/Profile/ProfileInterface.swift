@@ -11,6 +11,7 @@ import WeaveDI
 
 public protocol ProfileInterface: Sendable {
   func fetchUser() async throws -> ProfileEntity
+  func loadCachedUser() async throws -> ProfileEntity?
   func editUser(
     mapType: ExternalMapType
   )  async throws -> LoginEntity

@@ -16,6 +16,11 @@ public protocol HistoryInterface: Sendable {
     sort: TravelHistorySort
   ) async throws -> HistoryEntity
 
+  func loadCachedMyHistory(
+    sort: TravelHistorySort,
+    size: Int
+  ) async throws -> HistoryEntity?
+
   func startJourney(
     input: StartJourneyInput
   ) async throws -> JourneyEntity

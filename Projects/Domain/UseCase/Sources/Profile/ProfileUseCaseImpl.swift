@@ -25,6 +25,10 @@ public struct ProfileUseCaseImpl: ProfileInterface {
     return try await repository.fetchUser()
   }
 
+  public func loadCachedUser() async throws -> ProfileEntity? {
+    return try await repository.loadCachedUser()
+  }
+
   public func editUser(
     mapType: ExternalMapType
   ) async throws -> LoginEntity {
