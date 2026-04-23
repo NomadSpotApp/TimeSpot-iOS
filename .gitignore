@@ -142,7 +142,7 @@ Derived/
 **/Config
 
 # Claude Code settings
-.claude/settings.local.json
+.claude/
 CLAUDE.md
 
 # oh-my-claudecode
